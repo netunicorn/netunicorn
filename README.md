@@ -1,2 +1,5 @@
-# active-measurements
-Code for the active measurement deployment at UCSB
+# Active QoE Measurements
+Code for the active measurement deployments
+
+## Current Deployments
+- UCSB
