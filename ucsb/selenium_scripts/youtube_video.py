@@ -294,7 +294,7 @@ class Youtube_Video_Loader:
 
 def initializeAndRun(id, headless, link, mode):
 
-    yvl = Youtube_Video_Loader(id,'True')
+    yvl = Youtube_Video_Loader(id)
 
     if mode == "run":
         yvl.run(link)
