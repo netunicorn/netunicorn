@@ -12,7 +12,6 @@ from selenium import webdriver
 from selenium import common
 from selenium.webdriver.firefox.service import Service
 
-
 print("Display start")
 from pyvirtualdisplay import Display
 display = Display(visible=0, size=(2001, 3600))
@@ -314,14 +313,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', action='store')
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
+    
     
     link = "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
     mode = "run"
     headless = "true"
-    
-    print("starting init")
 
-    
+    logging.debug("Starting initializeAndRun() function with the following arguments:")
     initializeAndRun(args.id, headless, link, mode)
 
 if __name__ == "__main__":
