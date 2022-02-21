@@ -42,6 +42,10 @@ class MinionHandler:
         output = self.local.cmd(self.minion_id, 'cmd.run', [command])
         return output[self.minion_id]
 
+    def isUp(self):
+        status = self.runCommand("echo ok")
+        return status == "ok"
+
     def updateCode(self):
         print(self.runCommand(self._git + " pull"))
 
