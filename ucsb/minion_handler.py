@@ -1,5 +1,8 @@
 from subprocess import Popen, PIPE
 import salt.client
+import validators
+import statistics
+import re
 
 
 class MinionHandler:
@@ -14,21 +17,48 @@ class MinionHandler:
         self.minion_id = minion_id
 
     @staticmethod
-    def lookupJob(job_id):
-        process = Popen(['salt-run', 'jobs.lookup_jid', job_id], stdout=PIPE, stderr=PIPE)
-        stdout, stderr = process.communicate()
-        if stderr:
-            raise Exception("stderr")
-        return stdout
+    def validate_address(address):
+        if validators.url(address):
+            return True
+        if validators.domain(address):
+            return True
+        if validators.ip_address.ipv4(address):
+            return True
+
+        return False
+
+    @staticmethod
+    def parse_ping_output(output):
+        ping_output = []
+        lines = output.splitlines()
+        for line in lines:
+            if line.strip().startswith("64"):
+                ping_output.append(re.findall(r'\d+\.*\d*', line)[-1])
+
+        return [float(v) for v in ping_output]
 
     def runCommand(self, command):
-        job_id = self.local.cmd_async(self.minion_id, 'cmd.run', [command])
-        print("running: ", command, " on:", self.minion_id, " job_id", job_id)
-        return job_id
+        print("running: ", command, " on:", self.minion_id)
+        output = self.local.cmd(self.minion_id, 'cmd.run', [command])
+        return output[self.minion_id]
 
     def updateCode(self):
-        print(MinionHandler.lookupJob(self.runCommand(self._git + " pull")))
+        print(self.runCommand(self._git + " pull"))
 
     def runYoutubeExperiment(self):
-        print(MinionHandler.lookupJob(self.runCommand('python3 {}ucsb/selenium_scripts/youtube_video.py'
-                                                      .format(self.project_path))))
+        print(self.runCommand('python3 {}ucsb/selenium_scripts/youtube_video.py'
+                              .format(self.project_path)))
+
+    def ping(self, address, count=1):
+        address = address.strip()
+        validation = MinionHandler.validate_address(address)
+        if not validation:
+            raise Exception("invalid address {}".format(address))
+        if not isinstance(count, int):
+            raise Exception("count should be an integer")
+
+        ping_output = self.runCommand("ping {} -c {}".format(address, count))
+        ping_output = MinionHandler.parse_ping_output(ping_output)
+        if len(ping_output) == 0:
+            raise Exception("Ping error")
+        return statistics.mean(ping_output)
