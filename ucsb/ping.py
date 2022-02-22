@@ -1,0 +1,13 @@
+import utils.minion_handler
+import utils.minion_pool
+
+
+addresses = [
+    "google.com",
+    "csworld52.cs.ucsb.edu", # Border router
+    "twitter.com"
+]
+minions = utils.minion_pool.MinionPool().get()
+for minion in minions:
+    for address in addresses:
+        ping = minion.ping(address, 5, upload=True)

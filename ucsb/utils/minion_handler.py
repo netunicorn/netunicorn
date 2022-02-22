@@ -1,4 +1,6 @@
 from subprocess import Popen, PIPE
+from influxdb import InfluxDBClient
+from time import gmtime, strftime
 import salt.client
 import validators
 import statistics
@@ -9,12 +11,16 @@ class MinionHandler:
     local = salt.client.LocalClient()
     project_path = "/home/ubuntu/active-measurements/"
     _git = "git --git-dir={0}.git --work-tree={0}".format(project_path)
+    client = None
 
     def __init__(self, minion_id):
         if not isinstance(minion_id, str):
             raise Exception(minion_id + " is not a string")
 
         self.minion_id = minion_id
+        self.client = InfluxDBClient(host='snl-server-3.cs.ucsb.edu', port=8086, username='admin', password='ucsbsnl!!',
+                                     ssl=True, verify_ssl=True)
+        self.client.switch_database('netrics1')
 
     @staticmethod
     def validate_address(address):
@@ -37,14 +43,31 @@ class MinionHandler:
 
         return [float(v) for v in ping_output]
 
+    def _upload_ping_result(self, address, ping):
+        if not address:
+            raise Exception("address cannot be empty")
+        if not isinstance(ping, float):
+            raise Exception("ping is not a valid number: {}".format(ping))
+
+        return self.client.write_points([{
+            "measurement": "networks",
+            "tags": {
+                "user": self.minion_id,
+            },
+            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
+            "fields": {
+                "ping_to_{}".format(address): ping
+            }
+        }])
+
     def runCommand(self, command):
         print("running: ", command, " on:", self.minion_id)
         output = self.local.cmd(self.minion_id, 'cmd.run', [command])
         return output[self.minion_id]
 
     def isUp(self):
-        status = self.runCommand("echo ok")
-        return status == "ok"
+        status = self.local.cmd(self.minion_id, 'test.ping')[self.minion_id]
+        return status
 
     def updateCode(self):
         print(self.runCommand(self._git + " pull"))
@@ -53,7 +76,7 @@ class MinionHandler:
         print(self.runCommand('python3 {}ucsb/selenium_scripts/youtube_video.py'
                               .format(self.project_path)))
 
-    def ping(self, address, count=1):
+    def ping(self, address, count=1, upload=False):
         address = address.strip()
         validation = MinionHandler.validate_address(address)
         if not validation:
@@ -65,4 +88,9 @@ class MinionHandler:
         ping_output = MinionHandler.parse_ping_output(ping_output)
         if len(ping_output) == 0:
             raise Exception("Ping error")
-        return statistics.mean(ping_output)
+
+        mean_ping = statistics.mean(ping_output)
+        if upload:
+            self._upload_ping_result(address, mean_ping)
+        return mean_ping
+
