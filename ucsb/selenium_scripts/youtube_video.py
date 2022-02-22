@@ -8,6 +8,7 @@ from constants import *
 from subprocess import call, check_output
 import os
 import sys
+import logging
 from selenium import webdriver
 from selenium import common
 from selenium.webdriver.firefox.service import Service
@@ -315,7 +316,7 @@ def main():
     args = parser.parse_args()
 
     import logging
-    logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
+    logging.basicConfig(filename='example.log', level=logging.DEBUG)
     
     
     link = "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
