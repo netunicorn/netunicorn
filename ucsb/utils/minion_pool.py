@@ -3,7 +3,10 @@ import random
 import utils.minion_handler
 
 minion_ids = [
+    "raspi-1",
     "raspi-2",
+    "raspi-3",
+    "raspi-4",
     "raspi-5"
 ]
 
