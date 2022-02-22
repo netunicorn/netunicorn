@@ -11,3 +11,4 @@ minions = utils.minion_pool.MinionPool().get()
 for minion in minions:
     for address in addresses:
         ping = minion.ping(address, 5, upload=True)
+    minion.speed_test(upload=True)

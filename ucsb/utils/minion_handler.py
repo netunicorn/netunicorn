@@ -60,6 +60,30 @@ class MinionHandler:
             }
         }])
 
+    def _upload_speedtest_result(self, download, upload):
+        if not isinstance(download, float) or not isinstance(upload, float):
+            raise Exception("download/upload is not a valid number: {}/{}".format(download, upload))
+
+        return self.client.write_points([{
+            "measurement": "networks",
+            "tags": {
+                "user": self.minion_id,
+            },
+            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
+            "fields": {
+                "speedtest_download": download
+            }
+        }, {
+            "measurement": "networks",
+            "tags": {
+                "user": self.minion_id,
+            },
+            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
+            "fields": {
+                "speedtest_upload": upload
+            }
+        }])
+
     def runCommand(self, command):
         print("running: ", command, " on:", self.minion_id)
         output = self.local.cmd(self.minion_id, 'cmd.run', [command])
@@ -94,3 +118,12 @@ class MinionHandler:
             self._upload_ping_result(address, mean_ping)
         return mean_ping
 
+    def speed_test(self, upload=False):
+        output = self.runCommand("speedtest-cli --simple")
+        speedtest_output = []
+        lines = output.splitlines()
+        for line in lines:
+            speedtest_output.append(float(re.findall(r'\d+\.*\d*', line)[0]))
+        if upload:
+            self._upload_speedtest_result(speedtest_output[1], speedtest_output[2])
+        return speedtest_output[1], speedtest_output[2]

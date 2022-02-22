@@ -16,7 +16,7 @@ class MinionPool:
             minion = utils.minion_handler.MinionHandler(m_id)
             if minion.isUp():
                 self.minions.append(minion)
-                print(m_id)
+                print("{} is available".format(m_id))
 
     def get(self, count=0):
         if not isinstance(count, int):
