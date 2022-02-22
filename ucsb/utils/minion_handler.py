@@ -81,8 +81,11 @@ class MinionHandler:
         status = self.local.cmd(self.minion_id, 'test.ping')[self.minion_id]
         return status
 
+    def runGitCommand(self, command):
+        print(self.runCommand("{} {}".format(self._git, command)))
+
     def updateCode(self):
-        print(self.runCommand(self._git + " pull"))
+        self.runGitCommand("pull")
 
     def runYoutubeExperiment(self):
         print(self.runCommand('python3 {}ucsb/selenium_scripts/youtube_video.py'
