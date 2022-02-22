@@ -43,46 +43,34 @@ class MinionHandler:
 
         return [float(v) for v in ping_output]
 
+    def _create_data_point(self, field, value):
+        if not isinstance(field, str):
+            raise Exception("field should be string")
+        return ({
+            "measurement": "networks",
+            "tags": {
+                "user": self.minion_id,
+            },
+            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
+            "fields": {
+                field: value
+            }
+        })
+
     def _upload_ping_result(self, address, ping):
         if not address:
             raise Exception("address cannot be empty")
         if not isinstance(ping, float):
             raise Exception("ping is not a valid number: {}".format(ping))
 
-        return self.client.write_points([{
-            "measurement": "networks",
-            "tags": {
-                "user": self.minion_id,
-            },
-            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
-            "fields": {
-                "ping_to_{}".format(address): ping
-            }
-        }])
+        return self.client.write_points([self._create_data_point("ping_to_{}".format(address), ping)])
 
     def _upload_speedtest_result(self, download, upload):
         if not isinstance(download, float) or not isinstance(upload, float):
             raise Exception("download/upload is not a valid number: {}/{}".format(download, upload))
 
-        return self.client.write_points([{
-            "measurement": "networks",
-            "tags": {
-                "user": self.minion_id,
-            },
-            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
-            "fields": {
-                "speedtest_download": download
-            }
-        }, {
-            "measurement": "networks",
-            "tags": {
-                "user": self.minion_id,
-            },
-            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
-            "fields": {
-                "speedtest_upload": upload
-            }
-        }])
+        return self.client.write_points([self._create_data_point("speedtest_download", download),
+                                         self._create_data_point("speedtest_upload", upload)])
 
     def runCommand(self, command):
         print("running: ", command, " on:", self.minion_id)
