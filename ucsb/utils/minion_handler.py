@@ -60,7 +60,7 @@ class MinionHandler:
             average_width += int(width)
             average_height += int(height)
             average_frame_rate += int(frame_rate)
-            average_buffer_health += int(video_statistics['buffer_health'])
+            average_buffer_health += float(stat['buffer_health'])
 
         average_width /= len(video_statistics)
         average_height /= len(video_statistics)
