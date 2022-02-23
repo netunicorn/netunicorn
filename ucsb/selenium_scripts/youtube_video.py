@@ -1,4 +1,7 @@
-utils.minion_handler.MinionHandler.validate_address('')
+import sys
+sys.path.append('/../utils')
+import utils.minion_handler
+
 import pickle
 import csv
 import re
