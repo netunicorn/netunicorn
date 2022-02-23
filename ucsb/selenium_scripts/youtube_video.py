@@ -328,7 +328,7 @@ def main():
 
     logging.debug("Starting initializeAndRun() function with the following arguments:")
     video_statistics = initializeAndRun(args.id, headless, link, mode)
-    print(video_statistics)
+    print(minion_handler.MinionHandler.calculate_average_video_quality(video_statistics))
 
 if __name__ == "__main__":
     main()

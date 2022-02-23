@@ -45,6 +45,25 @@ class MinionHandler:
 
         return [float(v) for v in ping_output]
 
+    @staticmethod
+    def calculate_average_video_quality(video_statistics):
+        average_buffer_health = 0
+        average_width = 0
+        average_height = 0
+        average_frame_rate = 0
+
+        for stat in video_statistics:
+            resolution = stat.current_optimal_res
+            width, height, frame_rate = re.findall(r'\d+\.*\d*', resolution)[:3]
+
+            average_width += width
+            average_height += height
+            average_frame_rate += frame_rate
+            average_buffer_health += video_statistics.buffer_health
+
+        average_buffer_health /= len(video_statistics)
+        return average_width, average_height, average_frame_rate, average_buffer_health
+
     def _create_data_point(self, field, value):
         if not isinstance(field, str):
             raise Exception("field should be string")
