@@ -1,4 +1,4 @@
-from utils.minion_handler import MinionHandler
+MinionHandler.validate_address('')
 import pickle
 import csv
 import re
