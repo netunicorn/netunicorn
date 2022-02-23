@@ -1,5 +1,5 @@
-import utils.minion_handler
-import utils.minion_pool
+import active_measurements_utils.minion_handler
+import active_measurements_utils.minion_pool
 
 
 addresses = [

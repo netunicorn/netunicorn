@@ -8,15 +8,17 @@ import re
 
 
 class MinionHandler:
-    local = salt.client.LocalClient()
     project_path = "/home/ubuntu/active-measurements/"
     _git = "git --git-dir={0}.git --work-tree={0}".format(project_path)
+    local = None
     client = None
 
-    def __init__(self, minion_id):
+    def __init__(self, minion_id, in_minion=False):
         if not isinstance(minion_id, str):
             raise Exception(minion_id + " is not a string")
 
+        if not in_minion:
+            self.local = salt.client.LocalClient()
         self.minion_id = minion_id
         self.client = InfluxDBClient(host='snl-server-3.cs.ucsb.edu', port=8086, username='admin', password='ucsbsnl!!',
                                      ssl=True, verify_ssl=True)
@@ -88,8 +90,7 @@ class MinionHandler:
         self.runGitCommand("pull")
 
     def runYoutubeExperiment(self):
-        print(self.runCommand('python3 {}ucsb/selenium_scripts/youtube_video.py'
-                              .format(self.project_path)))
+        print(self.runCommand('python3 {}ucsb/selenium_scripts/youtube_video.py '.format(self.project_path)))
 
     def ping(self, address, count=1, upload=False):
         address = address.strip()
