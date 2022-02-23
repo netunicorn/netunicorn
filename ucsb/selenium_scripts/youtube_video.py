@@ -311,9 +311,9 @@ def initializeAndRun(id, headless, link, mode):
     return yvl.video_statistics[link]
 
 def dump(obj):
-    for key in mydic:
+    for key in obj:
         print
-        "the key name is" + key + "and its value is" + mydic[key]
+        "the key name is" + key + "and its value is" + obj[key]
 
 def main():
 
