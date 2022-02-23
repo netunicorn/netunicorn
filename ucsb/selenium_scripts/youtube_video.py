@@ -1,3 +1,7 @@
+import sys
+sys.path.insert(1, '/home/ubuntu/active-measurements/ucsb/utils')
+import minion_handler
+
 import pickle
 import csv
 import re
@@ -11,7 +15,6 @@ import sys
 from selenium import webdriver
 from selenium import common
 from selenium.webdriver.firefox.service import Service
-
 
 print("Display start")
 from pyvirtualdisplay import Display
@@ -314,15 +317,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', action='store')
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(filename='example.log', level=logging.DEBUG)
+    
     
     link = "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
     mode = "run"
     headless = "true"
-    
-    print("starting init")
 
-    
-    initializeAndRun(args.id, headless, link, mode)
+    logging.debug("Starting initializeAndRun() function with the following arguments:")
+    video_statistics = initializeAndRun(args.id, headless, link, mode)
+    print(minion_handler.MinionHandler.calculate_average_video_quality(video_statistics))
 
 if __name__ == "__main__":
     main()

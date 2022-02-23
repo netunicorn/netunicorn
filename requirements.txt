@@ -1,0 +1,5 @@
+numpy==1.22.2
+pyvirtualdisplay==3.0
+salt==3004
+selenium==4.1.0
+validators==0.18.2
