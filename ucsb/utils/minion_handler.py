@@ -52,7 +52,7 @@ class MinionHandler:
         average_height = 0
         average_frame_rate = 0
 
-        for stat in video_statistics.stats:
+        for stat in video_statistics[stats]:
             print(stat)
             resolution = stat.current_optimal_res
             width, height, frame_rate = re.findall(r'\d+\.*\d*', resolution)[:3]
