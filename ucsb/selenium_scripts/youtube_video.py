@@ -1,3 +1,4 @@
+from utils.minion_handler import MinionHandler
 import pickle
 import csv
 import re
@@ -8,7 +9,6 @@ from constants import *
 from subprocess import call, check_output
 import os
 import sys
-import logging
 from selenium import webdriver
 from selenium import common
 from selenium.webdriver.firefox.service import Service
@@ -324,7 +324,7 @@ def main():
     headless = "true"
 
     logging.debug("Starting initializeAndRun() function with the following arguments:")
-    initializeAndRun(args.id, headless, link, mode)
+    video_statistics = initializeAndRun(args.id, headless, link, mode)
 
 if __name__ == "__main__":
     main()
