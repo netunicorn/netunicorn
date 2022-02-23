@@ -312,8 +312,9 @@ def initializeAndRun(id, headless, link, mode):
 
 def dump(obj):
     for key in obj:
-        print
-        "the key name is" + key + "and its value is" + obj[key]
+        print(key)
+        print(obj[key])
+        print("the key name is" + key + "and its value is" + obj[key])
 
 def main():
 
