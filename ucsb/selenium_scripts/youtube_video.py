@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/../utils')
+sys.path.append('/home/ubuntu/active-measurements/ucsb/utils')
 import utils.minion_handler
 
 import pickle
