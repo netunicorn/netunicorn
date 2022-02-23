@@ -90,7 +90,7 @@ class MinionHandler:
         self.runGitCommand("pull")
 
     def runYoutubeExperiment(self):
-        print(self.runCommand('cd {}ucsb/ && python3 ./selenium_scripts/youtube_video.py -m utils.minion_handler'.format(self.project_path)))
+        print(self.runCommand('cd {}ucsb/ && python3 ./selenium_scripts/youtube_video.py'.format(self.project_path)))
 
     def ping(self, address, count=1, upload=False):
         address = address.strip()
