@@ -19,7 +19,7 @@ class MinionHandler:
 
         if not in_minion:
             self.local = salt.client.LocalClient()
-        self.minion_id = minion_id
+        self.minion_id = minion_id.strip()
         self.client = InfluxDBClient(host='snl-server-3.cs.ucsb.edu', port=8086, username='admin', password='ucsbsnl!!',
                                      ssl=True, verify_ssl=True)
         self.client.switch_database('netrics1')
@@ -53,7 +53,6 @@ class MinionHandler:
         average_frame_rate = 0
 
         for stat in video_statistics['stats']:
-            print(stat)
             resolution = stat['current_optimal_res']
             width, height, frame_rate = re.findall(r'\d+\.*\d*', resolution)[:3]
 
@@ -96,6 +95,24 @@ class MinionHandler:
 
         return self.client.write_points([self._create_data_point("speedtest_download", download),
                                          self._create_data_point("speedtest_upload", upload)])
+
+    def upload_youtube_result(self, video_statistics):
+        average_width, average_height, average_frame_rate, average_buffer_health = MinionHandler\
+            .calculate_average_video_quality(video_statistics)
+
+        return self.client.write_points([{
+            "measurement": "networks",
+            "tags": {
+                "user": self.minion_id,
+            },
+            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
+            "fields": {
+                'YouTube_average_width': average_width,
+                'YouTube_average_height': average_height,
+                'YouTube_average_frame_rate': average_frame_rate,
+                'YouTube_average_buffer_health': average_buffer_health
+            }
+        }])
 
     def runCommand(self, command):
         print("running: ", command, " on:", self.minion_id)
