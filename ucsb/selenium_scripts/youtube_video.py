@@ -310,6 +310,9 @@ def initializeAndRun(id, headless, link, mode):
 
     return yvl.video_statistics[link]
 
+def dump(obj):
+  for attr in dir(obj):
+    print("obj.%s = %r" % (attr, getattr(obj, attr)))
 
 def main():
 
@@ -328,6 +331,7 @@ def main():
 
     logging.debug("Starting initializeAndRun() function with the following arguments:")
     video_statistics = initializeAndRun(args.id, headless, link, mode)
+    dump(video_statistics)
     print(minion_handler.MinionHandler.calculate_average_video_quality(video_statistics))
 
 if __name__ == "__main__":
