@@ -62,10 +62,10 @@ class MinionHandler:
             average_frame_rate += int(frame_rate)
             average_buffer_health += float(stat['buffer_health'])
 
-        average_width /= len(video_statistics)
-        average_height /= len(video_statistics)
-        average_frame_rate /= len(video_statistics)
-        average_buffer_health /= len(video_statistics)
+        average_width /= len(video_statistics['stats'])
+        average_height /= len(video_statistics['stats'])
+        average_frame_rate /= len(video_statistics['stats'])
+        average_buffer_health /= len(video_statistics['stats'])
         return average_width, average_height, average_frame_rate, average_buffer_health
 
     def _create_data_point(self, field, value):
