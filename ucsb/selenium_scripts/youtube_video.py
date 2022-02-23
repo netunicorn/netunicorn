@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(1, '/home/ubuntu/active-measurements/ucsb/utils')
-import utils.minion_handler
+import minion_handler
 
 import pickle
 import csv
