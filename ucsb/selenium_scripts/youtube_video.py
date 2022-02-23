@@ -1,4 +1,4 @@
-from ..active_measurements_utils.minion_handler import MinionHandler
+from utils.minion_handler import MinionHandler
 import pickle
 import csv
 import re

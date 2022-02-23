@@ -1,6 +1,6 @@
 import random
 
-import active_measurements_utils.minion_handler
+import utils.minion_handler
 
 minion_ids = [
     "raspi-1",
