@@ -336,8 +336,11 @@ def main():
 
     logging.debug("Starting initializeAndRun() function with the following arguments:")
     video_statistics = initializeAndRun(args.id, headless, link, mode)
+    print('calculated stats')
     minion = minion_handler.MinionHandler(MINION_ID, in_minion=True)
+    print('sending stats')
     minion.upload_youtube_result(video_statistics)
+    print('sent stats')
 
 
 if __name__ == "__main__":
