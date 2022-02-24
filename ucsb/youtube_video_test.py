@@ -1,6 +1,7 @@
 import utils.minion_handler
 import utils.minion_pool
 
+minions = utils.minion_pool.MinionPool().get()
 
-minion = utils.minion_pool.MinionPool().get(1)[0]
-minion.runYoutubeExperiment()
+for minion in minions:
+    minion.runYoutubeExperiment()

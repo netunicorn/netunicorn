@@ -7,7 +7,8 @@ minion_ids = [
     "raspi-2",
     "raspi-3",
     "raspi-4",
-    "raspi-5"
+    "raspi-5",
+    "laptop"
 ]
 
 class MinionPool:
