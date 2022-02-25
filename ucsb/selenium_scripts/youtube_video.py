@@ -5,8 +5,8 @@ import minion_handler
 
 MINION_ID = None
 with open('/etc/salt/minion_id', 'r') as f:
-    print(f.read())
     MINION_ID = f.read()
+    print('MINION_ID is set to ', MINION_ID)
 
 import pickle
 import csv
