@@ -114,6 +114,15 @@ class MinionHandler:
             }
         }])
 
+    def check_youtube_status(self):
+        query = "SELECT mean(\"YouTube_average_buffer_health\") AS \"mean_YouTube_average_buffer_health\" from networks where time > now()-2m and \"user\"='{}'".format(self.minion_id)
+        result = self.client.query(query)
+        print(result.raw)
+        if len(result.raw['series']) == 0:
+            return None
+        print(result.raw['series'][0]['values'][0][1])
+        return result
+
     def runCommand(self, command):
         print("running: ", command, " on:", self.minion_id)
         output = self.local.cmd(self.minion_id, 'cmd.run', [command])
