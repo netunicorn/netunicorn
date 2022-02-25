@@ -156,6 +156,7 @@ class MinionHandler:
         lines = output.splitlines()
         for line in lines:
             speedtest_output.append(float(re.findall(r'\d+\.*\d*', line)[0]))
+        print("speedtest_output: ", speedtest_output)
         if upload:
             self._upload_speedtest_result(speedtest_output[1], speedtest_output[2])
         return speedtest_output[1], speedtest_output[2]

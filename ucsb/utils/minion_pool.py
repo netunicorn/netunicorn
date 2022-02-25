@@ -5,9 +5,12 @@ import utils.minion_handler
 minion_ids = [
     "raspi-1",
     "raspi-2",
-    "raspi-3",
+    # "raspi-3",
     # "raspi-4",
     "raspi-5",
+    "raspi-6",
+    "raspi-8",
+    "raspi-9",
     "laptop"
 ]
 
