@@ -166,6 +166,8 @@ class MinionHandler:
         for line in lines:
             speedtest_output.append(float(re.findall(r'\d+\.*\d*', line)[0]))
         print(lines, "speedtest_output: ", speedtest_output)
+        if len(speedtest_output) < 3:
+            return None
         if upload:
             self._upload_speedtest_result(speedtest_output[1], speedtest_output[2])
         return speedtest_output[1], speedtest_output[2]
