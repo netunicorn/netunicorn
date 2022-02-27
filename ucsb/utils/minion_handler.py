@@ -121,7 +121,7 @@ class MinionHandler:
         if len(result.raw['series']) == 0:
             return None
         print(result.raw['series'][0]['values'][0][1])
-        return result
+        return result.raw['series'][0]['values'][0][1]
 
     def runCommand(self, command):
         print("running: ", command, " on:", self.minion_id)
