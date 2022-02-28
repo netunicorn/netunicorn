@@ -9,6 +9,6 @@ import utils.minion_handler
 import utils.minion_pool
 import time
 
-minion = utils.minion_handler.MinionHandler(MINION_ID, in_minion=True)
-result = minion.runCommand('ping github.com -c 5')
+import os
 
+os.system("ping github.com -c 5")
