@@ -1,6 +1,12 @@
 import sys
+
 sys.path.insert(1, '/home/ubuntu/active-measurements/ucsb/utils')
 import minion_handler
+
+MINION_ID = None
+with open('/etc/salt/minion_id', 'r') as f:
+    MINION_ID = f.read()
+    print('MINION_ID is set to ', MINION_ID)
 
 import pickle
 import csv
@@ -18,9 +24,11 @@ from selenium.webdriver.firefox.service import Service
 
 print("Display start")
 from pyvirtualdisplay import Display
+
 display = Display(visible=0, size=(2001, 3600))
 display.start()
 print("Display done")
+
 
 # Usage: python youtube_video.py --link [video link]
 #
@@ -30,9 +38,9 @@ print("Display done")
 
 class Youtube_Video_Loader:
     def __init__(self, _id):
-        self.t_initialize = time.time() # how often to look at stats for nerds box (seconds)
-        self.pull_frequency = .5 # how long before the end of the video to stop (seconds)
-        self.early_stop = 10 # how many consecutive iterations of the same video progress before we declare an error
+        self.t_initialize = time.time()  # how often to look at stats for nerds box (seconds)
+        self.pull_frequency = .5  # how long before the end of the video to stop (seconds)
+        self.early_stop = 10  # how many consecutive iterations of the same video progress before we declare an error
         # TODO - remove
         self.max_pb_ctr_allowance = 4
 
@@ -78,12 +86,12 @@ class Youtube_Video_Loader:
         while not done:
             try:
                 self.driver.find_element_by_css_selector(".ytp-ad-skip-button").click()
-                #print("Pressed skip")
+                # print("Pressed skip")
                 # we skipped an ad, wait a sec to see if there are more
                 time.sleep(1)
             except:
                 # check to see if ad case is still covering
-                #print("Display: {}".format(self.driver.find_element_by_css_selector(".video-ads").value_of_css_property("display")))
+                # print("Display: {}".format(self.driver.find_element_by_css_selector(".video-ads").value_of_css_property("display")))
                 if self.driver.find_element_by_css_selector(".video-ads").value_of_css_property("display") != "none":
                     # there are more ads, potentially not skippable, just sleep
                     time.sleep(1)
@@ -132,7 +140,7 @@ class Youtube_Video_Loader:
                         # prefer webm over mp4
                         if extension not in ["mp4", "webm"]:
                             raise ValueError("Unprepared to handle extension: {}".format(extension))
-                        #resolution_to_format[resolution] = ("webm", code)
+                        # resolution_to_format[resolution] = ("webm", code)
                         resolution_to_format[resolution] = ("mp4", code)
                     except KeyError:
                         # this is the only format with this resolution so far
@@ -148,7 +156,7 @@ class Youtube_Video_Loader:
                 if os.path.exists("tmp.{}".format(fmt)):
                     call("rm tmp.{}".format(fmt), shell=True)
                 # download the video
-                call("youtube-dl -o tmp.{} -f {} {}".format(fmt,code, link), shell=True)
+                call("youtube-dl -o tmp.{} -f {} {}".format(fmt, code, link), shell=True)
                 # get the bitrates for this video
                 raw_output = check_output("ffmpeg_bitrate_stats -s video -of json tmp.{}".format(fmt), shell=True)
                 bitrate_obj = json.loads(raw_output.decode('utf-8'))
@@ -175,7 +183,7 @@ class Youtube_Video_Loader:
         try:  # lots of things can go wrong in this loop TODO - report errors
             self.driver.get(link)
             print("running")
-            time.sleep(3)            # a common error is that the page takes a little long to load, and it cant find the player 
+            time.sleep(3)  # a common error is that the page takes a little long to load, and it cant find the player
             max_n_tries, i = 5, 0
             while True:
                 try:
@@ -204,7 +212,8 @@ class Youtube_Video_Loader:
             stats_for_nerds_i = None
             for i in range(50):
                 try:
-                    if self.driver.find_element_by_xpath('//*[@id="movie_player"]/div[{}]/div/div[1]/div'.format(i)).text == "Video ID / sCPN":
+                    if self.driver.find_element_by_xpath(
+                            '//*[@id="movie_player"]/div[{}]/div/div[1]/div'.format(i)).text == "Video ID / sCPN":
                         stats_for_nerds_i = i
                         break
                 except common.exceptions.NoSuchElementException:
@@ -223,7 +232,7 @@ class Youtube_Video_Loader:
                     break
                 except:
                     actions = webdriver.common.action_chains.ActionChains(self.driver)
-                    actions.move_to_element(player) # bring up the video length box again
+                    actions.move_to_element(player)  # bring up the video length box again
                     actions.perform()
                     if i == max_n_tries:
                         raise ValueError("Couldn't find video length: {}".format(video_length))
@@ -244,7 +253,9 @@ class Youtube_Video_Loader:
                 # Note - this reading process can take a while, so sleeping is not necessarily advised
                 t_calls = time.time()
                 video_stats_text = vsl.get_attribute("textContent")
-                video_stats_re = re.search("\[x\]Video ID (.+)Viewport \/ Frames(.+) Optimal Res(.+)Volume(.+)Codecs(.+)Connection Speed(.+) KbpsNetwork Activity(.+) KBBuffer Health(.+) sLive LatencyLive ModePlayback CategoriesMystery Texts:(.+) t\:(.+) b", video_stats_text)
+                video_stats_re = re.search(
+                    "\[x\]Video ID (.+)Viewport \/ Frames(.+) Optimal Res(.+)Volume(.+)Codecs(.+)Connection Speed(.+) KbpsNetwork Activity(.+) KBBuffer Health(.+) sLive LatencyLive ModePlayback CategoriesMystery Texts:(.+) t\:(.+) b",
+                    video_stats_text)
                 if video_stats_re:
                     viewport_frames = video_stats_re.group(2)
                     current_optimal_res = video_stats_re.group(3)
@@ -255,7 +266,7 @@ class Youtube_Video_Loader:
                     print("Didn't match regex: {}".format(video_stats_text))
                     continue
                 try:
-                    state = int(mystery_text) # 4 -> paused, 5 -> paused&out of buffer, 8 -> playing, 9 -> rebuffering
+                    state = int(mystery_text)  # 4 -> paused, 5 -> paused&out of buffer, 8 -> playing, 9 -> rebuffering
                 except ValueError:
                     state = mystery_text  # c44->?
                 video_progress = float(video_stats_re.group(10))
@@ -281,22 +292,21 @@ class Youtube_Video_Loader:
                         no_pb_progress_ctr = 0
                 last_playback_progress = video_progress
 
-                
                 # Check to see if video is almost done
                 if self.done_watching(tick + video_length):
                     stop = True
                     player.click()  # stop the video
                 time.sleep(np.maximum(self.pull_frequency - (time.time() - t_calls), .001))
 
-                
+
         except Exception as e:
             self.save_screenshot("went_wrong_{}.png".format(self._id))
             print(sys.exc_info())
         finally:
             self.shutdown()
 
-def initializeAndRun(id, headless, link, mode):
 
+def initializeAndRun(id, headless, link, mode):
     yvl = Youtube_Video_Loader(id)
 
     if mode == "run":
@@ -312,7 +322,6 @@ def initializeAndRun(id, headless, link, mode):
 
 
 def main():
-
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', action='store')
@@ -320,15 +329,19 @@ def main():
 
     import logging
     logging.basicConfig(filename='example.log', level=logging.DEBUG)
-    
-    
+
     link = "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
     mode = "run"
     headless = "true"
 
     logging.debug("Starting initializeAndRun() function with the following arguments:")
     video_statistics = initializeAndRun(args.id, headless, link, mode)
-    print(minion_handler.MinionHandler.calculate_average_video_quality(video_statistics))
+    print('calculated stats')
+    minion = minion_handler.MinionHandler(MINION_ID, in_minion=True)
+    print('sending stats')
+    minion.upload_youtube_result(video_statistics)
+    print('sent stats')
+
 
 if __name__ == "__main__":
     main()

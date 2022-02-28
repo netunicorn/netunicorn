@@ -19,7 +19,7 @@ class MinionHandler:
 
         if not in_minion:
             self.local = salt.client.LocalClient()
-        self.minion_id = minion_id
+        self.minion_id = minion_id.strip()
         self.client = InfluxDBClient(host='snl-server-3.cs.ucsb.edu', port=8086, username='admin', password='ucsbsnl!!',
                                      ssl=True, verify_ssl=True)
         self.client.switch_database('netrics1')
@@ -52,16 +52,19 @@ class MinionHandler:
         average_height = 0
         average_frame_rate = 0
 
-        for stat in video_statistics:
-            resolution = stat.current_optimal_res
+        for stat in video_statistics['stats']:
+            resolution = stat['current_optimal_res']
             width, height, frame_rate = re.findall(r'\d+\.*\d*', resolution)[:3]
 
-            average_width += width
-            average_height += height
-            average_frame_rate += frame_rate
-            average_buffer_health += video_statistics.buffer_health
+            average_width += int(width)
+            average_height += int(height)
+            average_frame_rate += int(frame_rate)
+            average_buffer_health += float(stat['buffer_health'])
 
-        average_buffer_health /= len(video_statistics)
+        average_width /= len(video_statistics['stats'])
+        average_height /= len(video_statistics['stats'])
+        average_frame_rate /= len(video_statistics['stats'])
+        average_buffer_health /= len(video_statistics['stats'])
         return average_width, average_height, average_frame_rate, average_buffer_health
 
     def _create_data_point(self, field, value):
@@ -93,6 +96,36 @@ class MinionHandler:
         return self.client.write_points([self._create_data_point("speedtest_download", download),
                                          self._create_data_point("speedtest_upload", upload)])
 
+    def upload_youtube_result(self, video_statistics):
+        average_width, average_height, average_frame_rate, average_buffer_health = MinionHandler\
+            .calculate_average_video_quality(video_statistics)
+
+        return self.client.write_points([{
+            "measurement": "networks",
+            "tags": {
+                "user": self.minion_id,
+            },
+            "time": strftime("%Y-%m-%dT%H:%M:%SZ", gmtime()),
+            "fields": {
+                'YouTube_average_width': average_width,
+                'YouTube_average_height': average_height,
+                'YouTube_average_frame_rate': average_frame_rate,
+                'YouTube_average_buffer_health': average_buffer_health
+            }
+        }])
+
+    def check_youtube_status(self):
+        try:
+            query = "SELECT mean(\"YouTube_average_buffer_health\") AS \"mean_YouTube_average_buffer_health\" from networks where time > now()-2m and \"user\"='{}'".format(self.minion_id)
+            result = self.client.query(query)
+            print(result.raw)
+            if len(result.raw['series']) == 0:
+                return None
+            print(result.raw['series'][0]['values'][0][1])
+            return result.raw['series'][0]['values'][0][1]
+        finally:
+            return 100
+
     def runCommand(self, command):
         print("running: ", command, " on:", self.minion_id)
         output = self.local.cmd(self.minion_id, 'cmd.run', [command])
@@ -112,29 +145,38 @@ class MinionHandler:
         print(self.runCommand('cd {}ucsb/ && python3 ./selenium_scripts/youtube_video.py'.format(self.project_path)))
 
     def ping(self, address, count=1, upload=False):
-        address = address.strip()
-        validation = MinionHandler.validate_address(address)
-        if not validation:
-            raise Exception("invalid address {}".format(address))
-        if not isinstance(count, int):
-            raise Exception("count should be an integer")
+        try:
+            address = address.strip()
+            validation = MinionHandler.validate_address(address)
+            if not validation:
+                raise Exception("invalid address {}".format(address))
+            if not isinstance(count, int):
+                raise Exception("count should be an integer")
 
-        ping_output = self.runCommand("ping {} -c {}".format(address, count))
-        ping_output = MinionHandler.parse_ping_output(ping_output)
-        if len(ping_output) == 0:
-            raise Exception("Ping error")
+            ping_output = self.runCommand("ping {} -c {}".format(address, count))
+            ping_output = MinionHandler.parse_ping_output(ping_output)
+            if len(ping_output) == 0:
+                raise Exception("Ping error")
 
-        mean_ping = statistics.mean(ping_output)
-        if upload:
-            self._upload_ping_result(address, mean_ping)
-        return mean_ping
+            mean_ping = statistics.mean(ping_output)
+            if upload:
+                self._upload_ping_result(address, mean_ping)
+            return mean_ping
+        finally:
+            return 0
 
     def speed_test(self, upload=False):
         output = self.runCommand("speedtest-cli --simple")
-        speedtest_output = []
-        lines = output.splitlines()
-        for line in lines:
-            speedtest_output.append(float(re.findall(r'\d+\.*\d*', line)[0]))
-        if upload:
-            self._upload_speedtest_result(speedtest_output[1], speedtest_output[2])
-        return speedtest_output[1], speedtest_output[2]
+        try:
+            speedtest_output = []
+            lines = output.splitlines()
+            for line in lines:
+                speedtest_output.append(float(re.findall(r'\d+\.*\d*', line)[0]))
+            print(lines, "speedtest_output: ", speedtest_output)
+            if len(speedtest_output) < 3:
+                return None
+            if upload:
+                self._upload_speedtest_result(speedtest_output[1], speedtest_output[2])
+            return speedtest_output[1], speedtest_output[2]
+        finally:
+            return None
