@@ -2,6 +2,8 @@ import asyncio
 import functools
 from typing import Union, Optional, Dict, Tuple
 
+from cloudpickle import dumps, loads
+
 from pinot.base import Pipeline
 from pinot.base.minions import MinionPool, Minion
 from pinot.base.deployment_map import DeploymentMap, DeploymentStatus, DeploymentExecutionResult
@@ -25,14 +27,14 @@ async def compile_pipeline(credentials: (str, str), environment_id: str, pipelin
     # TODO: check credentials and hosts in the pipeline (if user has access to them)
 
     # start environment compilation background task (it would set DeploymentMap or Exception to redis when it's done)
-    await redis_connection.set(f"{login}:pipeline:{environment_id}", None)
+    await redis_connection.set(f"{login}:pipeline:{environment_id}", dumps(None))
     asyncio.create_task(compile_environment(login, environment_id, pipeline))
     return environment_id
 
 
 async def get_compiled_pipeline(credentials: (str, str), environment_id: str) -> Union[Pipeline, Exception, None]:
     login, password = credentials
-    return await redis_connection.get(f"{login}:pipeline:{environment_id}")
+    return loads(await redis_connection.get(f"{login}:pipeline:{environment_id}"))
 
 
 async def deploy_map(credentials: (str, str), deployment_map: DeploymentMap, deployment_id: str) -> str:
@@ -48,8 +50,8 @@ async def deploy_map(credentials: (str, str), deployment_map: DeploymentMap, dep
         deployment_map = p(deployment_map)
 
     # else: set deployment_id to redis and start background process
-    await redis_connection.set(f"{login}:deployment:{deployment_id}", None)
-    await redis_connection.set(f"{login}:deployment:{deployment_id}:status", DeploymentStatus.STARTING)
+    await redis_connection.set(f"{login}:deployment:{deployment_id}", dumps(None))
+    await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.STARTING))
     (
         # when deploy_map finish it would start deployment_watcher(credentials, deployment_id, deploy_map_result)
         asyncio.create_task(deployer_connector.deploy_map(login, deployment_map, deployment_id))
@@ -60,7 +62,7 @@ async def deploy_map(credentials: (str, str), deployment_map: DeploymentMap, dep
 
 async def get_deployment_status(credentials: (str, str), deployment_id: str) -> DeploymentStatus:
     login, password = credentials
-    result: Optional[DeploymentStatus] = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
+    result: Optional[DeploymentStatus] = loads(await redis_connection.get(f"{login}:deployment:{deployment_id}:status"))
     if result is None:
         return DeploymentStatus.UNKNOWN
     return result
@@ -71,13 +73,13 @@ async def get_deployment_result(
         deployment_id: str
 ) -> Tuple[DeploymentStatus, Union[Dict[str, DeploymentExecutionResult], Exception]]:
     login, password = credentials
-    status = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
+    status = loads(await redis_connection.get(f"{login}:deployment:{deployment_id}:status"))
     if status is None or status == DeploymentStatus.UNKNOWN:
         return DeploymentStatus.UNKNOWN, Exception(f"Deployment {deployment_id} is not found.")
     elif status == DeploymentStatus.STARTING:
         return status, {}
     elif status in {DeploymentStatus.RUNNING, DeploymentStatus.FINISHED}:
-        result = await redis_connection.get(f"{login}:deployment:{deployment_id}:result")
+        result = loads(await redis_connection.get(f"{login}:deployment:{deployment_id}:result"))
         return status, result
     else:
         logger.error(f"Unknown deployment status <{status}> for deployment <{deployment_id}>")
@@ -90,14 +92,14 @@ async def deployment_watcher(credentials: (str, str), deployment_id: str, execut
     """
 
     login, password = credentials
-    await redis_connection.set(f"{login}:deployment:{deployment_id}:result", {})
+    await redis_connection.set(f"{login}:deployment:{deployment_id}:result", dumps({}))
     while True:
-        status = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
+        status = loads(await redis_connection.get(f"{login}:deployment:{deployment_id}:status"))
         if status in {None, DeploymentStatus.UNKNOWN, DeploymentStatus.STARTING}:
             await redis_connection.set(
                 f"{login}:deployment:{deployment_id}:result",
-                Exception(f"Deployment {deployment_id} is in unexpected status <{status}>. "
-                          f"See administrative logs for details.")
+                dumps(Exception(f"Deployment {deployment_id} is in unexpected status <{status}>. "
+                          f"See administrative logs for details."))
             )
             break
 
@@ -105,15 +107,15 @@ async def deployment_watcher(credentials: (str, str), deployment_id: str, execut
         # TODO: implement keep-alive for executors!
         if all(await redis_connection.exists(f"executor:{executor_id}:result") for executor_id in executors):
             status = DeploymentStatus.FINISHED
-            await redis_connection.set(f"{login}:deployment:{deployment_id}:status", status)
+            await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(status))
 
-        deployment_result = (await redis_connection.get(f"{login}:deployment:{deployment_id}:result")) or {}
+        deployment_result = loads(await redis_connection.get(f"{login}:deployment:{deployment_id}:result")) or {}
         for (executor_id, minion) in executors.values():
             if not await redis_connection.exists(f"executor:{executor_id}:result"):
                 continue
-            result = await redis_connection.get(f"executor:{executor_id}:result")
+            result = loads(await redis_connection.get(f"executor:{executor_id}:result"))
             deployment_result[executor_id] = DeploymentExecutionResult(minion=minion, result=result)
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:result", deployment_result)
+        await redis_connection.set(f"{login}:deployment:{deployment_id}:result", dumps(deployment_result))
 
         if status == DeploymentStatus.FINISHED:
             # clean up

@@ -3,6 +3,8 @@ import os
 import uuid
 from typing import Dict
 
+from cloudpickle import dumps, loads
+
 from pinot.base.deployment_map import DeploymentMap, DeploymentStatus
 from pinot.base.environment_definitions import DockerImage, ShellExecution
 from pinot.base.minions import MinionPool, Minion
@@ -31,11 +33,11 @@ class SaltLocalConnector:
         loop = asyncio.get_event_loop()
 
         # stage 0: create IDs for each future executor and set pipelines to redis
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", DeploymentStatus.STARTING)
+        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.STARTING))
         for deployment in deployment_map:
             executor_id = str(uuid.uuid4())
             deployment.executor_id = executor_id
-            await redis_connection.set(f"executor:{executor_id}:pipeline", deployment.pipeline)
+            await redis_connection.set(f"executor:{executor_id}:pipeline", dumps(deployment.pipeline))
 
         # stage 1: make every minion to create corresponding environment
         # (for docker: download docker image, for bare_metal - execute commands)
@@ -61,7 +63,7 @@ class SaltLocalConnector:
                 deployment.prepared = False
                 await redis_connection.set(
                     f"executor:{deployment.executor_id}:result",
-                    Exception('Failed to create environment, see exception arguments for the log', results)
+                    dumps(Exception('Failed to create environment, see exception arguments for the log', results))
                 )
 
         # stage 2: make every minion to start corresponding environment
@@ -97,7 +99,7 @@ class SaltLocalConnector:
                 continue
 
         executor_ids = {deployment.executor_id: deployment.minion for deployment in deployment_map}
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", DeploymentStatus.RUNNING)
+        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.RUNNING))
         return executor_ids
 
 

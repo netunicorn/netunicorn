@@ -1,3 +1,5 @@
+from cloudpickle import dumps, loads
+
 from pinot.base import Pipeline
 from pinot.base.environment_definitions import ShellExecution, DockerImage
 from pinot.director.engine.config import environment_type
@@ -19,7 +21,7 @@ async def compile_docker(
         pipeline: Pipeline
 ) -> None:
     if isinstance(pipeline.environment_definition, DockerImage):
-        await redis_connection.set(f"{login}:pipeline:{environment_id}", pipeline)
+        await redis_connection.set(f"{login}:pipeline:{environment_id}", dumps(pipeline))
 
     if isinstance(pipeline.environment_definition, ShellExecution):
         # TODO: create a docker image with these commands
@@ -27,10 +29,10 @@ async def compile_docker(
         #  https://docs.docker.com/registry/deploying/
         #  And set to the pipeline DockerImage with returned image tag
         exception = NotImplementedError("Docker image creation from shell commands is not implemented yet")
-        await redis_connection.set(f"{login}:pipeline:{environment_id}", exception)
+        await redis_connection.set(f"{login}:pipeline:{environment_id}", dumps(exception))
 
     exception = Exception(f"Compiler for {pipeline.environment_definition} is not implemented")
-    await redis_connection.set(f"{login}:pipeline:{environment_id}", exception)
+    await redis_connection.set(f"{login}:pipeline:{environment_id}", dumps(exception))
 
 
 async def compile_shell(
@@ -40,11 +42,11 @@ async def compile_shell(
 ) -> None:
     env_def = pipeline.environment_definition
     if env_def is None or isinstance(env_def, ShellExecution):
-        await redis_connection.set(f"{login}:pipeline:{environment_id}", pipeline)
+        await redis_connection.set(f"{login}:pipeline:{environment_id}", dumps(pipeline))
         return
 
     exception = Exception(
         "Engine is working in shell mode only, "
         "but environment definition of the pipeline is not shell"
     )
-    await redis_connection.set(f"{login}:pipeline:{environment_id}", exception)
+    await redis_connection.set(f"{login}:pipeline:{environment_id}", dumps(exception))
