@@ -7,7 +7,8 @@ from cloudpickle import dumps, loads
 from pinot.base import Pipeline
 from pinot.base.minions import MinionPool, Minion
 from pinot.base.deployment_map import DeploymentMap, DeploymentStatus, DeploymentExecutionResult
-from pinot.director.engine.resources import deployer_connector, redis_connection, logger
+from pinot.director.engine.resources import redis_connection, logger
+from pinot.director.engine.config import deployer_connector
 from pinot.director.engine.compiler import compile_environment
 from pinot.director.engine.preprocessors import deployment_preprocessors
 

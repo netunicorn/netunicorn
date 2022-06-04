@@ -3,17 +3,12 @@ import os as _os
 import logging as _logging
 import redis as _redis
 
-from pinot.director.engine.config import ConnectorClass as Connector
-
 # set logger
 _logging.basicConfig(level=_logging.INFO)
 _name = 'pinot.director.engine'
 logger = _logging.getLogger(_name)
 logger.addHandler(_logging.FileHandler(f'{_name}.log'))
 logger.setLevel(_logging.INFO)
-
-# set deployer connector
-deployer_connector = Connector()
 
 # connect to redis
 REDIS_IP = _os.environ.get('PINOT_REDIS_IP', '127.0.0.1')
