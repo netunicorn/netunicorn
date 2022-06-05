@@ -129,6 +129,7 @@ class LocalClient(BaseClient):
         return DeploymentStatus.FINISHED, {
             result[0]: DeploymentExecutionResult(
                 minion=self.storage[deployment_id][2][result[0]],
-                result=cloudpickle.loads(result[1])
+                result=cloudpickle.loads(result[1]),
+                pipeline=self.storage[deployment_id][2][result[0]].pipeline
             ) for result in results
         }

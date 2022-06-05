@@ -29,9 +29,9 @@ class PipelineExecutorState(Enum):
 class PipelineExecutor:
     def __init__(self, executor_id: str = None, gateway_ip: str = None, gateway_port: int = None):
         # load up our own ID and the local communicator info
-        self.executor_id: str = executor_id or os.environ.get("PINOT_EXECUTOR_ID") or "Unknown"
-        self.dir_ip: str = gateway_ip or os.environ.get("PINOT_GATEWAY_IP") or "127.0.0.1"
+        self.dir_ip: str = gateway_ip or os.environ.get["PINOT_GATEWAY_IP"]
         self.dir_port: int = int(gateway_port or os.environ.get("PINOT_GATEWAY_PORT") or "26512")
+        self.executor_id: str = executor_id or os.environ.get("PINOT_EXECUTOR_ID") or "Unknown"
 
         logging.basicConfig()
         self.logger = self.create_logger(self.executor_id)
@@ -87,7 +87,7 @@ class PipelineExecutor:
             return
 
         if result.status_code == 200:
-            result = cloudpickle.loads(b64decode(result.content))
+            result = b64decode(result.content)
             self.pipeline = cloudpickle.loads(result)
             self.state = PipelineExecutorState.EXECUTING
             self.logger.info("Successfully received pipeline.")
@@ -144,6 +144,7 @@ class PipelineExecutor:
                     break
 
         # set flag that pipeline is finished
+        self.logger.info("Pipeline finished, start reporting results.")
         self.state = PipelineExecutorState.REPORTING
         self.pipeline_results = resulting_type(tuple(self.step_results))
 
@@ -161,6 +162,7 @@ class PipelineExecutor:
                 json={"executor_id": self.executor_id, "results": results},
                 timeout=30
             )
+            self.logger.info("Successfully reported results.")
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
             self.logger.info(f"Exception while reporting results: {e} ")
             return

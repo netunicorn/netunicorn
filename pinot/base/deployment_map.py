@@ -62,4 +62,5 @@ class DeploymentMap:
 @dataclass
 class DeploymentExecutionResult:
     minion: Minion
+    pipeline: Pipeline
     result: Result[PipelineResult, PipelineResult]

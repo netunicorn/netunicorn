@@ -7,9 +7,9 @@ from pinot.director.engine.resources import redis_connection
 
 
 async def compile_environment(login: str, environment_id: str, pipeline: Pipeline) -> None:
-    if environment_id == 'shell':
+    if environment_type == 'shell':
         return await compile_shell(login, environment_id, pipeline)
-    elif environment_id == 'docker':
+    elif environment_type == 'docker':
         return await compile_docker(login, environment_id, pipeline)
     else:
         raise NotImplementedError(f'Compiler for environment type {environment_type} is not implemented')

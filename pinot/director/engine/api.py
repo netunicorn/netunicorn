@@ -51,7 +51,7 @@ async def compile_pipeline(request: web.Request):
     environment_id = request.match_info['environment_id']
     credentials = parse_credentials(request.headers)
     pipeline = cloudpickle.loads(await request.read())
-    result = engine.compile_pipeline(credentials, environment_id, pipeline)
+    result = await engine.compile_pipeline(credentials, environment_id, pipeline)
     return web.Response(body=result, status=200)
 
 
@@ -75,7 +75,7 @@ async def deploy_map(request: web.Request):
     deployment_id: str = request.match_info['deployment_id']
     credentials = parse_credentials(request.headers)
     deployment_map = cloudpickle.loads(await request.read())
-    result = engine.deploy_map(credentials, deployment_map, deployment_id)
+    result = await engine.deploy_map(credentials, deployment_map, deployment_id)
     return web.Response(body=result, status=200)
 
 
