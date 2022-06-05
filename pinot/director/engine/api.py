@@ -42,41 +42,32 @@ async def get_minion_pool(request: web.Request):
     return web.Response(body=cloudpickle.dumps(result), status=200)
 
 
-@routes.post("/api/v1/compile/{environment_id}")
-async def compile_pipeline(request: web.Request):
+@routes.post("/api/v1/deployment/{deployment_id}/prepare")
+async def prepare_deployment(request: web.Request):
     """
-    This method should start preparation of environment and return a unique id for the process
-    :return: unique id of preparation process
-    """
-    environment_id = request.match_info['environment_id']
-    credentials = parse_credentials(request.headers)
-    pipeline = cloudpickle.loads(await request.read())
-    result = await engine.compile_pipeline(credentials, environment_id, pipeline)
-    return web.Response(body=result, status=200)
-
-
-@routes.get("/api/v1/compile/{environment_id}")
-async def get_compiled_pipeline(request: web.Request):
-    """
-    This method should accept unique id of environment preparation and return compiled pipeline
-    """
-    environment_id = request.match_info['environment_id']
-    credentials = parse_credentials(request.headers)
-    result = await engine.get_compiled_pipeline(credentials, environment_id)
-    return web.Response(body=cloudpickle.dumps(result), status=200)
-
-
-@routes.post("/api/v1/deployment/{deployment_id}")
-async def deploy_map(request: web.Request):
-    """
-    This method should accept deployment map and start deployment of a pipeline according to the map
+    This method should accept deployment map and start preparation of deployment of a pipeline according to the map
     :return: unique id of deployment
     """
     deployment_id: str = request.match_info['deployment_id']
     credentials = parse_credentials(request.headers)
     deployment_map = cloudpickle.loads(await request.read())
-    result = await engine.deploy_map(credentials, deployment_map, deployment_id)
+    result = await engine.prepare_deployment(credentials, deployment_map, deployment_id)
     return web.Response(body=result, status=200)
+
+
+@routes.post("/api/v1/deployment/{deployment_id}/start")
+async def start_execution(request: web.Request):
+    """
+    This method should accept deployment map and start preparation of deployment of a pipeline according to the map
+    :return: unique id of deployment
+    """
+    deployment_id: str = request.match_info['deployment_id']
+    credentials = parse_credentials(request.headers)
+    try:
+        result = await engine.start_execution(credentials, deployment_id)
+        return web.Response(body=result, status=200)
+    except Exception as e:
+        return web.Response(body=str(e), status=500)
 
 
 @routes.get("/api/v1/deployment/{deployment_id}")

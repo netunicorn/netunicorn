@@ -31,12 +31,16 @@ class SaltConnector:
         minions = await loop.run_in_executor(None, functools.partial(self.runner.cmd, 'manage.up', print_event=False))
         return MinionPool([Minion(name=x, properties={}) for x in minions])
 
-    async def deploy_map(self, login: str, deployment_map: DeploymentMap, deployment_id: str) -> Dict[str, Minion]:
+    async def prepare_deployment(
+            self, credentials: (str, str), deployment_map: DeploymentMap, deployment_id: str
+    ) -> None:
         loop = asyncio.get_event_loop()
 
         # stage 0: create IDs for each future executor and set pipelines to redis
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.STARTING))
         for deployment in deployment_map:
+            if not deployment.prepared:
+                continue
+
             executor_id = str(uuid.uuid4())
             deployment.executor_id = executor_id
             await redis_connection.set(f"executor:{executor_id}:pipeline", dumps(deployment.pipeline))
@@ -44,6 +48,9 @@ class SaltConnector:
         # stage 1: make every minion to create corresponding environment
         # (for docker: download docker image, for bare_metal - execute commands)
         for deployment in deployment_map:
+            if not deployment.prepared:
+                continue
+
             if isinstance(deployment.pipeline.environment_definition, DockerImage):
                 results = [await loop.run_in_executor(None, functools.partial(
                     self.local.cmd,
@@ -66,8 +73,7 @@ class SaltConnector:
                 logger.error(f'Unknown environment definition: {deployment.pipeline.environment_definition}')
                 continue
 
-            deployment.prepared = True
-            if all(len(x) == 0 for x in results):
+            if results and all(len(x) == 0 for x in results):
                 deployment.prepared = False
                 exception = Exception(f"Minion {deployment.minion.name} do not exist or is not responding")
                 logger.exception(exception)
@@ -87,6 +93,9 @@ class SaltConnector:
                     dumps(Failure(exception))
                 )
 
+    async def start_execution(self, login: str, deployment_map: DeploymentMap, deployment_id: str) -> Dict[str, Minion]:
+        loop = asyncio.get_event_loop()
+
         # stage 2: make every minion to start corresponding environment
         # (for docker: start docker container, for bare_metal - start executor)
         for deployment in deployment_map:
@@ -97,7 +106,7 @@ class SaltConnector:
             executor_id = deployment.executor_id
 
             if isinstance(deployment.pipeline.environment_definition, DockerImage):
-                result = await loop.run_in_executor(None, functools.partial(
+                await loop.run_in_executor(None, functools.partial(
                     self.local.cmd,
                     deployment.minion.name,
                     'cmd.run',
@@ -109,7 +118,7 @@ class SaltConnector:
                     full_return=True,
                 ))
             elif isinstance(deployment.pipeline.environment_definition, ShellExecution):
-                result = await loop.run_in_executor(None, functools.partial(
+                await loop.run_in_executor(None, functools.partial(
                     self.local.cmd_async,
                     deployment.minion.name,
                     'cmd.run',

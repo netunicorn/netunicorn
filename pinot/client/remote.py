@@ -1,9 +1,8 @@
-from typing import Dict, Optional, Union, Tuple
+from typing import Dict, Union, Tuple
 
 import cloudpickle
 import requests as req
 
-from pinot.base import Pipeline
 from pinot.base.deployment_map import DeploymentMap, DeploymentExecutionResult, DeploymentStatus
 from pinot.base.minions import MinionPool
 from pinot.client.base import BaseClient
@@ -36,38 +35,10 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content}"
         )
 
-    def compile_pipeline(self, pipeline: Pipeline, environment_id: str) -> str:
-        data = cloudpickle.dumps(pipeline)
-        result = req.post(
-            f"{self.base_url}/api/v1/compile/{environment_id}",
-            auth=(self.login, self.password),
-            data=data
-        )
-        if result.status_code == 200:
-            return result.content.decode()
-
-        raise RemoteClientException(
-            f"Failed to start pipeline compilation. "
-            f"Status code: {result.status_code}, content: {result.content}"
-        )
-
-    def get_compiled_pipeline(self, environment_id: str) -> Optional[Pipeline]:
-        result = req.get(f"{self.base_url}/api/v1/compile/{environment_id}", auth=(self.login, self.password))
-        if result.status_code == 204:
-            return None
-
-        if result.status_code == 200:
-            return cloudpickle.loads(result.content)
-
-        raise RemoteClientException(
-            "Failed to get compilation result. "
-            f"Status code: {result.status_code}, content: {result.content}"
-        )
-
-    def deploy_map(self, deployment_map: DeploymentMap, deployment_id: str) -> str:
+    def prepare_deployment(self, deployment_map: DeploymentMap, deployment_id: str) -> str:
         data = cloudpickle.dumps(deployment_map)
         result = req.post(
-            f"{self.base_url}/api/v1/deployment/{deployment_id}",
+            f"{self.base_url}/api/v1/deployment/{deployment_id}/prepare",
             auth=(self.login, self.password),
             data=data
         )
@@ -75,11 +46,24 @@ class RemoteClient(BaseClient):
             return result.content.decode()
 
         raise RemoteClientException(
-            "Failed to deploy map. "
+            "Failed to prepare deployment. "
             f"Status code: {result.status_code}, content: {result.content}"
         )
 
-    def get_deployment_status(self, deployment_id: str) -> DeploymentStatus:
+    def start_execution(self, deployment_id: str) -> str:
+        result = req.post(
+            f"{self.base_url}/api/v1/deployment/{deployment_id}/start",
+            auth=(self.login, self.password)
+        )
+        if result.status_code == 200:
+            return result.content.decode()
+
+        raise RemoteClientException(
+            "Failed to start deployment execution. "
+            f"Status code: {result.status_code}, content: {result.content}"
+        )
+
+    def get_deployment_status(self, deployment_id: str) -> Tuple[DeploymentStatus, DeploymentMap]:
         result = req.get(f"{self.base_url}/api/v1/deployment/{deployment_id}", auth=(self.login, self.password))
         if result.status_code == 200:
             return cloudpickle.loads(result.content)

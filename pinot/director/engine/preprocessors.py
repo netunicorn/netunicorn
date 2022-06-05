@@ -7,7 +7,6 @@ This module allows to add external preprocessors.
 """
 
 from pinot.base.deployment_map import DeploymentMap
-from pinot.base.pipeline import Pipeline
 
 deployment_preprocessors = []
 

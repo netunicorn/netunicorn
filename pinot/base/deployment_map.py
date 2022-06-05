@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from enum import Enum
-from typing import Iterator, List
+from typing import Iterator, List, Optional
 from dataclasses import dataclass
 
 from returns.result import Result
@@ -14,15 +14,19 @@ from pinot.base.pipeline import PipelineResult
 
 class DeploymentStatus(Enum):
     UNKNOWN = 0
-    STARTING = 1
-    RUNNING = 2
-    FINISHED = 3
+    PREPARING = 1
+    READY = 2
+    RUNNING = 3
+    FINISHED = 4
 
 
 @dataclass
 class Deployment:
     minion: Minion
     pipeline: Pipeline
+    prepared: bool = True
+    executor_id: str = "Unknown"
+    error: Optional[Exception] = None
 
 
 class DeploymentMap:
