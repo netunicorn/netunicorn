@@ -121,7 +121,7 @@ class PipelineExecutor:
             with Pool(len(element)) as p:
                 # attach previous task results to the next step
                 for task in element:
-                    task.previous_results = deepcopy(self.step_results)
+                    task.previous_steps = deepcopy(self.step_results)
 
                 element = [cloudpickle.dumps(task) for task in element]
                 results = p.map_async(PipelineExecutor.execute_task, element, chunksize=1)

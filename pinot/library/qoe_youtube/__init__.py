@@ -5,7 +5,7 @@ from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
-from pinot.base.task import Task, Failure
+from pinot.base.task import Task, Failure, Success
 
 
 class StartQoECollectionServer(Task):
@@ -27,7 +27,7 @@ class StartQoECollectionServer(Task):
 
         process = subprocess.Popen([
             'uvicorn', 'pinot.library.qoe_youtube.qoe_collector:app',
-            '--host', self.interface, '--port', str(self.port),
+            '--host', self.interface, '--port', str(self.port), '--log-level', 'warning',
         ], env=env)
         time.sleep(3)
 
@@ -35,13 +35,21 @@ class StartQoECollectionServer(Task):
             return Failure(f'QoE collection server failed to start: exitcode={exitcode}')
 
         return f"QoE collection server started with data folder '{self.data_folder}' and " \
-               f"using interface {self.interface}:{self.port}"
+               f"using interface {self.interface}:{self.port}, process ID: {process.pid}", process.pid
 
 
 class StopQoECollectionServer(Task):
     def run(self):
-        # TODO: implement
-        raise NotImplementedError()
+        # look for the process ID of the QoE collection server and use it to kill the server
+        for element in self.previous_steps:
+            if isinstance(element, Success):
+                element = [element]
+            for result in element:
+                if isinstance(y := result.unwrap(), tuple) and str(y[0]).startswith('QoE collection server started'):
+                    process_id = y[1]
+                    subprocess.run(['kill', str(process_id)])
+                    return Success(f'QoE collection server stopped with process ID: {process_id}')
+        return Failure('QoE collection server not found')
 
 
 class WatchYouTubeVideo(Task):
