@@ -32,7 +32,7 @@ def safe(function: _FunctionType) -> Union[
                 return result
             return Success(result)
         except Exception as exc:
-            return Failure(exc)
+            return Failure(exc.__reduce__())
 
     return decorator
 

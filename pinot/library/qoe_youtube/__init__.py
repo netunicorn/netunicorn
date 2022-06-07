@@ -52,7 +52,7 @@ class WatchYouTubeVideo(Task):
         'wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb',
         'sudo apt install -y ./google-chrome-stable_current_amd64.deb',
         'sudo apt install -y -f',
-        'python3 -c "from webdriver_manager.chrome import ChromeDriverManager; ChromeDriverManager().install()"',
+        'python3 -c "from webdriver_manager.chrome import ChromeDriverManager; ChromeDriverManager(path=\"/usr/bin/\").install()"',
         'wget https://github.com/nectostr/pinot_minion_tasks/raw/collection/QoE_youtube/extensions/4.46.2_0.crx -P ./extensions',
         'wget https://github.com/nectostr/pinot_minion_tasks/releases/download/public/qoe_extension.zip -P ./extensions',
         'unzip ./extensions/qoe_extension.zip -d ./extensions/qoe_extension',

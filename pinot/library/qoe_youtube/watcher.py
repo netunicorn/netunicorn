@@ -2,10 +2,11 @@
 Module responsible for starting and ending selenium based chrome and viewing the video
 """
 import os
+import subprocess
 import time
+import random
 from typing import List, Optional
 
-from pyvirtualdisplay import Display
 from returns.result import Result, Success
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
@@ -13,6 +14,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
 
 STATSFORNERDS_PATH = os.environ.get("STATSFORNERDS_PATH", r"qoe_youtube/qoe_extension")
 ADBLOCK_PATH = os.environ.get("ADBLOCK_PATH", r"QoE_youtube/extensions/4.46.2_0.crx")
@@ -90,11 +92,11 @@ def watch(url: str, duration: Optional[int] = 100,
     (use selenium to get video length from video player text option)
     3. Move everything in relevant Try-except blocks,
     where we catch Base Exception and return failure with relevant text
-    Why didn't I done that all? Roman asked me to make simple short code for prepared people
     """
     # Display size is random popular screen size
-    display = Display(visible=False, size=(1920, 1080))
-    display.start()
+    display_number = random.randint(100, 500)
+    subprocess.Popen(['Xvfb', f':{display_number}', '-screen', '0', '1920x1080x24'])
+    os.environ["DISPLAY"] = f":{display_number}"
 
     options = Options()
     options.add_argument('--no-sandbox')
