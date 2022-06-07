@@ -6,14 +6,13 @@ from typing import Optional
 from jinja2 import Environment, FileSystemLoader
 
 from pinot.base.task import Task, Failure
-from pinot.library.qoe_youtube import qoe_collector, watcher
 
 
 class StartQoECollectionServer(Task):
     requirements = [
         'sudo apt update',
-        'sudo apt install python3-pip',
-        'pip3 install fastapi uvicorn',
+        'sudo apt install python3-pip uvicorn',
+        'pip3 install fastapi uvicorn uvloop',
     ]
 
     def __init__(self, data_folder: str = '.', interface: str = '0.0.0.0', port: int = 34543):
@@ -48,12 +47,15 @@ class StopQoECollectionServer(Task):
 class WatchYouTubeVideo(Task):
     requirements = [
         'sudo apt update',
-        'sudo apt install -y python3-pip wget Xvfb unzip',
+        'sudo apt install -y python3-pip wget xvfb unzip',
         'pip3 install selenium webdriver-manager Jinja2',
         'wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb',
-        'sudo apt install ./google-chrome-stable_current_amd64.deb',
-        'sudo apt install -f',
-        'python3 -c "import webdriver_manager; webdriver_manager.chromedriver.install()"',
+        'sudo apt install -y ./google-chrome-stable_current_amd64.deb',
+        'sudo apt install -y -f',
+        'python3 -c "from webdriver_manager.chrome import ChromeDriverManager; ChromeDriverManager().install()"',
+        'wget https://github.com/nectostr/pinot_minion_tasks/raw/collection/QoE_youtube/extensions/4.46.2_0.crx -P ./extensions',
+        'wget https://github.com/nectostr/pinot_minion_tasks/releases/download/public/qoe_extension.zip -P ./extensions',
+        'unzip ./extensions/qoe_extension.zip -d ./extensions/qoe_extension',
     ]
 
     def __init__(
@@ -69,25 +71,8 @@ class WatchYouTubeVideo(Task):
         super().__init__()
 
     def run(self):
-        # download adblock.crx and remember path
-        subprocess.Popen([
-            'wget',
-            'https://github.com/nectostr/pinot_minion_tasks/raw/collection/QoE_youtube/extensions/4.46.2_0.crx',
-            '-P', './extensions',
-        ]).wait()
+        from pinot.library.qoe_youtube import qoe_collector, watcher
         adblock_crx_path = os.path.join('.', 'extensions', '4.46.2_0.crx')
-
-        # download QoE extension
-        subprocess.Popen([
-            'wget',
-            'https://github.com/nectostr/pinot_minion_tasks/releases/download/public/qoe_extension.zip',
-            '-P', './extensions',
-        ]).wait()
-        subprocess.Popen([
-            'unzip',
-            './extensions/qoe_extension.zip',
-            '-d', './extensions/qoe_extension',
-        ]).wait()
         qoe_extension_path = os.path.join('.', 'extensions', 'qoe_extension')
 
         # using jinja substitute QoECollectionServer address and port in script.json

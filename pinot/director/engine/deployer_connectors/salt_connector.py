@@ -110,7 +110,7 @@ class SaltConnector:
                     self.local.cmd,
                     deployment.minion.name,
                     'cmd.run',
-                    [(f'docker run -d '
+                    [(f'docker run --rm -d '
                       f'-e PINOT_EXECUTOR_ID={executor_id} '
                       f'-e PINOT_GATEWAY_IP={GATEWAY_IP} '
                       f'-e PINOT_GATEWAY_PORT={GATEWAY_PORT} '
