@@ -11,7 +11,7 @@ from pinot.base.task import Task, Failure, Success
 class StartQoECollectionServer(Task):
     requirements = [
         'sudo apt update',
-        'sudo apt install python3-pip uvicorn',
+        'sudo apt install -y python3-pip uvicorn',
         'pip3 install fastapi uvicorn uvloop',
     ]
 
