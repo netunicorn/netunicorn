@@ -36,6 +36,7 @@ class PipelineExecutor:
         logging.basicConfig()
         self.logger = self.create_logger(self.executor_id)
         self.logger.info(f"Parsed configuration: Gateway located on {self.dir_ip}:{self.dir_port}")
+        self.logger.info(f"Current directory: {os.getcwd()}")
 
         self.pipeline: Optional[Pipeline] = None
         self.step_results: List[PipelineElementResult] = []

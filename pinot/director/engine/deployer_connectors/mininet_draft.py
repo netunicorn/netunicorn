@@ -4,7 +4,6 @@ import os
 import uuid
 from typing import Dict
 
-from returns.result import Failure
 from cloudpickle import dumps
 
 from pinot.base.deployment_map import DeploymentMap, DeploymentStatus
@@ -28,7 +27,8 @@ class MininetConnector:
         self.net.addNAT().configDefault()
         self.net.start()
         for host in self.net.hosts:
-            host.cmd('dhclient')
+            host.cmd('dhclient &')
+        logger.info("MininetConnector started")
         # h1, h4 = net.hosts[0], net.hosts[3]
         # h1.cmd('ping -c1 %s' % h4.IP())
         # net.stop()
@@ -58,6 +58,7 @@ class MininetConnector:
             executor_id = deployment.executor_id
             if isinstance(deployment.pipeline.environment_definition, ShellExecution):
                 host = [x for x in self.net.hosts if x.name == deployment.minion.name][0]
+                host.waiting = False
                 await loop.run_in_executor(None, functools.partial(
                     host.sendCmd,
                     f'PINOT_EXECUTOR_ID={executor_id} '

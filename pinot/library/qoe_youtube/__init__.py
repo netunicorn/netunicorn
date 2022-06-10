@@ -56,7 +56,7 @@ class WatchYouTubeVideo(Task):
     requirements = [
         'sudo apt update',
         'sudo apt install -y python3-pip wget xvfb unzip',
-        'pip3 install selenium webdriver-manager Jinja2',
+        'pip3 install selenium webdriver-manager Jinja2==3.0.1',
         'wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb',
         'sudo apt install -y ./google-chrome-stable_current_amd64.deb',
         'sudo apt install -y -f',
