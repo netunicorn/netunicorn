@@ -138,7 +138,7 @@ async def deployment_watcher(credentials: (str, str), deployment_id: str, execut
         # finishing condition - all executors reported results OR died
         # TODO: implement keep-alive for executors!
         exs = await redis_connection.exists(*(f"executor:{executor_id}:result" for executor_id in executors))
-        if exs >= len(executors):
+        if exs >= len(executors):  # TODO: not all, but only initially ready to execute
             status = DeploymentStatus.FINISHED
             await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(status))
 
