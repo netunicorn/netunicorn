@@ -7,6 +7,9 @@ This file contains questions to discuss that influence or roadblock design decis
 		- DAGs would be harder to implement
 		- with DAGs (possibly) it would be harder to control synchronization of tasks that should be started together
 			- check this
+			- probably not true: if implement as 'check all available tasks after end of each task', it would be the same as pipelines' stages
+		- DAG probably would be more complex for user to use
+			- Implement DAG and Pipeline as simplified version of DAG?
 	- Pipelines are simplified versions of DAGs. They have only a single starting point, several stages, and ending point. Stages are ordered, and each stage can have multiple tasks inside. The next stage starts when all tasks of previous stage are finished.
 		- Pipelines would be easier to implement
 		- Stages are very direct and all tasks within one stage 
