@@ -1,0 +1,13 @@
+## Vocabulary
+- Task - a single atomic collection of instructions to achieve something
+- DAG - Directed Acyclic Graph
+	- Pipeline - a simplified version of DAG, consisting only of ordered stages with tasks in each stage
+- Executor - an engine that is capable of executing DAGs. 
+- Environment - something capable of running an executor (docker container, bare metal, virtual machine, anything else). The environment provides connectivity and announce capabilities to the system.
+    - e.g., Mininet (lxc) is an env
+    - Specific set of program/scripts within an env can be an executor
+- Node - hardware capable of running environment and having some set of unique characteristics (location, specific hardware, CPU cores, operating system, architecture (ARM vs. x86), etc.)
+    - node and its capabilities are immutable
+        - e.g., CPU utilization is not a node attribute, it is node context
+        - node is defined based on immutable attributes (identifiers) -- # cores, architecture, location, peripherals, mac address (maybe not exposed to user), unique ID, etc.
+- Experiment - a mapping of DAGs to Nodes. This defines the whole user's idea and is used for deployment.

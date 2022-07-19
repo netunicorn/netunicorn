@@ -11,6 +11,7 @@ In this document function and non-functional requirements are listed. Each requi
 6. The system must support event-based interaction between nodes for synchronization and control purposes. The node can send events to itself (to control parallel pipelines/DAGs) or other nodes.
 7. The system must automatically generate environment for pipeline/DAG execution and distribute it to the nodes.
 8. The system must allow user authentication/authorization via different methods (including LDAP)
+9. The system must allow administrators to attach Experiment preprocessors (arbitrary code). Preprocessor receives an Experiment and returns an Experiment. Administrators can define preprocessors to react to deployment (add nodes to allow-list), log information, etc.
 
 
 ## Non-functional requirements
