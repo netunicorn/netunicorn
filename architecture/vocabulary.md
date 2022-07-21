@@ -11,3 +11,6 @@
         - e.g., CPU utilization is not a node attribute, it is node context
         - node is defined based on immutable attributes (identifiers) -- # cores, architecture, location, peripherals, mac address (maybe not exposed to user), unique ID, etc.
 - Experiment - a mapping of DAGs to Nodes. This defines the whole user's idea and is used for deployment.
+- Director infrastructure - physical infrastructure and resources for hosting the system itself (endpoints, utility services, etc.)
+	- Director infrastrcture could be (and possibly often will be) distributed with public endpoint and private services being on different VMs, servers, etc.
+- Target infrastructure - network devices working as data collection endpoints

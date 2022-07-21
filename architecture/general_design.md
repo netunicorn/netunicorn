@@ -13,6 +13,14 @@ The [user story](userstory.md) describes user's view on the system. From the use
 5. After executor finishes all the tasks (or fails), it reports results to the system
 6. After results received, the system finalizes the corresponding environment
 
+## Assumptions
+- Infrastructure has resources (servers/VMs/etc) to host the system ([vocabulary](vocabulary.md): Director infrastructure)
+- Part of director infrastructure is available to users of the system
+- Part of director infrastructure is available to target infrastructure (using IP address and/or DNS resolution)
+- All target infrastructure devices are capable of executing arbitrary Python code (to support arbitrary pipelines)
+	- Target infrastructure devices that are note capable can use [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar)
+- Target infrastructure is controlled by director infrastructre via IT automation software (Ansible, SaltStack, etc.)
+
 ## Coarse architecture of the system
 ```mermaid
 flowchart LR
@@ -39,7 +47,13 @@ flowchart LR
 	ds -..- env1
 ```
 
-The system consists of 3 different parts:
+As this system is designed to work close to target infrastructure and with many users, most often it would be constantly online and deployed on server-based machine. At the same time, users need to be able to design experiments and tasks even without connection to installation, and easily migrate experiments between installations, therefore a separate user-side module (*frontend*) is required.
+
+As target network infrastructure could be different for different locations, and also usually already controlled by some IT automation software (like Ansible), the system will work via existing deployment systems to deploy user's code. This would allow to not to give direct node access to the system, but leave it to infrastructure administrators only.
+
+As pipelines/DAGs do consists of several steps, these steps execution order should be controlled. It can be done on central server, but that wouldn't work well with bad Internet connection and establish certain requirements to deployment system (like fast transfer of results, etc.). Therefore, the system would use separate 'executors' deployed on nodes to control pipeline execution. In addition, these executors will provide additional capabilities that original deployment system is not able to (like event-exchange system).
+
+Therefore, the system consists of 3 different parts:
 - User-side Frontend
 - System Engine
 - Executor

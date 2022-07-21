@@ -13,6 +13,7 @@ This file contains questions to discuss that influence or roadblock design decis
 	- Pipelines are simplified versions of DAGs. They have only a single starting point, several stages, and ending point. Stages are ordered, and each stage can have multiple tasks inside. The next stage starts when all tasks of previous stage are finished.
 		- Pipelines would be easier to implement
 		- Stages are very direct and all tasks within one stage 
+		- I like this more
 - Flow control design. If a user wants to 'close the loop' - process the data and react to some events or conditions - how to provide these capabilities?
 	1. Allow to receive and control things on user's laptop and spawn events to the system
 		- Pros:
