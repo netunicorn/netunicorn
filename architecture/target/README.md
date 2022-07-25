@@ -30,7 +30,7 @@ Executor is installed in the Environment distributed to the node together with t
 ### Design
 Executor is a monolith application that starts together with the surrounding environment, load the DAG, executes the DAG, provides event-system access to tasks in the DAG, and report results.
 
-### Requirements
+### Functional requirements
 Requirements are sorted by importance.
 - Executor must load the DAG, execute it, and (potentially) be able to send results of execution to the master
 - Executor must be Python-based and execute DAG tasks via multiprocessing system
@@ -39,3 +39,7 @@ Requirements are sorted by importance.
 - Executor must collect all internal log information (from the executor itself) and stdout/stderr of each executed tasks, combine them into a single log and send to the master together with results of execution
 - Executor must hold a common in-memory storage for tasks. Each task should have read and write access to this storage to be able to put temporary information there for DAG execution purposes
 - Executor must implement event-system to allow tasks to send events to other tasks (locally) or to the system in general (globally). Executor must provide event-system access point to any running tasks. See [event_system](../director/event_system.md) for details.
+### Non-functional requirements
+- Executor should be as stable and reliable as it's possible
+- Executor should minimize inter-task time (time between end of previous task and start of the next available task)
+- Executor should minimize abstraction cost
