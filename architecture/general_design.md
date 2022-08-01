@@ -62,7 +62,7 @@ Therefore, the system consists of 3 different parts:
 Frontend is a separate module that’s located on a user side. It's a single point of interaction with the system for user.
 Frontend:
 - contains building blocks for tasks/DAGs
-- connects to System Engine to provide information about available infrastructure
+- connects to System Engine to provide users information about available infrastructure
 - allows user to interact with system (prepare, start, and cancel experiments, receive status, etc.)
 - allows user to attach additional infrastructures to the system
 See [Frontend README](frontend/README.md) for further information.
