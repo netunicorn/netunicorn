@@ -11,10 +11,11 @@ Requirements are sorted by importance.
 - Client must provide user information about current experiments
 - Client must provide user a way to cancel experiments
 - Client must allow user to receive Experiment results (including logs and produced artifacts)
+- Client must allow user to manually send and receive events
 - Client must allow user to execute DAGs locally using dummy Environment on the localhost
 - Client must allow user to provide information about their own *target infrastructure* to attach to the existing system installation
 ## Non-functional requirements
 - Client should correctly process all *director services* responds, including error information
-- Client should be lightweight and mplemented as Python library without additional services or processes
+- Client should be lightweight and implemented as Python library without additional services or processes
 ## Design
 Client is a single monolithic Python library that provides needed classes for user's needs. Basic abstraction classes (such as Task, DAG, Experiment, etc.) should be reimported from system-common package (that also would be used by *director services*, and *target services*)
