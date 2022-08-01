@@ -18,7 +18,7 @@ The [user story](userstory.md) describes user's view on the system. From the use
 - Part of director infrastructure is available to users of the system
 - Part of director infrastructure is available to target infrastructure (using IP address and/or DNS resolution)
 - All target infrastructure devices are capable of executing arbitrary Python code (to support arbitrary pipelines)
-	- Target infrastructure devices that are note capable can use [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar)
+	- Target infrastructure devices that are not capable can use [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar)
 - Target infrastructure is controlled by director infrastructre via IT automation software (Ansible, SaltStack, etc.)
 
 ## Coarse architecture of the system
