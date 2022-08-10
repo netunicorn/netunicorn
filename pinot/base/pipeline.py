@@ -33,15 +33,18 @@ class Pipeline:
             self,
             tasks: Collection[PipelineElement] = (),
             early_stopping: bool = True,
+            report_results: bool = True
     ):
         """
         Initialize Pipeline with a tuple of Tasks and early_stopping flag.
         :param tasks: a tuple of tasks to be executed
         :param early_stopping: whether to stop executing tasks after first failure
+        :param report_results: whether executor should connect director services to report pipeline results after exec
         """
         self.name = str(uuid.uuid4())
         self.early_stopping = early_stopping
         self.tasks = tuple(tasks)
+        self.report_results = report_results
 
         self.environment_definition: EnvironmentDefinition = ShellExecution()
         for element in self.tasks:

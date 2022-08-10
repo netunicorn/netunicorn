@@ -1,6 +1,12 @@
+import itertools
 import os
 import asyncio
 import logging
+import sys
+
+import pickle
+import time
+
 import cloudpickle
 import requests as req
 from pinot.base.utils import NonStablePool as Pool
@@ -20,7 +26,7 @@ from pinot.base.pipeline import Pipeline, PipelineResult, PipelineElementResult
 
 
 class PipelineExecutorState(Enum):
-    WAITING_FOR_PIPELINE = 0
+    LOOKING_FOR_PIPELINE = 0
     EXECUTING = 1
     REPORTING = 2
     FINISHED = 3
@@ -33,20 +39,25 @@ class PipelineExecutor:
         self.dir_port: int = int(gateway_port or os.environ.get("PINOT_GATEWAY_PORT") or "26512")
         self.executor_id: str = executor_id or os.environ.get("PINOT_EXECUTOR_ID") or "Unknown"
 
+        self.logfile_name = f'executor_{executor_id}.log'
+        self.print_file = open(self.logfile_name, "at")
+
         logging.basicConfig()
-        self.logger = self.create_logger(self.executor_id)
+        self.logger = self.create_logger()
         self.logger.info(f"Parsed configuration: Gateway located on {self.dir_ip}:{self.dir_port}")
         self.logger.info(f"Current directory: {os.getcwd()}")
+
+        # increasing timeout in msecs to wait between network requests
+        self.backoff_func = (0.1 * x for x in itertools.count(1))
 
         self.pipeline: Optional[Pipeline] = None
         self.step_results: List[PipelineElementResult] = []
         self.pipeline_results: Optional[Result[PipelineResult, PipelineResult]] = None
-        self.state = PipelineExecutorState.WAITING_FOR_PIPELINE
+        self.state = PipelineExecutorState.LOOKING_FOR_PIPELINE
 
-    @staticmethod
-    def create_logger(executor_id: str) -> logging.Logger:
-        logger = logging.getLogger(f"executor_{executor_id}")
-        logger.addHandler(logging.FileHandler(f'executor_{executor_id}.log'))
+    def create_logger(self) -> logging.Logger:
+        logger = logging.getLogger(f"executor_{self.executor_id}")
+        logger.addHandler(logging.FileHandler(self.logfile_name))
         logger.setLevel(logging.INFO)
         return logger
 
@@ -58,7 +69,7 @@ class PipelineExecutor:
         # TODO: add keepalive in the background that will send current state
         while True:
             try:
-                if self.state == PipelineExecutorState.WAITING_FOR_PIPELINE:
+                if self.state == PipelineExecutorState.LOOKING_FOR_PIPELINE:
                     self.request_pipeline()
                 elif self.state == PipelineExecutorState.EXECUTING:
                     asyncio.run(self.execute())
@@ -70,13 +81,30 @@ class PipelineExecutor:
                 self.logger.exception(e)
                 self.logger.critical("Failed to execute pipeline. Shutting down.")
                 self.state = PipelineExecutorState.FINISHED
-                return
+                break
+
+        # if we break the cycle with an exception, we'll try to report the results
+        self.report_results()
 
     def request_pipeline(self) -> None:
         """
-        This method requests the pipeline from the communicator and set it.
+        This method tries to look for pipeline locally to execute, and if not found then asks master for it
         :return: None
         """
+
+        if self.pipeline is not None:
+            self.logger.error("request_pipeline is called, but self.pipeline is already set, executing.")
+            self.state = PipelineExecutorState.EXECUTING
+            return
+
+        pipeline_filename = f"{self.executor_id}.pipeline"
+        if os.path.exists(pipeline_filename):
+            with open(pipeline_filename, 'rb') as f:
+                self.pipeline = cloudpickle.load(f)
+                self.logger.info("Pipeline loaded from local file, executing.")
+                self.state = PipelineExecutorState.EXECUTING
+                return
+
         try:
             # TODO: https
             result = req.get(
@@ -85,6 +113,7 @@ class PipelineExecutor:
             )
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
             self.logger.info(f"Exception while requesting pipeline: {e} ")
+            time.sleep(next(self.backoff_func))
             return
 
         if result.status_code == 200:
@@ -102,13 +131,17 @@ class PipelineExecutor:
         result = task.run()
         return cloudpickle.dumps(result)
 
+    def std_redirection(self, *args):
+        sys.stdout = self.print_file
+        sys.stderr = self.print_file
+
     async def execute(self) -> None:
         """
         This method executes the pipeline.
         """
 
         if not self.pipeline:
-            self.logger.info("No pipeline to execute.")
+            self.logger.error("No pipeline to execute.")
             self.pipeline_results = Failure(tuple(self.step_results))
             return
 
@@ -119,7 +152,7 @@ class PipelineExecutor:
                 element = [element]
 
             # create processes and execute tasks
-            with Pool(len(element)) as p:
+            with Pool(len(element), initializer=self.std_redirection) as p:
                 # attach previous task results to the next step
                 for task in element:
                     task.previous_steps = deepcopy(self.step_results)
@@ -153,9 +186,17 @@ class PipelineExecutor:
         """
         This method reports the results to the communicator.
         """
+        if not self.pipeline.report_results:
+            self.logger.info("Skipping reporting results due to pipeline setting.")
+            self.state = PipelineExecutorState.FINISHED
+            return
+
+        with open(self.logfile_name, 'rt') as f:
+            current_log = f.readlines()
+
         results = self.pipeline_results
-        results = cloudpickle.dumps(results)
-        results = b64encode(results)
+        results = pickle.dumps([results, current_log])
+        results = b64encode(results).decode()
         try:
             # TODO: https
             result = req.post(
@@ -166,6 +207,7 @@ class PipelineExecutor:
             self.logger.info("Successfully reported results.")
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
             self.logger.info(f"Exception while reporting results: {e} ")
+            time.sleep(next(self.backoff_func))
             return
 
         if result.status_code == 200:
