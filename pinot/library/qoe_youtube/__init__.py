@@ -5,10 +5,25 @@ from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
-from pinot.base.task import Task, Failure, Success
+from pinot.base.minions import Minion
+from pinot.base.task import Task, Failure, Success, TaskDispatcher
 
 
-class StartQoECollectionServer(Task):
+class StartQoECollectionServer(TaskDispatcher):
+    def __init__(self, data_folder: str = '.', interface: str = '0.0.0.0', port: int = 34543):
+        self.data_folder = data_folder
+        self.interface = interface
+        self.port = port
+        super().__init__()
+
+    def dispatch(self, minion: Minion) -> Task:
+        if minion.properties.get('os_family', '').lower() == 'linux':
+            return StartQoECollectionServerLinuxImplementation(self.data_folder, self.interface, self.port)
+
+        raise NotImplementedError(f'StartQoECollectionServer is not implemented for {minion.properties.get("os_family", "")}')
+
+
+class StartQoECollectionServerLinuxImplementation(Task):
     requirements = [
         'sudo apt update',
         'sudo apt install -y python3-pip uvicorn',
@@ -38,7 +53,15 @@ class StartQoECollectionServer(Task):
                f"using interface {self.interface}:{self.port}, process ID: {process.pid}", process.pid
 
 
-class StopQoECollectionServer(Task):
+class StopQoECollectionServer(TaskDispatcher):
+    def dispatch(self, minion: Minion) -> Task:
+        if minion.properties.get('os_family', '').lower() == 'linux':
+            return StopQoECollectionServerLinuxImplementation()
+
+        raise NotImplementedError(f'StopQoECollectionServer is not implemented for {minion.properties.get("os_family", "")}')
+
+
+class StopQoECollectionServerLinuxImplementation(Task):
     def run(self):
         # look for the process ID of the QoE collection server and use it to kill the server
         for element in self.previous_steps:
@@ -52,7 +75,30 @@ class StopQoECollectionServer(Task):
         return Failure('QoE collection server not found')
 
 
-class WatchYouTubeVideo(Task):
+class WatchYouTubeVideo(TaskDispatcher):
+    def __init__(
+            self, video_url: str, duration: Optional[int] = None, quality: Optional[int] = None,
+            qoe_server_address: str = 'localhost', qoe_server_port: int = 34543, report_time: int = 250,
+    ):
+        self.video_url = video_url
+        self.duration = duration
+        self.quality = quality
+        self.qoe_server_address = qoe_server_address
+        self.qoe_server_port = qoe_server_port
+        self.report_time = report_time
+        super().__init__()
+
+    def dispatch(self, minion: Minion) -> Task:
+        if minion.properties.get('os_family', '').lower() == 'linux':
+            return WatchYouTubeVideoLinuxImplementation(
+                self.video_url, self.duration, self.quality,
+                self.qoe_server_address, self.qoe_server_port, self.report_time
+            )
+
+        raise NotImplementedError(f'WatchYouTubeVideo is not implemented for {minion.properties.get("os_family", "")}')
+
+
+class WatchYouTubeVideoLinuxImplementation(Task):
     requirements = [
         'sudo apt update',
         'sudo apt install -y python3-pip wget xvfb unzip',

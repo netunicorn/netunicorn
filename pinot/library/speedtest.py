@@ -1,10 +1,19 @@
 import subprocess
 from typing import Dict
 
-from pinot.base.task import Task, Failure
+from pinot.base.minions import Minion
+from pinot.base.task import Task, TaskDispatcher, Failure
 
 
-class SpeedTest(Task):
+class SpeedTest(TaskDispatcher):
+    def dispatch(self, minion: Minion) -> Task:
+        if minion.properties.get('os_family', '').lower() == 'linux':
+            return SpeedTestLinuxImplementation()
+
+        raise NotImplementedError(f'SpeedTest is not implemented for {minion.properties.get("os_family", "")}')
+
+
+class SpeedTestLinuxImplementation(Task):
     requirements = ['pip install speedtest-cli']
 
     def run(self):

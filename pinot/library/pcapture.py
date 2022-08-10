@@ -2,10 +2,24 @@ import time
 import subprocess
 from typing import Optional, List
 
-from pinot.base.task import Task, Failure
+from pinot.base.minions import Minion
+from pinot.base.task import Task, TaskDispatcher, Failure
 
 
-class StartCapture(Task):
+class StartCapture(TaskDispatcher):
+    def __init__(self, filepath: str, arguments: Optional[List[str]] = None):
+        self.filepath = filepath
+        self.arguments = arguments
+        super().__init__()
+
+    def dispatch(self, minion: Minion) -> Task:
+        if minion.properties.get('os_family', '').lower() == 'linux':
+            return StartCaptureLinuxImplementation(self.filepath, self.arguments)
+
+        raise NotImplementedError(f'StartCapture is not implemented for {minion.properties.get("os_family", "")}')
+
+
+class StartCaptureLinuxImplementation(Task):
     requirements = ['sudo apt update', 'sudo apt install tcpdump']
 
     def __init__(self, filepath: str, arguments: Optional[List[str]] = None):
@@ -24,9 +38,15 @@ class StartCapture(Task):
         return Failure(f"Tcpdump terminated with return code {exit_code}")
 
 
-class StopAllTCPDumps(Task):
-    requirements = ['sudo apt update', 'sudo apt install tcpdump']
+class StopAllTCPDumps(TaskDispatcher):
+    def dispatch(self, minion: Minion) -> Task:
+        if minion.properties.get('os_family', '').lower() == 'linux':
+            return StopAllTCPDumpsLinuxImplementation()
 
+        raise NotImplementedError(f'StopAllTCPDumps is not implemented for {minion.properties.get("os_family", "")}')
+
+
+class StopAllTCPDumpsLinuxImplementation(Task):
     def run(self):
         proc = subprocess.Popen(['killall', '-w', 'tcpdump'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = proc.communicate()

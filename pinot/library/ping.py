@@ -2,7 +2,8 @@ import subprocess
 from dataclasses import dataclass
 from typing import List
 
-from pinot.base.task import Task, Failure
+from pinot.base.minions import Minion
+from pinot.base.task import Task, TaskDispatcher, Failure
 
 
 @dataclass
@@ -27,7 +28,19 @@ class PingResult:
     raw_output: str
 
 
-class Ping(Task):
+class Ping(TaskDispatcher):
+    def __init__(self, address: str, count: int = 1):
+        self.address = address
+        self.count = count
+        super().__init__()
+
+    def dispatch(self, minion: Minion) -> Task:
+        if minion.properties.get('os_family', '').lower() == 'linux':
+            return PingLinuxImplementation(self.address, self.count)
+        raise NotImplementedError(f'Ping is not implemented for {minion.properties.get("os_family", "")}')
+
+
+class PingLinuxImplementation(Task):
     requirements = ['apt install -y inetutils-ping']
 
     def __init__(self, address: str, count: int = 1):
