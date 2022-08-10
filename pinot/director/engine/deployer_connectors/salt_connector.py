@@ -7,7 +7,7 @@ from typing import Dict
 from returns.result import Failure
 from cloudpickle import dumps
 
-from pinot.base.deployment_map import DeploymentMap, DeploymentStatus
+from pinot.base.experiment import Experiment, ExperimentStatus
 from pinot.base.environment_definitions import DockerImage, ShellExecution
 from pinot.base.minions import MinionPool, Minion
 from pinot.director.engine.resources import logger, redis_connection, GATEWAY_IP, GATEWAY_PORT
@@ -32,7 +32,7 @@ class SaltConnector:
         return MinionPool([Minion(name=x, properties={}) for x in minions])
 
     async def prepare_deployment(
-            self, credentials: (str, str), deployment_map: DeploymentMap, deployment_id: str
+            self, credentials: (str, str), deployment_map: Experiment, deployment_id: str
     ) -> None:
         loop = asyncio.get_event_loop()
 
@@ -93,7 +93,7 @@ class SaltConnector:
                     dumps(Failure(exception))
                 )
 
-    async def start_execution(self, login: str, deployment_map: DeploymentMap, deployment_id: str) -> Dict[str, Minion]:
+    async def start_execution(self, login: str, deployment_map: Experiment, deployment_id: str) -> Dict[str, Minion]:
         loop = asyncio.get_event_loop()
 
         # stage 2: make every minion to start corresponding environment
@@ -133,7 +133,7 @@ class SaltConnector:
                 continue
 
         exec_ids = {deployment.executor_id: (deployment.minion, deployment.pipeline) for deployment in deployment_map}
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.RUNNING))
+        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(ExperimentStatus.RUNNING))
         return exec_ids
 
 

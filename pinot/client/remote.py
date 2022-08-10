@@ -3,7 +3,7 @@ from typing import Dict, Union, Tuple
 import cloudpickle
 import requests as req
 
-from pinot.base.deployment_map import DeploymentMap, DeploymentExecutionResult, DeploymentStatus
+from pinot.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
 from pinot.base.minions import MinionPool
 from pinot.client.base import BaseClient
 
@@ -35,7 +35,7 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content}"
         )
 
-    def prepare_deployment(self, deployment_map: DeploymentMap, deployment_id: str) -> str:
+    def prepare_deployment(self, deployment_map: Experiment, deployment_id: str) -> str:
         data = cloudpickle.dumps(deployment_map)
         result = req.post(
             f"{self.base_url}/api/v1/deployment/{deployment_id}/prepare",
@@ -63,7 +63,7 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content}"
         )
 
-    def get_deployment_status(self, deployment_id: str) -> Tuple[DeploymentStatus, DeploymentMap]:
+    def get_deployment_status(self, deployment_id: str) -> Tuple[ExperimentStatus, Experiment]:
         result = req.get(f"{self.base_url}/api/v1/deployment/{deployment_id}", auth=(self.login, self.password))
         if result.status_code == 200:
             return cloudpickle.loads(result.content)
@@ -74,8 +74,8 @@ class RemoteClient(BaseClient):
         )
 
     def get_deployment_result(self, deployment_id: str) -> Tuple[
-        DeploymentStatus,
-        Union[Dict[str, DeploymentExecutionResult], Exception]
+        ExperimentStatus,
+        Union[Dict[str, ExperimentExecutionResult], Exception]
     ]:
         result = req.get(f"{self.base_url}/api/v1/deployment/{deployment_id}/result", auth=(self.login, self.password))
         if result.status_code == 200:

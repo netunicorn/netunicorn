@@ -4,6 +4,7 @@ from typing import Any, List, Union, Collection
 
 from returns.result import Result, Success, Failure
 
+from .minions import Minion
 from .utils import safe
 
 # Keep classes for export
@@ -18,6 +19,8 @@ class Task:
     Task entrypoint is the run() method.
     Task class can have requirements - commands to be executed to change environment to support this task.
     These requirements would be executed with OS shell during environment setup.
+    Each task is to be implemented for a specific architecture, platform, or combination (like Linux + arm64).
+    TaskDispatcher can be used for selecting a specific task for the given architecture, platform, or combination.
 
     Task always returns a Result object.
     - If the task's `run` method returns Result object by itself, you'll receive this Result object
@@ -64,4 +67,16 @@ class Task:
         it will be encapsulated into a Result object.
         :return: Result of the execution
         """
+        raise NotImplementedError
+
+
+class TaskDispatcher:
+    """
+    This class is a wrapper for several tasks that are designed to implement the same functionality for different
+    architectures, platforms, etc. It is designed to be used as a base class for your task dispatcher.
+
+    Dispatching is done by calling the dispatch method. This method should return the proper task for the minion
+    given minion information (such as architecture, platform, etc).
+    """
+    def dispatch(self, minion: Minion) -> Task:
         raise NotImplementedError

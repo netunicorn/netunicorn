@@ -12,7 +12,7 @@ from pinot.base.utils import NonStablePool as Pool
 from uuid import uuid4
 from pinot.base import Pipeline
 from pinot.base.minions import Minion, MinionPool
-from pinot.base.deployment_map import DeploymentMap, DeploymentStatus, DeploymentExecutionResult
+from pinot.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
 from pinot.base.environment_definitions import ShellExecution
 from pinot.base.pipeline import PipelineResult
 from pinot.client.base import BaseClient
@@ -61,7 +61,7 @@ class LocalClient(BaseClient):
 
             self.logger.info(f"Preparation of environment for pipeline {pipeline.name} finished")
 
-    def prepare_deployment(self, deployment_map: DeploymentMap, deployment_id: str) -> str:
+    def prepare_deployment(self, deployment_map: Experiment, deployment_id: str) -> str:
         self.logger.info(f"Starting deployment preparation for {deployment_id}")
         internal_deployment_id = f"depl_{deployment_id}"
         if internal_deployment_id in self.storage:
@@ -74,24 +74,24 @@ class LocalClient(BaseClient):
             if deployment.minion.name != 'localhost':
                 raise ValueError(f"Local client supports only local minion")
 
-        self.storage[internal_deployment_id + "_status"] = DeploymentStatus.PREPARING
+        self.storage[internal_deployment_id + "_status"] = ExperimentStatus.PREPARING
         for item in deployment_map:
             item.minion = copy.deepcopy(item.minion)  # bunch of hacks because local execution
             item.minion.additional_properties['executor_id'] = str(uuid4())
             self._install_pipeline(item.pipeline)
 
         self.storage[internal_deployment_id] = deployment_map
-        self.storage[internal_deployment_id + "_status"] = DeploymentStatus.READY
+        self.storage[internal_deployment_id + "_status"] = ExperimentStatus.READY
         return deployment_id
 
     def start_execution(self, deployment_id: str) -> str:
         self.logger.info(f"Starting deployment for {deployment_id}")
         internal_deployment_id = f"depl_{deployment_id}"
-        status = self.storage.get(internal_deployment_id + "_status", DeploymentStatus.UNKNOWN)
-        if status != DeploymentStatus.READY:
+        status = self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
+        if status != ExperimentStatus.READY:
             raise ValueError(f"Deployment is in incorrect status: {status}")
 
-        self.storage[internal_deployment_id + "_status"] = DeploymentStatus.RUNNING
+        self.storage[internal_deployment_id + "_status"] = ExperimentStatus.RUNNING
         deployment_map = self.storage[internal_deployment_id]
 
         process_map = Pool(processes=len(deployment_map), maxtasksperchild=1)
@@ -108,33 +108,33 @@ class LocalClient(BaseClient):
         self.logger.info(f"Spawned and started {len(deployment_map)} executor(s) for deployment {deployment_id}")
         return deployment_id
 
-    def get_deployment_status(self, deployment_id: str) -> DeploymentStatus:
+    def get_deployment_status(self, deployment_id: str) -> ExperimentStatus:
         internal_deployment_id = f"depl_{deployment_id}"
         if not internal_deployment_id + "_data" in self.storage:
-            return self.storage.get(internal_deployment_id + "_status", DeploymentStatus.UNKNOWN)
+            return self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
 
         if self.storage[internal_deployment_id + "_data"][1].ready():
             self.storage[internal_deployment_id + "_data"][0].close()
-            self.storage[internal_deployment_id + "_status"] = DeploymentStatus.FINISHED
-            return DeploymentStatus.FINISHED
-        return self.storage.get(internal_deployment_id + "_status", DeploymentStatus.UNKNOWN)
+            self.storage[internal_deployment_id + "_status"] = ExperimentStatus.FINISHED
+            return ExperimentStatus.FINISHED
+        return self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
 
     def get_deployment_result(self, deployment_id: str) -> Tuple[
-        DeploymentStatus,
-        Union[Dict[str, DeploymentExecutionResult], Exception]
+        ExperimentStatus,
+        Union[Dict[str, ExperimentExecutionResult], Exception]
     ]:
         internal_deployment_id = f"depl_{deployment_id}"
         if not self.storage[internal_deployment_id + "_data"][1].ready():
             self.logger.info("Pipelines are running. Use 'get_deployment_status' function to check status")
-            return DeploymentStatus.RUNNING, {}
+            return ExperimentStatus.RUNNING, {}
 
         self.storage[internal_deployment_id + "_data"][0].close()
-        self.storage[internal_deployment_id + "_status"] = DeploymentStatus.FINISHED
+        self.storage[internal_deployment_id + "_status"] = ExperimentStatus.FINISHED
         results = self.storage[internal_deployment_id + "_data"][1].get()
         self.logger.info(f"Collected results for deployment {deployment_id}")
 
-        return DeploymentStatus.FINISHED, {
-            result[0]: DeploymentExecutionResult(
+        return ExperimentStatus.FINISHED, {
+            result[0]: ExperimentExecutionResult(
                 minion=self.storage[internal_deployment_id + "_data"][2][result[0]],
                 result=cloudpickle.loads(result[2]),
                 pipeline=cloudpickle.loads(result[1])

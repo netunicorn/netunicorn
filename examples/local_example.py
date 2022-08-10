@@ -3,7 +3,7 @@ import time
 from pinot.library.basic import SleepTask
 from pinot.base.pipeline import Pipeline
 from pinot.client.local import LocalClient
-from pinot.base.deployment_map import DeploymentStatus, DeploymentMap
+from pinot.base.experiment import ExperimentStatus, Experiment
 
 
 def main():
@@ -15,7 +15,7 @@ def main():
     pipeline = Pipeline().then([SleepTask(5), SleepTask(5)])
 
     # create deployment
-    deployment_map = DeploymentMap()
+    deployment_map = Experiment()
     deployment_map.append(minion_pool[0], pipeline)
 
     # let's execute the same pipeline on the same node twice to see if it works
@@ -31,14 +31,14 @@ def main():
 
     # wait for deployment to be prepared
     # wait for pipelines to finish
-    while client.get_deployment_status(deployment_id) != DeploymentStatus.READY:
+    while client.get_deployment_status(deployment_id) != ExperimentStatus.READY:
         time.sleep(1)
 
     # start executing
     client.start_execution(deployment_id)
 
     # wait for pipelines to finish
-    while client.get_deployment_status(deployment_id) != DeploymentStatus.FINISHED:
+    while client.get_deployment_status(deployment_id) != ExperimentStatus.FINISHED:
         time.sleep(1)
 
     # get results

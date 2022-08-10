@@ -5,11 +5,12 @@ from copy import deepcopy
 import uuid
 
 from returns.result import Result
-from typing import Union, Collection
-from .task import Task
+from typing import Union, Collection, List
+from .task import Task, TaskDispatcher
 from .environment_definitions import EnvironmentDefinition, ShellExecution
 
-PipelineElement = Union[Task, Collection[Task]]
+TaskElement = Union[Task, TaskDispatcher]
+PipelineElement = Union[TaskElement, Collection[TaskElement]]
 PipelineElementResult = Union[Result, Collection[Result]]
 PipelineResult = Collection[PipelineElementResult]
 
@@ -36,34 +37,40 @@ class Pipeline:
             report_results: bool = True
     ):
         """
-        Initialize Pipeline with a tuple of Tasks and early_stopping flag.
+        Initialize Pipeline with a tuple of Tasks or TaskDispatchers and early_stopping flag.
         :param tasks: a tuple of tasks to be executed
         :param early_stopping: whether to stop executing tasks after first failure
         :param report_results: whether executor should connect director services to report pipeline results after exec
         """
         self.name = str(uuid.uuid4())
         self.early_stopping = early_stopping
-        self.tasks = tuple(tasks)
+        self.tasks: List[List[TaskElement]] = []
         self.report_results = report_results
 
         self.environment_definition: EnvironmentDefinition = ShellExecution()
-        for element in self.tasks:
-            self.add_requirements(element)
+        for element in tasks:
+            self.then(element)
+
+    @staticmethod
+    def __element_to_stage(element: PipelineElement) -> List[TaskElement]:
+        if not isinstance(element, Collection):
+            element = [element]
+        if not isinstance(element, list):
+            element = list(element)
+        return element
 
     def then(self, element: PipelineElement) -> Pipeline:
         """
-        Add a task or tuple of tasks to the end of the pipeline.
+        Add a task or list of tasks to the end of the pipeline.
         :param element: a task or tuple of tasks to be added
         :return: self
         """
+        element = self.__element_to_stage(element)
         self.add_requirements(element)
-        self.tasks = self.tasks + (element,)
+        self.tasks.append(element)
         return self
 
     def add_requirements(self, element: PipelineElement) -> None:
-        if not isinstance(element, Collection):
-            element = (element,)
-
         for task in element:
             self.environment_definition.add_requirements(task)
 

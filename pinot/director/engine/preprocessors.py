@@ -6,11 +6,11 @@ This module allows to add external preprocessors.
 # TODO: allow to add external preprocessors (not implemented yet :D)
 """
 
-from pinot.base.deployment_map import DeploymentMap
+from pinot.base.experiment import Experiment
 
 deployment_preprocessors = []
 
 
 class BasePreprocessor:
-    def __call__(self, deployment_map: DeploymentMap) -> DeploymentMap:
+    def __call__(self, deployment_map: Experiment) -> Experiment:
         return deployment_map

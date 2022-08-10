@@ -6,7 +6,7 @@ from typing import Dict
 
 from cloudpickle import dumps
 
-from pinot.base.deployment_map import DeploymentMap, DeploymentStatus
+from pinot.base.experiment import Experiment, ExperimentStatus
 from pinot.base.environment_definitions import DockerImage, ShellExecution
 from pinot.base.minions import MinionPool, Minion
 from pinot.director.engine.resources import logger, redis_connection, GATEWAY_IP, GATEWAY_PORT
@@ -37,7 +37,7 @@ class MininetConnector:
         return MinionPool([Minion(name=x.name, properties={'IP': x.IP(), 'MAC': x.MAC()}) for x in self.net.hosts])
 
     async def prepare_deployment(
-            self, credentials: (str, str), deployment_map: DeploymentMap, deployment_id: str
+            self, credentials: (str, str), deployment_map: Experiment, deployment_id: str
     ) -> None:
         
         for deployment in deployment_map:
@@ -48,7 +48,7 @@ class MininetConnector:
             deployment.executor_id = executor_id
             await redis_connection.set(f"executor:{executor_id}:pipeline", dumps(deployment.pipeline))
 
-    async def start_execution(self, login: str, deployment_map: DeploymentMap, deployment_id: str) -> Dict[str, Minion]:
+    async def start_execution(self, login: str, deployment_map: Experiment, deployment_id: str) -> Dict[str, Minion]:
         loop = asyncio.get_event_loop()
 
         for deployment in deployment_map:
@@ -71,5 +71,5 @@ class MininetConnector:
                 continue
 
         exec_ids = {deployment.executor_id: (deployment.minion, deployment.pipeline) for deployment in deployment_map}
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.RUNNING))
+        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(ExperimentStatus.RUNNING))
         return exec_ids

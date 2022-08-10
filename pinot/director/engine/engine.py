@@ -4,7 +4,7 @@ from typing import Union, Optional, Dict, Tuple
 from cloudpickle import dumps, loads
 
 from pinot.base.minions import MinionPool, Minion
-from pinot.base.deployment_map import DeploymentMap, DeploymentStatus, DeploymentExecutionResult
+from pinot.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
 from pinot.director.engine.resources import redis_connection, logger
 from pinot.director.engine.config import deployer_connector
 from pinot.director.engine.compiler import compile_deployment
@@ -16,7 +16,7 @@ async def get_minion_pool(credentials: (str, str)) -> MinionPool:
     return await deployer_connector.get_minion_pool()
 
 
-async def prepare_deployment(credentials: (str, str), deployment_map: DeploymentMap, deployment_id: str) -> str:
+async def prepare_deployment(credentials: (str, str), deployment_map: Experiment, deployment_id: str) -> str:
     login, password = credentials
 
     # if deployment is already in progress - return deployment_id
@@ -30,7 +30,7 @@ async def prepare_deployment(credentials: (str, str), deployment_map: Deployment
 
     # else: set deployment_id to redis and start background process
     await redis_connection.set(f"{login}:deployment:{deployment_id}", dumps(None))
-    await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.PREPARING))
+    await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(ExperimentStatus.PREPARING))
     asyncio.create_task(compile_and_call_prepare(credentials, deployment_map, deployment_id))
     return deployment_id
 
@@ -38,8 +38,8 @@ async def prepare_deployment(credentials: (str, str), deployment_map: Deployment
 async def start_execution(credentials: (str, str), deployment_id: str) -> Union[Exception, str]:
     login, password = credentials
     content = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
-    result: Optional[DeploymentStatus] = loads(content) if content else None
-    if result != DeploymentStatus.READY:
+    result: Optional[ExperimentStatus] = loads(content) if content else None
+    if result != ExperimentStatus.READY:
         exception = Exception(f"Deployment {deployment_id} is in status {result}. Cannot proceed (yet).")
         logger.exception(exception)
         raise exception
@@ -54,7 +54,7 @@ async def start_execution(credentials: (str, str), deployment_id: str) -> Union[
     return deployment_id
 
 
-async def compile_and_call_prepare(credentials: (str, str), deployment_map: DeploymentMap, deployment_id: str) -> None:
+async def compile_and_call_prepare(credentials: (str, str), deployment_map: Experiment, deployment_id: str) -> None:
     login, password = credentials
     for deployment in deployment_map:
         await compile_deployment(credentials, deployment_id, deployment)
@@ -62,15 +62,15 @@ async def compile_and_call_prepare(credentials: (str, str), deployment_map: Depl
     try:
         await deployer_connector.prepare_deployment(credentials, deployment_map, deployment_id)
         await redis_connection.set(f"{login}:deployment:{deployment_id}", dumps(deployment_map))
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.READY))
+        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(ExperimentStatus.READY))
     except Exception as e:
         logger.exception(e)
         await redis_connection.set(f"{login}:deployment:{deployment_id}", dumps(deployment_map))
         await redis_connection.set(f"{login}:deployment:{deployment_id}:result", dumps(e))
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(DeploymentStatus.FINISHED))
+        await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(ExperimentStatus.FINISHED))
 
 
-async def deploy_and_start_watcher(credentials: (str, str), deployment_map: DeploymentMap, deployment_id: str) -> None:
+async def deploy_and_start_watcher(credentials: (str, str), deployment_map: Experiment, deployment_id: str) -> None:
     login, password = credentials
     result = await deployer_connector.start_execution(login, deployment_map, deployment_id)
     await deployment_watcher(credentials, deployment_id, result)
@@ -78,40 +78,40 @@ async def deploy_and_start_watcher(credentials: (str, str), deployment_map: Depl
 
 async def get_deployment_status(
         credentials: (str, str), deployment_id: str
-) -> Tuple[DeploymentStatus, Optional[DeploymentMap]]:
+) -> Tuple[ExperimentStatus, Optional[Experiment]]:
     login, password = credentials
     content = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
-    result: Optional[DeploymentStatus] = loads(content) if content else None
+    result: Optional[ExperimentStatus] = loads(content) if content else None
     if result is None:
-        return DeploymentStatus.UNKNOWN, None
-    if result == DeploymentStatus.FINISHED:
+        return ExperimentStatus.UNKNOWN, None
+    if result == ExperimentStatus.FINISHED:
         return result, None
 
     content = await redis_connection.get(f"{login}:deployment:{deployment_id}")
-    deployment_map: Optional[DeploymentMap] = loads(content) if content else None
+    deployment_map: Optional[Experiment] = loads(content) if content else None
     if deployment_map is None:
-        return DeploymentStatus.UNKNOWN, None
+        return ExperimentStatus.UNKNOWN, None
     return result, deployment_map
 
 
 async def get_deployment_result(
         credentials: (str, str),
         deployment_id: str
-) -> Tuple[DeploymentStatus, Union[Dict[str, DeploymentExecutionResult], Exception]]:
+) -> Tuple[ExperimentStatus, Union[Dict[str, ExperimentExecutionResult], Exception]]:
     login, password = credentials
     status = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
-    status = loads(status) if status else DeploymentStatus.UNKNOWN
-    if status is None or status == DeploymentStatus.UNKNOWN:
-        return DeploymentStatus.UNKNOWN, Exception(f"Deployment {deployment_id} is not found.")
-    elif status == DeploymentStatus.PREPARING:
+    status = loads(status) if status else ExperimentStatus.UNKNOWN
+    if status is None or status == ExperimentStatus.UNKNOWN:
+        return ExperimentStatus.UNKNOWN, Exception(f"Deployment {deployment_id} is not found.")
+    elif status == ExperimentStatus.PREPARING:
         return status, {}
-    elif status in {DeploymentStatus.RUNNING, DeploymentStatus.FINISHED, DeploymentStatus.READY}:
+    elif status in {ExperimentStatus.RUNNING, ExperimentStatus.FINISHED, ExperimentStatus.READY}:
         content = await redis_connection.get(f"{login}:deployment:{deployment_id}:result")
         result = loads(content) if content else None
         return status, result
     else:
         logger.error(f"Unknown deployment status <{status}> for deployment <{deployment_id}>")
-        return DeploymentStatus.UNKNOWN, Exception(
+        return ExperimentStatus.UNKNOWN, Exception(
             f"Unknown deployment status <{status}> for deployment <{deployment_id}>")
 
 
@@ -126,8 +126,8 @@ async def deployment_watcher(credentials: (str, str), deployment_id: str, execut
     await redis_connection.set(f"{login}:deployment:{deployment_id}:result", dumps({}))
     while True:
         status = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
-        status = loads(status) if status else DeploymentStatus.UNKNOWN
-        if status in {None, DeploymentStatus.UNKNOWN, DeploymentStatus.PREPARING}:
+        status = loads(status) if status else ExperimentStatus.UNKNOWN
+        if status in {None, ExperimentStatus.UNKNOWN, ExperimentStatus.PREPARING}:
             await redis_connection.set(
                 f"{login}:deployment:{deployment_id}:result",
                 dumps(Exception(f"Deployment {deployment_id} is in unexpected status <{status}>. "
@@ -139,7 +139,7 @@ async def deployment_watcher(credentials: (str, str), deployment_id: str, execut
         # TODO: implement keep-alive for executors!
         exs = await redis_connection.exists(*(f"executor:{executor_id}:result" for executor_id in executors))
         if exs >= len(executors):  # TODO: not all, but only initially ready to execute
-            status = DeploymentStatus.FINISHED
+            status = ExperimentStatus.FINISHED
             await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(status))
 
         deployment_result = await redis_connection.get(f"{login}:deployment:{deployment_id}:result")
@@ -149,10 +149,10 @@ async def deployment_watcher(credentials: (str, str), deployment_id: str, execut
                 continue
             result = await redis_connection.get(f"executor:{executor_id}:result")
             result = loads(result) if result else None
-            deployment_result[executor_id] = DeploymentExecutionResult(minion=minion, result=result, pipeline=pipeline)
+            deployment_result[executor_id] = ExperimentExecutionResult(minion=minion, result=result, pipeline=pipeline)
         await redis_connection.set(f"{login}:deployment:{deployment_id}:result", dumps(deployment_result))
 
-        if status == DeploymentStatus.FINISHED:
+        if status == ExperimentStatus.FINISHED:
             # clean up
             for executor_id in executors:
                 await redis_connection.delete(f"executor:{executor_id}:result")

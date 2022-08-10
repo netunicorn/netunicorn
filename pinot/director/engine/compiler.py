@@ -1,4 +1,4 @@
-from pinot.base.deployment_map import Deployment
+from pinot.base.experiment import Deployment
 
 from pinot.base.environment_definitions import ShellExecution
 from pinot.director.engine.config import environment_type

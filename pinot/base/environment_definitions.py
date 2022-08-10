@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List
+from typing import List, Optional
 from .task import Task
 
 
@@ -26,7 +26,7 @@ class DockerImage(EnvironmentDefinition):
     This class represents Environment Definition that is created by using a Docker image.
     TODO: add possibility to add commands and create new image from defined with these commands executed
     """
-    def __init__(self, image: str):
+    def __init__(self, image: Optional[str] = None):
         self.image = image
 
     def add_requirements(self, task: Task) -> EnvironmentDefinition:

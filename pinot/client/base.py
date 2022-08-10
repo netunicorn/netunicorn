@@ -1,6 +1,6 @@
 from typing import Dict, Tuple, Union
 
-from pinot.base.deployment_map import DeploymentMap, DeploymentStatus, DeploymentExecutionResult
+from pinot.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
 from pinot.base.minions import MinionPool
 
 
@@ -13,7 +13,7 @@ class BaseClient:
         """
         raise NotImplementedError()
 
-    def prepare_deployment(self, deployment_map: DeploymentMap, deployment_id: str) -> str:
+    def prepare_deployment(self, deployment_map: Experiment, deployment_id: str) -> str:
         """
         Prepares a deployment map. Server will start compiling and distributing the environment among nodes.
         You can check status of preparation by calling 'get_deployment_status' function and checking if it's in
@@ -27,7 +27,7 @@ class BaseClient:
         """
         raise NotImplementedError()
 
-    def get_deployment_status(self, deployment_id: str) -> Tuple[DeploymentStatus, DeploymentMap]:
+    def get_deployment_status(self, deployment_id: str) -> Tuple[ExperimentStatus, Experiment]:
         """
         Returns status of deployment and deployment map.
         If deployment preparation succeed, you can explore map to see what minions are prepared for deployment.
@@ -51,8 +51,8 @@ class BaseClient:
         raise NotImplementedError()
 
     def get_deployment_result(self, deployment_id: str) -> Tuple[
-        DeploymentStatus,
-        Union[Dict[str, DeploymentExecutionResult], Exception]
+        ExperimentStatus,
+        Union[Dict[str, ExperimentExecutionResult], Exception]
     ]:
         """
         Returns result of the deployment execution.

@@ -1,7 +1,7 @@
 from pinot.base.pipeline import Pipeline
 from pinot.library.qoe_youtube import WatchYouTubeVideo, StartQoECollectionServer, StopQoECollectionServer
 from pinot.client.remote import RemoteClient
-from pinot.base.deployment_map import DeploymentMap
+from pinot.base.experiment import Experiment
 
 MININET = True
 if MININET:
@@ -16,7 +16,7 @@ else:
 client = RemoteClient(server, 26511, 'kell', 'kell')
 minions = client.get_minion_pool()
 a, b = [x for x in minions if x.name in {host1, host2}]
-dmap = DeploymentMap()
+dmap = Experiment()
 pipeline1 = (Pipeline()
              .then(StartQoECollectionServer(port=34546))
              .then(WatchYouTubeVideo('https://www.youtube.com/watch?v=ZO8V8Vb-Jbk', 10, qoe_server_port=34546))
