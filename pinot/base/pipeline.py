@@ -7,7 +7,7 @@ import uuid
 from returns.result import Result
 from typing import Union, Collection, List
 from .task import Task, TaskDispatcher
-from .environment_definitions import EnvironmentDefinition, ShellExecution
+from .environment_definitions import EnvironmentDefinition, DockerImage
 
 TaskElement = Union[Task, TaskDispatcher]
 PipelineElement = Union[TaskElement, Collection[TaskElement]]
@@ -34,7 +34,8 @@ class Pipeline:
             self,
             tasks: Collection[PipelineElement] = (),
             early_stopping: bool = True,
-            report_results: bool = True
+            report_results: bool = True,
+            environment_definition: EnvironmentDefinition = None,
     ):
         """
         Initialize Pipeline with a tuple of Tasks or TaskDispatchers and early_stopping flag.
@@ -46,8 +47,7 @@ class Pipeline:
         self.early_stopping = early_stopping
         self.tasks: List[List[TaskElement]] = []
         self.report_results = report_results
-
-        self.environment_definition: EnvironmentDefinition = ShellExecution()
+        self.environment_definition = environment_definition or DockerImage()
         for element in tasks:
             self.then(element)
 
@@ -66,13 +66,8 @@ class Pipeline:
         :return: self
         """
         element = self.__element_to_stage(element)
-        self.add_requirements(element)
         self.tasks.append(element)
         return self
-
-    def add_requirements(self, element: PipelineElement) -> None:
-        for task in element:
-            self.environment_definition.add_requirements(task)
 
     def copy(self) -> Pipeline:
         """
