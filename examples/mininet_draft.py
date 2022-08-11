@@ -11,7 +11,7 @@ if MININET:
 else:
     host1 = 'raspi-dc:a6:32:d7:6e:64'
     host2 = 'raspi-e4:5f:01:2e:1e:55'
-    server = 'unicorn.cs.ucsb.edu'
+    server = 'netunicorn.cs.ucsb.edu'
 
 client = RemoteClient(server, 26511, 'kell', 'kell')
 minions = client.get_minion_pool()

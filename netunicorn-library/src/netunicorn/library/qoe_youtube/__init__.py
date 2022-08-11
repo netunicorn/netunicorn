@@ -41,7 +41,7 @@ class StartQoECollectionServerLinuxImplementation(Task):
         env['QOE_DATA_FOLDER'] = self.data_folder
 
         process = subprocess.Popen([
-            'uvicorn', 'unicorn.library.qoe_youtube.qoe_collector:app',
+            'uvicorn', 'netunicorn.library.qoe_youtube.qoe_collector:app',
             '--host', self.interface, '--port', str(self.port), '--log-level', 'warning',
         ], env=env)
         time.sleep(3)

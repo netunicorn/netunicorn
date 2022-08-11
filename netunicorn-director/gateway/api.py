@@ -12,7 +12,7 @@ from fastapi import FastAPI, Response
 
 from unicorn.director.gateway.api_types import PipelineResult
 
-_name = 'unicorn.director.gateway'
+_name = 'netunicorn.director.gateway'
 logger = logging.getLogger(_name)
 logger.addHandler(logging.FileHandler(f'{_name}.log'))
 logger.setLevel(logging.INFO)

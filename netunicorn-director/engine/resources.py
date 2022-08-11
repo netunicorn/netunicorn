@@ -5,7 +5,7 @@ import redis.asyncio as _redis
 
 # set logger
 _logging.basicConfig(level=_logging.INFO)
-_name = 'unicorn.director.engine'
+_name = 'netunicorn.director.engine'
 logger = _logging.getLogger(_name)
 logger.addHandler(_logging.FileHandler(f'{_name}.log'))
 logger.setLevel(_logging.INFO)
