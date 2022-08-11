@@ -1,9 +1,9 @@
 import time
 
-from pinot.library.basic import SleepTask
-from pinot.base.pipeline import Pipeline
-from pinot.client.local import LocalClient
-from pinot.base.experiment import ExperimentStatus, Experiment
+from unicorn.library.basic import SleepTask
+from unicorn.base.pipeline import Pipeline
+from unicorn.client.local import LocalClient
+from unicorn.base.experiment import ExperimentStatus, Experiment
 
 
 def main():

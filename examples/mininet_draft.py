@@ -1,7 +1,7 @@
-from pinot.base.pipeline import Pipeline
-from pinot.library.qoe_youtube import WatchYouTubeVideo, StartQoECollectionServer, StopQoECollectionServer
-from pinot.client.remote import RemoteClient
-from pinot.base.experiment import Experiment
+from unicorn.base.pipeline import Pipeline
+from unicorn.library.qoe_youtube import WatchYouTubeVideo, StartQoECollectionServer, StopQoECollectionServer
+from unicorn.client.remote import RemoteClient
+from unicorn.base.experiment import Experiment
 
 MININET = True
 if MININET:
@@ -11,7 +11,7 @@ if MININET:
 else:
     host1 = 'raspi-dc:a6:32:d7:6e:64'
     host2 = 'raspi-e4:5f:01:2e:1e:55'
-    server = 'pinot.cs.ucsb.edu'
+    server = 'unicorn.cs.ucsb.edu'
 
 client = RemoteClient(server, 26511, 'kell', 'kell')
 minions = client.get_minion_pool()
