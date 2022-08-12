@@ -4,19 +4,20 @@ from typing import Dict, Tuple, Union
 
 import cloudpickle
 import subprocess
-
-import logging
-from returns.result import Result
-from unicorn.base.utils import NonStablePool as Pool
-
 from uuid import uuid4
-from unicorn.base import Pipeline
-from unicorn.base.minions import Minion, MinionPool
-from unicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
-from unicorn.base.environment_definitions import ShellExecution
-from unicorn.base.pipeline import PipelineResult
-from unicorn.client.base import BaseClient
-from unicorn.executor.executor import PipelineExecutor, PipelineExecutorState
+import logging
+
+from returns.result import Result
+
+from .base import BaseClient
+
+
+from netunicorn.base.minions import Minion, MinionPool
+from netunicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
+from netunicorn.base.environment_definitions import ShellExecution
+from netunicorn.base.pipeline import Pipeline, PipelineResult
+from netunicorn.base.utils import NonStablePool as Pool
+from netunicorn.executor.executor import PipelineExecutor, PipelineExecutorState
 
 
 class LocalClient(BaseClient):

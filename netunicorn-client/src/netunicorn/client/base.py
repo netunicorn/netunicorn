@@ -1,7 +1,7 @@
 from typing import Dict, Tuple, Union
 
-from unicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
-from unicorn.base.minions import MinionPool
+from netunicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
+from netunicorn.base.minions import MinionPool
 
 
 class BaseClient:

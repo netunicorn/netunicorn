@@ -3,9 +3,10 @@ from typing import Dict, Union, Tuple
 import cloudpickle
 import requests as req
 
-from unicorn.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
-from unicorn.base.minions import MinionPool
-from unicorn.client.base import BaseClient
+from .base import BaseClient
+
+from netunicorn.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
+from netunicorn.base.minions import MinionPool
 
 
 class RemoteClientException(Exception):
