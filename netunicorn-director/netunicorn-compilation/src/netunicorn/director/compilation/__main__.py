@@ -79,6 +79,7 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
     with open(f'{uid}.Dockerfile', 'wt') as f:
         f.writelines(filelines)
 
+    result = None
     try:
         result = subprocess.run([
             'docker', 'buildx', 'build',
@@ -89,10 +90,14 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
             '.',
         ], capture_output=True, check=True)
     except Exception as e:
-        record_compilation_result(uid, False, str(e))
+        log = f'{e}'
+        if result is not None:
+            log += f'\n{result.stdout}'
+            log += f'\n{result.stderr}'
+        record_compilation_result(uid, False, log)
         return
 
-    record_compilation_result(uid, True, result.stdout.decode('utf-8'))
+    record_compilation_result(uid, True, result.stdout.decode('utf-8') + '\n' + result.stderr.decode('utf-8'))
 
 
 def record_compilation_result(uid: str, success: bool, log: str) -> None:
