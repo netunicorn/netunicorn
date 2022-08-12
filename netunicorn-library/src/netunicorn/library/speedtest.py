@@ -1,8 +1,8 @@
 import subprocess
 from typing import Dict
 
-from unicorn.base.minions import Minion
-from unicorn.base.task import Task, TaskDispatcher, Failure
+from netunicorn.base.minions import Minion
+from netunicorn.base.task import Task, TaskDispatcher, Failure
 
 
 class SpeedTest(TaskDispatcher):

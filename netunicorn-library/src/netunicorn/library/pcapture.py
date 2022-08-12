@@ -2,8 +2,8 @@ import time
 import subprocess
 from typing import Optional, List
 
-from unicorn.base.minions import Minion
-from unicorn.base.task import Task, TaskDispatcher, Failure
+from netunicorn.base.minions import Minion
+from netunicorn.base.task import Task, TaskDispatcher, Failure
 
 
 class StartCapture(TaskDispatcher):

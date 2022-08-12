@@ -5,8 +5,8 @@ from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
-from unicorn.base.minions import Minion
-from unicorn.base.task import Task, Failure, Success, TaskDispatcher
+from netunicorn.base.minions import Minion
+from netunicorn.base.task import Task, Failure, Success, TaskDispatcher
 
 
 class StartQoECollectionServer(TaskDispatcher):
