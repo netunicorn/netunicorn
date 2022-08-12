@@ -3,6 +3,7 @@ import pickle
 import subprocess
 import re
 from collections.abc import Iterable
+from base64 import b64decode
 
 from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel
@@ -28,11 +29,11 @@ async def shell_compilation(request: CompilationRequest):
 
 @app.post("/compile/docker")
 async def docker_compilation(request: CompilationRequest, background_tasks: BackgroundTasks):
-    environment_definition: EnvironmentDefinition = pickle.loads(request.environment_definition)
+    environment_definition: EnvironmentDefinition = pickle.loads(b64decode(request.environment_definition))
     if not isinstance(environment_definition, DockerImage):
         raise ValueError(f'Environment definition is not an instance of DockerImage')
 
-    background_tasks.add_task(docker_compilation_task, request.uid, request.architecture, environment_definition, request.pipeline)
+    background_tasks.add_task(docker_compilation_task, request.uid, request.architecture, environment_definition, b64decode(request.pipeline))
     return {"result": "success"}
 
 
@@ -51,7 +52,7 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
         return
     python_version = '.'.join(match_result[0].split('.')[:2])
 
-    commands = environment_definition.commands
+    commands = environment_definition.commands or []
     if not isinstance(commands, Iterable):
         record_compilation_result(
             uid, False,
