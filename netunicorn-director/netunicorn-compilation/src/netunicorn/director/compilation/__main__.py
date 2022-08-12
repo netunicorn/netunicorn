@@ -73,7 +73,7 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
         # TODO: change for milestone 0.2 to PYPI
         f'COPY netunicorn-base netunicorn-base',
         f'RUN pip install netunicorn-base/',
-        f'COPY /srv/unicorn/executor /unicorn/executor',
+        f'COPY netunicorn-executor netunicorn-executor',
         f'RUN pip install netunicorn-executor/',
 
         f'CMD ["python", "-m", "netunicorn.executor"]',
