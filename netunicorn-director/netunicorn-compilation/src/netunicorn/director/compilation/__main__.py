@@ -1,3 +1,4 @@
+import os
 import pickle
 import subprocess
 import re
@@ -5,10 +6,12 @@ from collections.abc import Iterable
 
 from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel
+import uvicorn
 
-from unicorn.base.environment_definitions import EnvironmentDefinition, DockerImage
+from netunicorn.base.environment_definitions import EnvironmentDefinition, DockerImage
 
 app = FastAPI()
+docker_registry_url = os.environ.get('NETUNICORN_DOCKER_REGISTRY_URL', 'pinot.cs.ucsb.edu')  # TODO: change for milestone 0.2
 
 
 class CompilationRequest(BaseModel):
@@ -66,8 +69,8 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
         *['RUN ' + str(x).removeprefix('sudo ') for x in commands],
         f'COPY {uid}.pipeline unicorn.pipeline',
         f'COPY /srv/unicorn/executor /unicorn/executor',
-        f'RUN pip install /unicorn/executor',
-        f'CMD ["python", "-m", "unicorn.executor"]'
+        f'RUN pip install /unicorn/executor',                # TODO: change for milestone 0.2 to PYPI
+        f'CMD ["python", "-m", "netunicorn.executor"]'
     ]
 
     filelines = [x + '\n' for x in filelines]
@@ -79,7 +82,7 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
         result = subprocess.run([
             'docker', 'buildx', 'build',
             '--platform', architecture,
-            '-t', f'pinot.cs.ucsb.edu:{uid}',
+            '-t', f'{docker_registry_url}:{uid}',
             '-f', f'{uid}.Dockerfile',
             '--push',
             '.',
@@ -95,3 +98,7 @@ def record_compilation_result(uid: str, success: bool, log: str) -> None:
     print(f'{uid}: {success}')
     print(log)
     return
+
+
+
+uvicorn.run(app, host="0.0.0.0", port=26521)
