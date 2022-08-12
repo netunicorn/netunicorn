@@ -88,7 +88,8 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
             '-f', f'{uid}.Dockerfile',
             '--push',
             '.',
-        ], capture_output=True, check=True)
+        ], capture_output=True)
+        result.check_returncode()
     except Exception as e:
         log = f'{e}'
         if result is not None:
