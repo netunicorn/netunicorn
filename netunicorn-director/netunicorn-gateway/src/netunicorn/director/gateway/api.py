@@ -10,7 +10,7 @@ import redis.asyncio as redis
 
 from fastapi import FastAPI, Response
 
-from unicorn.director.gateway.api_types import PipelineResult
+from .api_types import PipelineResult
 
 _name = 'netunicorn.director.gateway'
 logger = logging.getLogger(_name)
