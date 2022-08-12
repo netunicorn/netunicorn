@@ -89,7 +89,7 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
         result = subprocess.run([
             'docker', 'buildx', 'build',
             '--platform', architecture,
-            '-t', f'{docker_registry_url}:{uid}',
+            '-t', f'{docker_registry_url}/{uid}:latest',
             '-f', f'{uid}.Dockerfile',
             '--push',
             '.',
