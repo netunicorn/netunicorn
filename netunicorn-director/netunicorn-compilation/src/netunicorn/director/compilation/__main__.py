@@ -69,9 +69,14 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
         "RUN apt update",
         *['RUN ' + str(x).removeprefix('sudo ') for x in commands],
         f'COPY {uid}.pipeline unicorn.pipeline',
+
+        # TODO: change for milestone 0.2 to PYPI
+        f'COPY netunicorn-base netunicorn-base',
+        f'RUN pip install netunicorn-base/',
         f'COPY /srv/unicorn/executor /unicorn/executor',
-        f'RUN pip install /unicorn/executor',                # TODO: change for milestone 0.2 to PYPI
-        f'CMD ["python", "-m", "netunicorn.executor"]'
+        f'RUN pip install netunicorn-executor/',
+
+        f'CMD ["python", "-m", "netunicorn.executor"]',
     ]
 
     filelines = [x + '\n' for x in filelines]
@@ -93,8 +98,8 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
     except Exception as e:
         log = f'{e}'
         if result is not None:
-            log += f'\n{result.stdout}'
-            log += f'\n{result.stderr}'
+            log += f'\n{result.stdout.decode()}'
+            log += f'\n{result.stderr.decode()}'
         record_compilation_result(uid, False, log)
         return
 
@@ -105,7 +110,6 @@ def record_compilation_result(uid: str, success: bool, log: str) -> None:
     print(f'{uid}: {success}')
     print(log)
     return
-
 
 
 uvicorn.run(app, host="0.0.0.0", port=26521)
