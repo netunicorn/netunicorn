@@ -9,7 +9,6 @@ import time
 
 import cloudpickle
 import requests as req
-from unicorn.base.utils import NonStablePool as Pool
 import requests.exceptions
 
 from enum import Enum
@@ -21,8 +20,9 @@ from typing import List, Collection, Optional
 from returns.result import Result, Success, Failure
 from returns.pipeline import is_successful
 
-from unicorn.base.task import Task
-from unicorn.base.pipeline import Pipeline, PipelineResult, PipelineElementResult
+from netunicorn.base.task import Task
+from netunicorn.base.pipeline import Pipeline, PipelineResult, PipelineElementResult
+from netunicorn.base.utils import NonStablePool as Pool
 
 
 class PipelineExecutorState(Enum):

@@ -7,10 +7,9 @@ from dataclasses import dataclass
 
 from returns.result import Result
 
-from unicorn.base import Pipeline, Task
-from unicorn.base.minions import Minion
-from unicorn.base.pipeline import PipelineResult
-from unicorn.base.task import TaskDispatcher
+from .minions import Minion
+from .pipeline import Pipeline, PipelineResult
+from .task import Task, TaskDispatcher
 
 
 class ExperimentStatus(Enum):
