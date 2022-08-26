@@ -4,12 +4,14 @@ import copy
 from enum import Enum
 from typing import Iterator, List, Optional
 from dataclasses import dataclass
+from cloudpickle import dumps
 
 from returns.result import Result
 
 from .minions import Minion
 from .pipeline import Pipeline, PipelineResult
-from .task import Task, TaskDispatcher
+from .task import TaskDispatcher
+from .utils import SerializedPipelineType
 
 
 class ExperimentStatus(Enum):
@@ -26,14 +28,15 @@ class Deployment:
         self.prepared = False
         self.executor_id = "Unknown"
         self.error: Optional[Exception] = None
-        self.pipeline: List[List[Task]] = []
+        self.pipeline: SerializedPipelineType = b''
         self.environment_definition = pipeline.environment_definition
 
         for element in pipeline.tasks:
             element = [x.dispatch(minion) if isinstance(x, TaskDispatcher) else x for x in element]
             for x in element:
                 self.environment_definition.commands.extend(x.requirements)
-            self.pipeline.append(element)
+
+        self.pipeline = dumps(pipeline)
 
 
 class Experiment:
@@ -64,9 +67,9 @@ class Experiment:
     def __repr__(self) -> str:
         return str(self)
 
-    def __add__(self, other) -> Experiment:
+    def __add__(self, other: Experiment) -> Experiment:
         new_map = copy.deepcopy(self)
-        new_map.deployment_map.extend(other.deployment_map.deployment_map)
+        new_map.deployment_map.extend(other.deployment_map)
         return new_map
 
 

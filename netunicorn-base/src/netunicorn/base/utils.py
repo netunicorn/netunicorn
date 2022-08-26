@@ -13,6 +13,8 @@ _FunctionType = Union[
     Callable[..., Result[_ValueType, _FailureValueType]]
 ]
 
+SerializedPipelineType = bytes
+
 
 def safe(function: _FunctionType) -> Union[
     Callable[..., Result[_ValueType, Exception]],

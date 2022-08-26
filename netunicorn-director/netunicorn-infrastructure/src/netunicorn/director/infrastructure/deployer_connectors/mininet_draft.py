@@ -1,15 +1,14 @@
 import asyncio
 import functools
-import os
 import uuid
 from typing import Dict
 
-from cloudpickle import dumps
+from pickle import dumps
 
-from unicorn.base.experiment import Experiment, ExperimentStatus
-from unicorn.base.environment_definitions import DockerImage, ShellExecution
-from unicorn.base.minions import MinionPool, Minion
-from unicorn.director.engine.resources import logger, redis_connection, GATEWAY_IP, GATEWAY_PORT
+from netunicorn.base.experiment import Experiment, ExperimentStatus
+from netunicorn.base.environment_definitions import DockerImage, ShellExecution
+from netunicorn.base.minions import MinionPool, Minion
+from .resources import logger, redis_connection, GATEWAY_IP, GATEWAY_PORT
 
 
 class MininetConnector:
@@ -56,7 +55,7 @@ class MininetConnector:
                 continue
 
             executor_id = deployment.executor_id
-            if isinstance(deployment.pipeline.environment_definition, ShellExecution):
+            if isinstance(deployment.environment_definition, ShellExecution):
                 host = [x for x in self.net.hosts if x.name == deployment.minion.name][0]
                 host.waiting = False
                 await loop.run_in_executor(None, functools.partial(
@@ -67,7 +66,7 @@ class MininetConnector:
                     f'python3 -m pinot.executor.executor'
                 ))
             else:
-                logger.error(f'Unknown environment definition: {deployment.pipeline.environment_definition}')
+                logger.error(f'Unknown environment definition: {deployment.environment_definition}')
                 continue
 
         exec_ids = {deployment.executor_id: (deployment.minion, deployment.pipeline) for deployment in deployment_map}
