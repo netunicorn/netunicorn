@@ -1,7 +1,7 @@
-from pinot.base.pipeline import Pipeline
-from pinot.library.qoe_youtube import WatchYouTubeVideo, StartQoECollectionServer, StopQoECollectionServer
-from pinot.client.remote import RemoteClient
-from pinot.base.deployment_map import DeploymentMap
+from unicorn.base.pipeline import Pipeline
+from unicorn.library.qoe_youtube import WatchYouTubeVideo, StartQoECollectionServer, StopQoECollectionServer
+from unicorn.client.remote import RemoteClient
+from unicorn.base.experiment import Experiment
 
 MININET = True
 if MININET:
@@ -11,12 +11,12 @@ if MININET:
 else:
     host1 = 'raspi-dc:a6:32:d7:6e:64'
     host2 = 'raspi-e4:5f:01:2e:1e:55'
-    server = 'pinot.cs.ucsb.edu'
+    server = 'netunicorn.cs.ucsb.edu'
 
 client = RemoteClient(server, 26511, 'kell', 'kell')
 minions = client.get_minion_pool()
 a, b = [x for x in minions if x.name in {host1, host2}]
-dmap = DeploymentMap()
+dmap = Experiment()
 pipeline1 = (Pipeline()
              .then(StartQoECollectionServer(port=34546))
              .then(WatchYouTubeVideo('https://www.youtube.com/watch?v=ZO8V8Vb-Jbk', 10, qoe_server_port=34546))
