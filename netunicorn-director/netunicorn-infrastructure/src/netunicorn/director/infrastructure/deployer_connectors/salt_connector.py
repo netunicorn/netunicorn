@@ -99,9 +99,9 @@ class SaltConnector(Connector):
                 # You are not prepared!
                 continue
 
-            data = await redis_connection.get(f"executor:{deployment.executor_id}:result")
-            if data and loads(data):
-                # Already failed (probably during preparation step)
+            if await redis_connection.exists(f"executor:{deployment.executor_id}:result"):
+                # Already failed (probably during preparation step) or finished
+                logger.warning(f"Executor {deployment.executor_id} of experiment {experiment_id} already finished")
                 continue
 
             executor_id = deployment.executor_id
@@ -133,4 +133,4 @@ class SaltConnector(Connector):
                 logger.error(f'Unknown environment definition: {deployment.environment_definition}')
                 continue
 
-        await redis_connection.set(f"deployment:{experiment_id}:status", dumps(ExperimentStatus.RUNNING))
+        await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.RUNNING))
