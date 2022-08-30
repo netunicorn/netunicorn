@@ -51,7 +51,7 @@ async def prepare_deployment(request: web.Request):
     deployment_id: str = request.match_info['deployment_id']
     credentials = parse_credentials(request.headers)
     deployment_map = cloudpickle.loads(await request.read())
-    result = await engine.prepare_deployment(credentials, deployment_map, deployment_id)
+    result = await engine.prepare_experiment(credentials, deployment_map, deployment_id)
     return web.Response(body=result, status=200)
 
 
@@ -77,7 +77,7 @@ async def get_deployment_status(request: web.Request):
     """
     deployment_id = request.match_info['deployment_id']
     credentials = parse_credentials(request.headers)
-    result = await engine.get_deployment_status(credentials, deployment_id)
+    result = await engine.get_experiment_status(credentials, deployment_id)
     return web.Response(body=cloudpickle.dumps(result), status=200)
 
 
@@ -89,7 +89,7 @@ async def get_deployment_result(request: web.Request):
     """
     deployment_id = request.match_info['deployment_id']
     credentials = parse_credentials(request.headers)
-    result = await engine.get_deployment_result(credentials, deployment_id)
+    result = await engine.get_experiment_result(credentials, deployment_id)
     return web.Response(body=cloudpickle.dumps(result), status=200)
 
 

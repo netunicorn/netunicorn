@@ -27,22 +27,22 @@ def main():
     deployment_id = 'local_example_deployment'
 
     # ask engine to prepare deployment
-    deployment_id = client.prepare_deployment(deployment_map, deployment_id)
+    deployment_id = client.prepare_experiment(deployment_map, deployment_id)
 
     # wait for deployment to be prepared
     # wait for pipelines to finish
-    while client.get_deployment_status(deployment_id) != ExperimentStatus.READY:
+    while client.get_experiment_status(deployment_id) != ExperimentStatus.READY:
         time.sleep(1)
 
     # start executing
     client.start_execution(deployment_id)
 
     # wait for pipelines to finish
-    while client.get_deployment_status(deployment_id) != ExperimentStatus.FINISHED:
+    while client.get_experiment_status(deployment_id) != ExperimentStatus.FINISHED:
         time.sleep(1)
 
     # get results
-    results = client.get_deployment_result(deployment_id)
+    results = client.get_experiment_result(deployment_id)
     print(results)
 
 

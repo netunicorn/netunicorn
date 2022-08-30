@@ -33,6 +33,6 @@ pipeline2.environment_definition.commands = []
 dmap.append(a, pipeline1)
 dmap.append(b, pipeline2)
 
-client.prepare_deployment(dmap, 'test')
-client.get_deployment_status('test')
+client.prepare_experiment(dmap, 'test')
+client.get_experiment_status('test')
 client.start_execution('test')
