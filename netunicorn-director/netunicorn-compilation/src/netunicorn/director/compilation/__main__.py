@@ -2,8 +2,6 @@ import os
 import pickle
 import subprocess
 import re
-import redis.asyncio as redis
-import logging
 
 from collections.abc import Iterable
 from base64 import b64decode
@@ -13,21 +11,12 @@ from pydantic import BaseModel
 import uvicorn
 
 from netunicorn.base.environment_definitions import EnvironmentDefinition, DockerImage
+from netunicorn.director.base.resources import get_logger, redis_connection
 
-
-# TODO: extract to netunicorn-director-base or something
-_name = 'netunicorn.director.compiler'
-logger = logging.getLogger(_name)
-logger.addHandler(logging.FileHandler(f'{_name}.log'))
-logger.setLevel(logging.INFO)
-
-REDIS_IP = os.environ.get('PINOT_REDIS_IP', '127.0.0.1')
-REDIS_PORT = int(os.environ.get('PINOT_REDIS_PORT', '6379'))
-logger.info(f"Connecting to Redis on {REDIS_IP}:{REDIS_PORT}")
-redis_connection = redis.Redis(host=REDIS_IP, port=REDIS_PORT, db=0)
+logger = get_logger('netunicorn.director.compiler')
 
 app = FastAPI()
-docker_registry_url = os.environ.get('NETUNICORN_DOCKER_REGISTRY_URL', 'pinot.cs.ucsb.edu')  # TODO: change for milestone 0.2
+docker_registry_url = os.environ['NETUNICORN_DOCKER_REGISTRY_URL']  # required
 
 
 class CompilationRequest(BaseModel):
@@ -48,7 +37,8 @@ async def docker_compilation(request: CompilationRequest, background_tasks: Back
     if not isinstance(environment_definition, DockerImage):
         raise ValueError(f'Environment definition is not an instance of DockerImage')
 
-    background_tasks.add_task(docker_compilation_task, request.uid, request.architecture, environment_definition, b64decode(request.pipeline))
+    background_tasks.add_task(docker_compilation_task, request.uid, request.architecture, environment_definition,
+                              b64decode(request.pipeline))
     return {"result": "success"}
 
 

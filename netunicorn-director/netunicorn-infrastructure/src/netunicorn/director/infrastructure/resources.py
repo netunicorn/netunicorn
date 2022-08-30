@@ -1,20 +1,9 @@
 import os
-import os as _os
-import logging as _logging
-import redis.asyncio as _redis
+from netunicorn.director.base.resources import get_logger, redis_connection
 
 # set logger
-_logging.basicConfig(level=_logging.INFO)
-_name = 'netunicorn.director.infrastructure'
-logger = _logging.getLogger(_name)
-logger.addHandler(_logging.FileHandler(f'{_name}.log'))
-logger.setLevel(_logging.INFO)
-
-# connect to redis
-REDIS_IP = _os.environ.get('NETUNICORN_REDIS_IP', '127.0.0.1')
-REDIS_PORT = int(_os.environ.get('NETUNICORN_REDIS_PORT', '6379'))
-logger.info(f"Connecting to Redis on {REDIS_IP}:{REDIS_PORT}")
-redis_connection = _redis.Redis(host=REDIS_IP, port=REDIS_PORT, db=0)
+logger = get_logger('netunicorn.director.infrastructure')
+redis_connection = redis_connection
 
 # gateway IP and port
 # no alternatives, this variable should be defined explicitly to allow minions to connect to the gateway

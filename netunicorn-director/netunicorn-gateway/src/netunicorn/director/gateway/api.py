@@ -2,31 +2,20 @@
 Small fast Executor API that goes to state holder (Redis) and returns to executors pipelines, events, or stores results
 """
 import os
-import logging
 from typing import Optional
 from base64 import b64encode, b64decode
-
-import redis.asyncio as redis
-
 from fastapi import FastAPI, Response
+
+from netunicorn.director.base.resources import get_logger, redis_connection
 
 from .api_types import PipelineResult
 
-_name = 'netunicorn.director.gateway'
-logger = logging.getLogger(_name)
-logger.addHandler(logging.FileHandler(f'{_name}.log'))
-logger.setLevel(logging.INFO)
-
-app = FastAPI()
-
+logger = get_logger('netunicorn.director.gateway')
 GATEWAY_IP = os.environ.get('PINOT_GATEWAY_IP', '0.0.0.0')
 GATEWAY_PORT = int(os.environ.get('PINOT_GATEWAY_PORT', '26512'))
 logger.info(f"Starting gateway on {GATEWAY_IP}, {GATEWAY_PORT}")
 
-REDIS_IP = os.environ.get('PINOT_REDIS_IP', '127.0.0.1')
-REDIS_PORT = int(os.environ.get('PINOT_REDIS_PORT', '6379'))
-logger.info(f"Connecting to Redis on {REDIS_IP}:{REDIS_PORT}")
-redis_connection = redis.Redis(host=REDIS_IP, port=REDIS_PORT, db=0)
+app = FastAPI()
 
 
 @app.on_event("startup")
