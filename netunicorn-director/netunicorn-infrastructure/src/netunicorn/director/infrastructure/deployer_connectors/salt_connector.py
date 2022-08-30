@@ -112,9 +112,9 @@ class SaltConnector(Connector):
                     deployment.minion.name,
                     'cmd.run',
                     [(f'docker run --rm -d '
-                      f'-e PINOT_EXECUTOR_ID={executor_id} '
-                      f'-e PINOT_GATEWAY_IP={GATEWAY_IP} '
-                      f'-e PINOT_GATEWAY_PORT={GATEWAY_PORT} '
+                      f'-e NETUNICORN_EXECUTOR_ID={executor_id} '
+                      f'-e NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
+                      f'-e NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
                       f'{deployment.environment_definition.image}',)],
                     full_return=True,
                 ))
@@ -123,10 +123,10 @@ class SaltConnector(Connector):
                     self.local.cmd_async,
                     deployment.minion.name,
                     'cmd.run',
-                    [(f'PINOT_EXECUTOR_ID={executor_id} '
-                      f'PINOT_GATEWAY_IP={GATEWAY_IP} '
-                      f'PINOT_GATEWAY_PORT={GATEWAY_PORT} '
-                      f'python3 -m pinot.executor.executor',)],
+                    [(f'NETUNICORN_EXECUTOR_ID={executor_id} '
+                      f'NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
+                      f'NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
+                      f'python3 -m netunicorn.executor',)],
                     full_return=True,
                 ))
             else:

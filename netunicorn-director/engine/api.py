@@ -97,8 +97,8 @@ async def start_web_server() -> NoReturn:
     app = web.Application()
     app.add_routes(routes)
 
-    address = os.environ.get('PINOT_ENGINE_IP') or '0.0.0.0'
-    port = int(os.environ.get('PINOT_ENGINE_PORT') or '26511')
+    address = os.environ.get('NETUNICORN_ENGINE_IP') or '0.0.0.0'
+    port = int(os.environ.get('NETUNICORN_ENGINE_PORT') or '26511')
     logger.info(f"Starting engine on {address}:{port}")
 
     runner = web.AppRunner(app)

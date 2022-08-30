@@ -61,10 +61,10 @@ class MininetConnector:
                 host.waiting = False
                 await loop.run_in_executor(None, functools.partial(
                     host.sendCmd,
-                    f'PINOT_EXECUTOR_ID={executor_id} '
-                    f'PINOT_GATEWAY_IP={GATEWAY_IP} '
-                    f'PINOT_GATEWAY_PORT={GATEWAY_PORT} '
-                    f'python3 -m pinot.executor.executor'
+                    f'NETUNICORN_EXECUTOR_ID={executor_id} '
+                    f'NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
+                    f'NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
+                    f'python3 -m netunicorn.executor'
                 ))
             else:
                 logger.error(f'Unknown environment definition: {deployment.environment_definition}')

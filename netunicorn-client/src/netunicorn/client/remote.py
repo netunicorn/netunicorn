@@ -16,7 +16,7 @@ class RemoteClientException(Exception):
 class RemoteClient(BaseClient):
     def __init__(self, host: str, port: int, login: str, password: str):
         """
-        Remote client for Pinot.
+        Remote client for Unicorn.
         :param host: Engine host.
         :param port: Engine port.
         :param login: Your login.

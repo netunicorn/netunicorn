@@ -35,9 +35,9 @@ class PipelineExecutorState(Enum):
 class PipelineExecutor:
     def __init__(self, executor_id: str = None, gateway_ip: str = None, gateway_port: int = None):
         # load up our own ID and the local communicator info
-        self.dir_ip: str = gateway_ip or os.environ["PINOT_GATEWAY_IP"]
-        self.dir_port: int = int(gateway_port or os.environ.get("PINOT_GATEWAY_PORT") or "26512")
-        self.executor_id: str = executor_id or os.environ.get("PINOT_EXECUTOR_ID") or "Unknown"
+        self.dir_ip: str = gateway_ip or os.environ["NETUNICORN_GATEWAY_IP"]
+        self.dir_port: int = int(gateway_port or os.environ.get("NETUNICORN_GATEWAY_PORT") or "26512")
+        self.executor_id: str = executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
 
         self.logfile_name = f'executor_{executor_id}.log'
         self.print_file = open(self.logfile_name, "at")

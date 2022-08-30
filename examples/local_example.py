@@ -49,5 +49,5 @@ def main():
 if __name__ == '__main__':
     # Unfortunately, as we use multiprocessing for LocalClient, you have to guard your main file with __main__ statement
     # It's a restriction of Python's multiprocessing module
-    # You can safely use interactive mode for RemoteClient with real PINOT installation
+    # You can safely use interactive mode for RemoteClient with real NETUNICORN installation
     main()

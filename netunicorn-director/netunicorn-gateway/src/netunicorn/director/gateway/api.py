@@ -11,8 +11,8 @@ from netunicorn.director.base.resources import get_logger, redis_connection
 from .api_types import PipelineResult
 
 logger = get_logger('netunicorn.director.gateway')
-GATEWAY_IP = os.environ.get('PINOT_GATEWAY_IP', '0.0.0.0')
-GATEWAY_PORT = int(os.environ.get('PINOT_GATEWAY_PORT', '26512'))
+GATEWAY_IP = os.environ.get('NETUNICORN_GATEWAY_IP', '0.0.0.0')
+GATEWAY_PORT = int(os.environ.get('NETUNICORN_GATEWAY_PORT', '26512'))
 logger.info(f"Starting gateway on {GATEWAY_IP}, {GATEWAY_PORT}")
 
 app = FastAPI()
