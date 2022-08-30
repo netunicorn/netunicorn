@@ -2,6 +2,9 @@ import os
 import pickle
 import subprocess
 import re
+import redis.asyncio as redis
+import logging
+
 from collections.abc import Iterable
 from base64 import b64decode
 
@@ -10,6 +13,18 @@ from pydantic import BaseModel
 import uvicorn
 
 from netunicorn.base.environment_definitions import EnvironmentDefinition, DockerImage
+
+
+# TODO: extract to netunicorn-director-base or something
+_name = 'netunicorn.director.compiler'
+logger = logging.getLogger(_name)
+logger.addHandler(logging.FileHandler(f'{_name}.log'))
+logger.setLevel(logging.INFO)
+
+REDIS_IP = os.environ.get('PINOT_REDIS_IP', '127.0.0.1')
+REDIS_PORT = int(os.environ.get('PINOT_REDIS_PORT', '6379'))
+logger.info(f"Connecting to Redis on {REDIS_IP}:{REDIS_PORT}")
+redis_connection = redis.Redis(host=REDIS_IP, port=REDIS_PORT, db=0)
 
 app = FastAPI()
 docker_registry_url = os.environ.get('NETUNICORN_DOCKER_REGISTRY_URL', 'pinot.cs.ucsb.edu')  # TODO: change for milestone 0.2
@@ -107,8 +122,8 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
 
 
 def record_compilation_result(uid: str, success: bool, log: str) -> None:
-    print(f'{uid}: {success}')
-    print(log)
+    result = pickle.dumps((success, log))
+    await redis_connection.set(f"experiment:compilation:{uid}", result)
     return
 
 
