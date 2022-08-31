@@ -1,23 +1,41 @@
 import asyncio
 from typing import Union, Optional, Dict, Tuple
+from pickle import dumps, loads
 
-from cloudpickle import dumps, loads
+from netunicorn.base.minions import MinionPool, Minion
+from netunicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
+from netunicorn.director.base.resources import redis_connection, get_logger
+from .preprocessors import deployment_preprocessors
 
-from unicorn.base.minions import MinionPool, Minion
-from unicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
-from unicorn.director.engine.resources import redis_connection, logger
-from unicorn.director.engine.config import deployer_connector
-from unicorn.director.engine.compiler import compile_deployment
-from unicorn.director.engine.preprocessors import deployment_preprocessors
-
-
-async def get_minion_pool(credentials: (str, str)) -> MinionPool:
-    # TODO: check credentials and modify minion pool depending on user permissions
-    return await deployer_connector.get_minion_pool()
+logger = get_logger('netunicorn.director.mediator')
 
 
-async def prepare_deployment(credentials: (str, str), deployment_map: Experiment, deployment_id: str) -> str:
-    login, password = credentials
+async def get_minion_pool() -> MinionPool:
+    raise NotImplementedError()
+
+
+async def prepare_experiment_task(experiment_id: str, experiment: Experiment) -> None:
+    pass
+
+
+async def start_experiment_task(experiment_id: str) -> None:
+    pass
+
+
+async def get_experiment_status(experiment_id: str) -> Tuple[ExperimentStatus, Optional[Experiment]]:
+    raise NotImplementedError()
+
+
+async def get_experiment_result(experiment_id: str) -> Tuple[
+        ExperimentStatus,
+        Union[Dict[str, ExperimentExecutionResult], Exception]
+    ]:
+    raise NotImplementedError()
+
+
+
+async def prepare_deployment(deployment_map: Experiment, deployment_id: str) -> str:
+    raise NotImplementedError()
 
     # if deployment is already in progress - return deployment_id
     result = await redis_connection.exists(f"{login}:deployment:{deployment_id}")
@@ -35,7 +53,9 @@ async def prepare_deployment(credentials: (str, str), deployment_map: Experiment
     return deployment_id
 
 
-async def start_execution(credentials: (str, str), deployment_id: str) -> Union[Exception, str]:
+async def start_execution(deployment_id: str) -> Union[Exception, str]:
+    raise NotImplementedError()
+
     login, password = credentials
     content = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
     result: Optional[ExperimentStatus] = loads(content) if content else None
@@ -54,13 +74,15 @@ async def start_execution(credentials: (str, str), deployment_id: str) -> Union[
     return deployment_id
 
 
-async def compile_and_call_prepare(credentials: (str, str), deployment_map: Experiment, deployment_id: str) -> None:
+async def compile_and_call_prepare(deployment_map: Experiment, deployment_id: str) -> None:
+    raise NotImplementedError()
+
     login, password = credentials
     for deployment in deployment_map:
         await compile_deployment(credentials, deployment_id, deployment)
 
     try:
-        await deployer_connector.prepare_deployment(credentials, deployment_map, deployment_id)
+        await deployer_connector.prepare_experiment(credentials, deployment_map, deployment_id)
         await redis_connection.set(f"{login}:deployment:{deployment_id}", dumps(deployment_map))
         await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(ExperimentStatus.READY))
     except Exception as e:
@@ -71,6 +93,8 @@ async def compile_and_call_prepare(credentials: (str, str), deployment_map: Expe
 
 
 async def deploy_and_start_watcher(credentials: (str, str), deployment_map: Experiment, deployment_id: str) -> None:
+    raise NotImplementedError()
+
     login, password = credentials
     result = await deployer_connector.start_execution(login, deployment_map, deployment_id)
     await deployment_watcher(credentials, deployment_id, result)
@@ -79,6 +103,8 @@ async def deploy_and_start_watcher(credentials: (str, str), deployment_map: Expe
 async def get_deployment_status(
         credentials: (str, str), deployment_id: str
 ) -> Tuple[ExperimentStatus, Optional[Experiment]]:
+    raise NotImplementedError()
+
     login, password = credentials
     content = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
     result: Optional[ExperimentStatus] = loads(content) if content else None
@@ -98,6 +124,8 @@ async def get_deployment_result(
         credentials: (str, str),
         deployment_id: str
 ) -> Tuple[ExperimentStatus, Union[Dict[str, ExperimentExecutionResult], Exception]]:
+    raise NotImplementedError()
+
     login, password = credentials
     status = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
     status = loads(status) if status else ExperimentStatus.UNKNOWN
@@ -119,6 +147,8 @@ async def deployment_watcher(credentials: (str, str), deployment_id: str, execut
     """
     This function monitors deployment status, collect results
     """
+
+    raise NotImplementedError()
     if not executors:
         logger.error(f"Executor list is empty! Deployment <{deployment_id}> is not started.")
 

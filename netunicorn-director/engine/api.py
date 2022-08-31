@@ -12,34 +12,9 @@ import unicorn.director.engine.engine as engine
 routes = web.RouteTableDef()
 
 
-def parse_credentials(headers: Mapping) -> (str, str):
-    """
-    Parse credentials from Authorization header
-    :param headers: request headers
-    :return: (username, password)
-    """
-    try:
-        if 'Authorization' not in headers:
-            raise web.HTTPUnauthorized()
-
-        credentials_string = headers['Authorization'].split(' ')[1]
-        credentials = base64.b64decode(credentials_string).decode('utf-8').split(':', maxsplit=1)
-        login, password = credentials
-        return login, password
-    except Exception as e:
-        logger.exception(f"Failed to parse credentials: {e}")
-        raise web.HTTPUnauthorized()
 
 
-@routes.get("/api/v1/minion_pool")
-async def get_minion_pool(request: web.Request):
-    """
-    This method should return description of minions from a deployer
-    """
 
-    credentials = parse_credentials(request.headers)
-    result = await engine.get_minion_pool(credentials)
-    return web.Response(body=cloudpickle.dumps(result), status=200)
 
 
 @routes.post("/api/v1/deployment/{deployment_id}/prepare")
