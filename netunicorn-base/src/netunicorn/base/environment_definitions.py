@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import platform
 
 
 @dataclass
 class EnvironmentDefinition:
-    commands: Optional[list[str]] = []
+    commands: Optional[list[str]] = field(default_factory=list)
 
     def __hash__(self):
         return hash(tuple(self.commands))
