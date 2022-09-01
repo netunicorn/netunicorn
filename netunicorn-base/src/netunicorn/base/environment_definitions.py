@@ -6,7 +6,7 @@ import platform
 
 @dataclass
 class EnvironmentDefinition:
-    commands: Optional[list[str]] = None
+    commands: Optional[list[str]] = []
 
     def __hash__(self):
         return hash(tuple(self.commands))
