@@ -28,7 +28,7 @@ class CompilationRequest(BaseModel):
 
 @app.post("/compile/shell")
 async def shell_compilation(request: CompilationRequest):
-    raise NotImplementedError()
+    record_compilation_result(request.uid, True, 'Shell environments do not require compilation.')
 
 
 @app.post("/compile/docker")

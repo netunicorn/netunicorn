@@ -2,17 +2,24 @@ import os
 from pickle import loads, dumps
 
 import uvicorn
-from fastapi import FastAPI, Response, BackgroundTasks
-from netunicorn.base.experiment import Experiment
+from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request
+from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
+from netunicorn.base.experiment import Experiment
 from netunicorn.director.base.resources import get_logger, redis_connection
 
-from .engine import get_minion_pool, prepare_experiment_task, start_experiment_task, get_experiment_status, \
-    get_experiment_result
+from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status
 
 logger = get_logger('netunicorn.director.gateway')
 
 app = FastAPI()
+security = HTTPBasic()
+
+
+@app.exception_handler(Exception)
+async def unicorn_exception_handler(_: Request, exc: Exception):
+    logger.exception(exc)
+    return Response(status_code=500, content=str(exc))
 
 
 @app.on_event("startup")
@@ -28,51 +35,33 @@ async def on_shutdown():
 
 
 @app.get("/api/v1/minion_pool", status_code=200)
-async def minion_pool():
-    try:
-        return await get_minion_pool()
-    except Exception as e:
-        logger.exception(e)
-        return Response(status_code=500, content=str(e))
+async def minion_pool_handler(credentials: HTTPBasicCredentials = Depends(security)):
+    return await get_minion_pool(credentials.username)
 
 
-@app.post("/api/v1/experiment/{experiment_id}/prepare", status_code=200)
-async def prepare_experiment(experiment_id: str, experiment: bytes, background_tasks: BackgroundTasks):
-    try:
-        experiment = loads(experiment)
-        if not isinstance(experiment, Experiment):
-            logger.debug(experiment)
-            raise Exception(f"Invalid payload provided of type {type(experiment)}")
+@app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
+async def prepare_experiment_handler(
+        experiment_name: str, experiment: bytes,
+        background_tasks: BackgroundTasks, credentials: HTTPBasicCredentials = Depends(security)
+):
+    experiment = loads(experiment)
+    if not isinstance(experiment, Experiment):
+        logger.debug(experiment)
+        raise Exception(f"Invalid payload provided of type {type(experiment)}")
 
-        background_tasks.add_task(prepare_experiment_task, experiment_id, experiment)
-        return experiment_id
-    except Exception as e:
-        logger.exception(e)
-        return Response(status_code=500, content=str(e))
-
-
-@app.post("/api/v1/experiment/{experiment_id}/start", status_code=200)
-async def start_experiment(experiment_id: str, background_tasks: BackgroundTasks):
-    background_tasks.add_task(start_experiment_task, experiment_id)
-    return experiment_id
+    background_tasks.add_task(prepare_experiment_task, experiment_name, experiment, credentials.username)
+    return experiment_name
 
 
-@app.get("/api/v1/experiment/{experiment_id}", status_code=200)
-async def experiment_status(experiment_id: str):
-    try:
-        return dumps(await get_experiment_status(experiment_id))
-    except Exception as e:
-        logger.exception(e)
-        return Response(status_code=500, content=str(e))
+@app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
+async def start_experiment_handler(experiment_name: str, credentials: HTTPBasicCredentials = Depends(security)):
+    await start_experiment(experiment_name, credentials.username)
+    return experiment_name
 
 
-@app.get("/api/v1/experiment/{experiment_id}/result", status_code=200)
-async def experiment_result(experiment_id: str):
-    try:
-        return dumps(await get_experiment_result(experiment_id))
-    except Exception as e:
-        logger.exception(e)
-        return Response(status_code=500, content=str(e))
+@app.get("/api/v1/experiment/{experiment_name}", status_code=200)
+async def experiment_status_handler(experiment_name: str, credentials: HTTPBasicCredentials = Depends(security)):
+    return dumps(await get_experiment_status(experiment_name, credentials.username))
 
 
 if __name__ == '__main__':

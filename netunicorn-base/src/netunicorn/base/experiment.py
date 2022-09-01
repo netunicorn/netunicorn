@@ -78,3 +78,6 @@ class ExperimentExecutionResult:
     minion: Minion
     pipeline: Pipeline
     result: Result[PipelineResult, PipelineResult]
+
+
+SerializedExperimentExecutionResult = bytes

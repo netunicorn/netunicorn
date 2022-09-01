@@ -88,8 +88,11 @@ class SaltConnector(Connector):
         # get experiment from redis
         data = await redis_connection.get(f"experiment:{experiment_id}")
         if not data:
+            exception = Exception(f"Experiment {experiment_id} not found")
             await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
-            logger.error(f"Experiment {experiment_id} not found")
+            await redis_connection.set(f"experiment:{experiment_id}:result", dumps(exception))
+            logger.exception(exception)
+            return
         experiment: Experiment = loads(data)
 
         # stage 2: make every minion to start corresponding environment

@@ -27,15 +27,6 @@ class BaseClient:
         """
         raise NotImplementedError()
 
-    def get_experiment_status(self, experiment_id: str) -> Tuple[ExperimentStatus, Optional[Experiment]]:
-        """
-        Returns status of experiment.
-        If experiment preparation succeed, you can explore map to see what minions are prepared for deployment.
-        :param experiment_id: id of the deployment returned by 'deploy_map' function
-        :return: current status of deployment
-        """
-        raise NotImplementedError()
-
     def start_execution(self, experiment_id: str) -> str:
         """
         Starts execution of prepared deployment map.
@@ -50,13 +41,20 @@ class BaseClient:
         """
         raise NotImplementedError()
 
-    def get_experiment_result(self, experiment_id: str) -> Tuple[
+    def get_experiment_status(self, experiment_id: str) -> Tuple[
         ExperimentStatus,
-        Union[Dict[str, ExperimentExecutionResult], Exception]
+        Optional[Experiment],
+        Union[
+            None,
+            Exception,
+            Dict[str, ExperimentExecutionResult]
+        ]
     ]:
         """
-        Returns result of the deployment execution.
-        :param experiment_id: id of the deployment returned by 'deploy_map' function
-        :return: status of deployment and result dict with executor ids as keys and DeploymentExecutionResult as values
+        Returns status and results of experiment.
+        If experiment preparation succeed, you can explore map to see what minions are prepared for deployment.
+        If experiment finished, you can explore results of the experiment
+        :param experiment_id: id of the experiment returned by 'deploy_map' function
+        :return: current status of the experiment, optionally experiment definition, optionally experiment results
         """
         raise NotImplementedError()

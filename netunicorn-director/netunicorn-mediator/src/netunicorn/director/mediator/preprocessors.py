@@ -8,7 +8,7 @@ This module allows to add external preprocessors.
 
 from netunicorn.base.experiment import Experiment
 
-deployment_preprocessors = []
+experiment_preprocessors = []
 
 
 class BasePreprocessor:

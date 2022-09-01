@@ -19,7 +19,7 @@ class DeploymentStartRequest(BaseModel):
 
 @app.get("/minions")
 async def get_minion_pool():
-    return await connector.get_minion_pool()
+    return pickle.dumps(await connector.get_minion_pool())
 
 
 @app.post("/start_deployment")
@@ -29,7 +29,7 @@ async def start_deployment(data: DeploymentStartRequest, background_tasks: Backg
     return {"result": "success"}
 
 
-@app.post("/start_execution")
+@app.post("/start_execution/{uid}")
 async def start_execution(uid: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(connector.start_execution, uid)
     return {"result": "success"}

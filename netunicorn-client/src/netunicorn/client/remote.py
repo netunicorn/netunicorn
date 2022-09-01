@@ -1,4 +1,6 @@
 import pickle
+
+import cloudpickle
 import requests as req
 from typing import Dict, Union, Tuple, Optional
 
@@ -63,25 +65,26 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content}"
         )
 
-    def get_experiment_status(self, experiment_id: str) -> Tuple[ExperimentStatus, Optional[Experiment]]:
+    def get_experiment_status(self, experiment_id: str) -> Tuple[
+        ExperimentStatus,
+        Optional[Experiment],
+        Union[
+            None,
+            Exception,
+            Dict[str, ExperimentExecutionResult]
+        ]
+    ]:
         result = req.get(f"{self.base_url}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
         if result.status_code == 200:
-            return pickle.loads(result.content)
+            result = pickle.loads(result.content)
+            if not (isinstance(result, tuple) and len(result) == 3):
+                raise RemoteClientException(f"Invalid response from the server. Result: {result}")
+            if isinstance(result[2], dict):
+                data = {k: cloudpickle.loads(v) for k, v in result[3].items()}
+                result = (result[0], result[1], data)
+            return result
 
         raise RemoteClientException(
             "Failed to get experiment status. "
-            f"Status code: {result.status_code}, content: {result.content}"
-        )
-
-    def get_experiment_result(self, experiment_id: str) -> Tuple[
-        ExperimentStatus,
-        Union[Dict[str, ExperimentExecutionResult], Exception]
-    ]:
-        result = req.get(f"{self.base_url}/api/v1/experiment/{experiment_id}/result", auth=(self.login, self.password))
-        if result.status_code == 200:
-            return pickle.loads(result.content)
-
-        raise RemoteClientException(
-            "Failed to get experiment result. "
             f"Status code: {result.status_code}, content: {result.content}"
         )

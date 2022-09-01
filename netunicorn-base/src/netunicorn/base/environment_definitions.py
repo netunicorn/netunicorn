@@ -7,7 +7,9 @@ import platform
 @dataclass
 class EnvironmentDefinition:
     commands: Optional[list[str]] = None
-    pass
+
+    def __hash__(self):
+        return hash(tuple(self.commands))
 
 
 class ShellExecution(EnvironmentDefinition):
@@ -24,3 +26,9 @@ class DockerImage(EnvironmentDefinition):
     """
     image: Optional[str] = None
     python_version: str = platform.python_version()
+
+    def __hash__(self):
+        if self.image:
+            return hash(self.image)
+
+        return hash((self.python_version, tuple(self.commands)))
