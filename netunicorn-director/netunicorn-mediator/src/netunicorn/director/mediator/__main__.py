@@ -16,6 +16,11 @@ app = FastAPI()
 security = HTTPBasic()
 
 
+async def parse_body(request: Request):
+    data: bytes = await request.body()
+    return data
+
+
 @app.exception_handler(Exception)
 async def unicorn_exception_handler(_: Request, exc: Exception):
     logger.exception(exc)
@@ -41,8 +46,10 @@ async def minion_pool_handler(credentials: HTTPBasicCredentials = Depends(securi
 
 @app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
 async def prepare_experiment_handler(
-        experiment_name: str, experiment: bytes,
-        background_tasks: BackgroundTasks, credentials: HTTPBasicCredentials = Depends(security)
+        experiment_name: str,
+        background_tasks: BackgroundTasks,
+        experiment: bytes = Depends(parse_body),
+        credentials: HTTPBasicCredentials = Depends(security)
 ):
     experiment = loads(experiment)
     if not isinstance(experiment, Experiment):
