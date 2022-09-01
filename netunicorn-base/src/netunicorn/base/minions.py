@@ -1,4 +1,4 @@
-from typing import List, Set
+from typing import List
 
 
 class Minion:
@@ -9,9 +9,10 @@ class Minion:
 
     def get_architecture(self) -> str:
         # TODO: temporary for our infrastructure
-        architectures = set(self['architecture'])
-        if 'arm64' in architectures:
-            return 'linux/arm64'
+        if 'architecture' in self.properties:
+            architectures = set(self['architecture'])
+            if 'arm64' in architectures:
+                return 'linux/arm64'
         return "linux/amd64"
 
     def __getitem__(self, item):
