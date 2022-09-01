@@ -36,7 +36,7 @@ async def on_shutdown():
 
 @app.get("/api/v1/minion_pool", status_code=200)
 async def minion_pool_handler(credentials: HTTPBasicCredentials = Depends(security)):
-    return await get_minion_pool(credentials.username)
+    return Response(await get_minion_pool(credentials.username))
 
 
 @app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
@@ -61,7 +61,7 @@ async def start_experiment_handler(experiment_name: str, credentials: HTTPBasicC
 
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(experiment_name: str, credentials: HTTPBasicCredentials = Depends(security)):
-    return dumps(await get_experiment_status(experiment_name, credentials.username))
+    return Response(dumps(await get_experiment_status(experiment_name, credentials.username)))
 
 
 if __name__ == '__main__':
