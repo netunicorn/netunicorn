@@ -4,7 +4,7 @@ from fastapi import FastAPI, BackgroundTasks
 
 from netunicorn.director.base.resources import get_logger, redis_connection
 
-from .engine import watch_experiment_task, deploy_experiment_task
+from .engine import watch_experiment_task
 
 logger = get_logger('netunicorn.director.processor')
 
