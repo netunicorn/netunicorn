@@ -2,7 +2,7 @@ import os
 from pickle import loads, dumps
 
 import uvicorn
-from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request
+from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, Body
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
 from netunicorn.base.experiment import Experiment
@@ -48,7 +48,7 @@ async def minion_pool_handler(credentials: HTTPBasicCredentials = Depends(securi
 async def prepare_experiment_handler(
         experiment_name: str,
         background_tasks: BackgroundTasks,
-        experiment: bytes = Depends(parse_body),
+        experiment: bytes = Body(embed=True),
         credentials: HTTPBasicCredentials = Depends(security)
 ):
     experiment = loads(experiment)
