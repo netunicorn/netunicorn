@@ -47,10 +47,11 @@ async def minion_pool_handler(credentials: HTTPBasicCredentials = Depends(securi
 @app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
 async def prepare_experiment_handler(
         experiment_name: str,
+        request: Request,
         background_tasks: BackgroundTasks,
-        experiment: bytes = Body(embed=True),
         credentials: HTTPBasicCredentials = Depends(security)
 ):
+    experiment = await request.body()
     experiment = loads(experiment)
     if not isinstance(experiment, Experiment):
         logger.debug(experiment)
