@@ -28,7 +28,7 @@ class CompilationRequest(BaseModel):
 
 @app.post("/compile/shell")
 async def shell_compilation(request: CompilationRequest):
-    record_compilation_result(request.uid, True, 'Shell environments do not require compilation.')
+    await record_compilation_result(request.uid, True, 'Shell environments do not require compilation.')
 
 
 @app.post("/compile/docker")
@@ -42,24 +42,24 @@ async def docker_compilation(request: CompilationRequest, background_tasks: Back
     return {"result": "success"}
 
 
-def docker_compilation_task(uid: str, architecture: str, environment_definition: DockerImage, pipeline: bytes) -> None:
+async def docker_compilation_task(uid: str, architecture: str, environment_definition: DockerImage, pipeline: bytes) -> None:
     if environment_definition.image is not None:
-        record_compilation_result(uid, True, f'Image {environment_definition.image} is provided explicitly.')
+        await record_compilation_result(uid, True, f'Image {environment_definition.image} is provided explicitly.')
         return
 
     if architecture not in {'linux/arm64', 'linux/amd64'}:
-        record_compilation_result(uid, False, f"Unknown architecture for docker container: {architecture}")
+        await record_compilation_result(uid, False, f"Unknown architecture for docker container: {architecture}")
         return
 
     match_result = re.fullmatch(r'\d\.\d+\.\d+', environment_definition.python_version)
     if not match_result:
-        record_compilation_result(uid, False, f'Unknown Python version: {environment_definition.python_version}')
+        await record_compilation_result(uid, False, f'Unknown Python version: {environment_definition.python_version}')
         return
     python_version = '.'.join(match_result[0].split('.')[:2])
 
     commands = environment_definition.commands or []
     if not isinstance(commands, Iterable):
-        record_compilation_result(
+        await record_compilation_result(
             uid, False,
             f"Commands list of the environment definition is incorrect. "
             f"Received object: {commands}"
@@ -105,13 +105,13 @@ def docker_compilation_task(uid: str, architecture: str, environment_definition:
         if result is not None:
             log += f'\n{result.stdout.decode()}'
             log += f'\n{result.stderr.decode()}'
-        record_compilation_result(uid, False, log)
+        await record_compilation_result(uid, False, log)
         return
 
-    record_compilation_result(uid, True, result.stdout.decode('utf-8') + '\n' + result.stderr.decode('utf-8'))
+    await record_compilation_result(uid, True, result.stdout.decode('utf-8') + '\n' + result.stderr.decode('utf-8'))
 
 
-def record_compilation_result(uid: str, success: bool, log: str) -> None:
+async def record_compilation_result(uid: str, success: bool, log: str) -> None:
     result = pickle.dumps((success, log))
     await redis_connection.set(f"experiment:compilation:{uid}", result)
     return
