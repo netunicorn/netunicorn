@@ -38,6 +38,12 @@ class Deployment:
 
         self.pipeline = dumps(pipeline)
 
+    def __str__(self):
+        return f"Deployment: Minion={self.minion.name}, executor_id={self.executor_id}, prepared={self.prepared}, pipeline={self.pipeline}"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class Experiment:
     def __init__(self, keep_alive_timeout_minutes: int = 10):
