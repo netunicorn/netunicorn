@@ -29,10 +29,13 @@ class SaltConnector(Connector):
         minions = await loop.run_in_executor(None, functools.partial(self.runner.cmd, 'manage.up', print_event=False))
         return MinionPool([Minion(name=x, properties={}) for x in minions])
 
-    async def start_deployment(
-            self, experiment: Experiment, experiment_id: str
-    ) -> None:
+    async def start_deployment(self, experiment_id: str) -> None:
         loop = asyncio.get_event_loop()
+        experiment_data = await redis_connection.get(f"experiment:{experiment_id}")
+        if experiment_data is None:
+            logger.error(f"Experiment {experiment_id} not found")
+            return
+        experiment: Experiment = loads(experiment_data)
 
         # stage 1: make every minion to create corresponding environment
         # (for docker: download docker image, for bare_metal - execute commands)
@@ -100,6 +103,9 @@ class SaltConnector(Connector):
         for deployment in experiment:
             if not deployment.prepared:
                 # You are not prepared!
+                await redis_connection.set(f"executor:{deployment.executor_id}:result", dumps(
+                    (Failure([Exception("Deployment is not prepared")]), [])
+                ))
                 continue
 
             if await redis_connection.exists(f"executor:{deployment.executor_id}:result"):

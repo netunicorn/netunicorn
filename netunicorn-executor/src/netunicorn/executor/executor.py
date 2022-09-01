@@ -195,7 +195,11 @@ class PipelineExecutor:
             current_log = f.readlines()
 
         results = self.pipeline_results
-        results = pickle.dumps([results, current_log])
+
+        try:
+            results = pickle.dumps([results, current_log])
+        except Exception as e:
+            results = pickle.dumps([e, current_log])
         results = b64encode(results).decode()
         try:
             # TODO: https

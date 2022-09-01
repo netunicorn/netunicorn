@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Union, Optional
+from typing import Tuple, Union, Optional, List
 
 from netunicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
 from netunicorn.base.minions import MinionPool
@@ -47,7 +47,7 @@ class BaseClient:
         Union[
             None,
             Exception,
-            Dict[str, ExperimentExecutionResult]
+            List[ExperimentExecutionResult]
         ]
     ]:
         """

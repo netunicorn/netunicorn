@@ -3,7 +3,7 @@ import multiprocessing.pool
 from functools import wraps
 
 from returns.result import Failure, Success, Result, Any
-from typing import Callable, Union, TypeVar
+from typing import Callable, Union, TypeVar, List
 
 _ValueType = TypeVar("_ValueType", covariant=True)
 _FailureValueType = TypeVar("_FailureValueType", covariant=True)
@@ -14,6 +14,7 @@ _FunctionType = Union[
 ]
 
 SerializedPipelineType = bytes
+LogType = List[str]
 
 
 def safe(function: _FunctionType) -> Union[

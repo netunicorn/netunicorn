@@ -1,12 +1,13 @@
 import asyncio
 import requests as req
 from uuid import uuid4
-from typing import Union, Optional, Dict, Tuple, List
+from typing import Union, Optional, Dict, Tuple
 from pickle import dumps, loads
 
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.minions import MinionPool, Minion
-from netunicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult, Deployment, SerializedExperimentExecutionResult
+from netunicorn.base.minions import MinionPool
+from netunicorn.base.experiment import Experiment, ExperimentStatus, Deployment, \
+    SerializedExperimentExecutionResult
 from netunicorn.director.base.resources import redis_connection
 from .preprocessors import experiment_preprocessors
 from .resources import logger, \
@@ -58,7 +59,8 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
                 # no preparation needed, commands would be executed during deployment stage
                 await redis_connection.set(f"experiment:compilation:{envs[key]}", dumps((True, "")))
             else:
-                await redis_connection.set(f"experiment:compilation:{envs[key]}", dumps((False, f"Unknown environment definition type: {deployment.environment_definition}")))
+                await redis_connection.set(f"experiment:compilation:{envs[key]}", dumps(
+                    (False, f"Unknown environment definition type: {deployment.environment_definition}")))
 
         if isinstance(deployment.environment_definition, DockerImage):
             deployment.environment_definition.image = f"{envs[key]}:latest"
@@ -95,8 +97,33 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
     await redis_connection.set(f"experiment:{experiment_id}:executors", dumps([d.executor_id for d in experiment]))
     await redis_connection.set(f"experiment:{experiment_id}:compilations", dumps(compilation_ids))
 
+    everything_compiled = False
+    while not everything_compiled:
+        await asyncio.sleep(5)
+        logger.debug(f"Waiting for compilation of {compilation_ids}")
+        everything_compiled = all(
+            await redis_connection.exists(f"experiment:compilation:{compilation_id}")
+            for compilation_id in compilation_ids
+        )
+
+    # collect compilation results and set preparation flag for all minions
+    compilation_results: Dict[str, Tuple[bool, str]] = {
+        compilation_id: loads(await redis_connection.get(f"experiment:compilation:{compilation_id}"))
+        for compilation_id in compilation_ids
+    }
+
+    for deployment in experiment:
+        key = (deployment.environment_definition, deployment.pipeline, deployment.minion.get_architecture())
+        compilation_result = compilation_results[envs[key]]
+        deployment.prepared = compilation_result[0]
+        if not compilation_result[0]:
+            deployment.error = Exception(compilation_result[1])
+
+    await redis_connection.set(f"experiment:{experiment_id}", dumps(experiment))
+
+    # start deployment of environments
     try:
-        url = f"http://{NETUNICORN_PROCESSOR_IP}:{NETUNICORN_PROCESSOR_PORT}/deploy/{experiment_id}"
+        url = f"http://{NETUNICORN_INFRASTRUCTURE_IP}:{NETUNICORN_INFRASTRUCTURE_PORT}/start_deployment/{experiment_id}"
         req.post(url, timeout=30).raise_for_status()
     except Exception as e:
         logger.exception(e)
@@ -104,7 +131,6 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         await redis_connection.set(f"experiment:{experiment_id}:result", dumps(
             f"Error occurred during deployment, ask administrator for details. \n{e}"
         ))
-        return
 
 
 async def get_experiment_status(experiment_name: str, username: str) -> Tuple[
@@ -132,55 +158,3 @@ async def start_experiment(experiment_name: str, username: str) -> None:
 
     url = f"http://{NETUNICORN_PROCESSOR_IP}:{NETUNICORN_PROCESSOR_PORT}/watch_experiment/{experiment_id}"
     req.post(url, timeout=30).raise_for_status()
-
-
-
-async def deployment_watcher(credentials: (str, str), deployment_id: str, executors: Dict[str, Minion]) -> None:
-    """
-    This function monitors deployment status, collect results
-    """
-
-    raise NotImplementedError()
-    if not executors:
-        logger.error(f"Executor list is empty! Deployment <{deployment_id}> is not started.")
-
-    login, password = credentials
-    await redis_connection.set(f"{login}:deployment:{deployment_id}:result", dumps({}))
-    while True:
-        status = await redis_connection.get(f"{login}:deployment:{deployment_id}:status")
-        status = loads(status) if status else ExperimentStatus.UNKNOWN
-        if status in {None, ExperimentStatus.UNKNOWN, ExperimentStatus.PREPARING}:
-            await redis_connection.set(
-                f"{login}:deployment:{deployment_id}:result",
-                dumps(Exception(f"Deployment {deployment_id} is in unexpected status <{status}>. "
-                                f"See administrative logs for details."))
-            )
-            break
-
-        # finishing condition - all executors reported results OR died
-        # TODO: implement keep-alive for executors!
-        exs = await redis_connection.exists(*(f"executor:{executor_id}:result" for executor_id in executors))
-        if exs >= len(executors):  # TODO: not all, but only initially ready to execute
-            status = ExperimentStatus.FINISHED
-            await redis_connection.set(f"{login}:deployment:{deployment_id}:status", dumps(status))
-
-        deployment_result = await redis_connection.get(f"{login}:deployment:{deployment_id}:result")
-        deployment_result = (loads(deployment_result) if deployment_result else {}) or {}
-        for (executor_id, (minion, pipeline)) in executors.items():
-            if not await redis_connection.exists(f"executor:{executor_id}:result"):
-                continue
-            result = await redis_connection.get(f"executor:{executor_id}:result")
-            result = loads(result) if result else None
-            deployment_result[executor_id] = ExperimentExecutionResult(minion=minion, result=result, pipeline=pipeline)
-        await redis_connection.set(f"{login}:deployment:{deployment_id}:result", dumps(deployment_result))
-
-        if status == ExperimentStatus.FINISHED:
-            # clean up
-            for executor_id in executors:
-                await redis_connection.delete(f"executor:{executor_id}:result")
-                await redis_connection.delete(f"executor:{executor_id}:pipeline")
-            await redis_connection.delete(f"{login}:deployment:{deployment_id}")
-            break
-
-        await asyncio.sleep(10)
-    pass

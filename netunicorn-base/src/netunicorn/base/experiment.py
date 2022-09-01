@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from enum import Enum
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional, Tuple
 from dataclasses import dataclass
 from cloudpickle import dumps
 
@@ -11,7 +11,7 @@ from returns.result import Result
 from .minions import Minion
 from .pipeline import Pipeline, PipelineResult
 from .task import TaskDispatcher
-from .utils import SerializedPipelineType
+from .utils import SerializedPipelineType, LogType
 
 
 class ExperimentStatus(Enum):
@@ -77,7 +77,7 @@ class Experiment:
 class ExperimentExecutionResult:
     minion: Minion
     pipeline: Pipeline
-    result: Result[PipelineResult, PipelineResult]
+    result: Tuple[Result[PipelineResult, PipelineResult], LogType]
 
 
 SerializedExperimentExecutionResult = bytes
