@@ -27,12 +27,12 @@ async def find_experiment_id_and_status_by_name(experiment_name: str, username: 
     return experiment_id, status
 
 
-async def get_minion_pool(username: str) -> MinionPool:
+async def get_minion_pool(username: str) -> bytes:
     url = f"http://{NETUNICORN_INFRASTRUCTURE_IP}:{NETUNICORN_INFRASTRUCTURE_PORT}/minions"
 
     result = req.get(url, timeout=30)
     result.raise_for_status()
-    return loads(result.content)
+    return result.content
 
 
 async def prepare_experiment_task(experiment_name: str, experiment: Experiment, username: str) -> None:
