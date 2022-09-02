@@ -16,4 +16,6 @@ NETUNICORN_PROCESSOR_PORT = int(os.environ.get('NETUNICORN_PROCESSOR_PORT', '265
 logger.info(f"Using infrastructure service at: {NETUNICORN_PROCESSOR_IP}:{NETUNICORN_PROCESSOR_PORT}")
 
 DOCKER_REGISTRY_URL = os.environ['NETUNICORN_DOCKER_REGISTRY_URL']  # required
-DOCKER_REGISTRY_URL = DOCKER_REGISTRY_URL.removeprefix("http://").removeprefix("https://").removesuffix("/")
+
+# TODO: enable when mediator layer would work on Python 3.9
+# DOCKER_REGISTRY_URL = DOCKER_REGISTRY_URL.removeprefix("http://").removeprefix("https://").removesuffix("/")

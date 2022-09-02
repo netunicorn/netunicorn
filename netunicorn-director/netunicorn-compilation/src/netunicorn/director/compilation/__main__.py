@@ -92,7 +92,7 @@ async def docker_compilation_task(uid: str, architecture: str, environment_defin
         result = subprocess.run([
             'docker', 'buildx', 'build',
             '--platform', architecture,
-            '-t', f'{environment_definition.image}:latest',
+            '-t', f'{environment_definition.image}',
             '-f', f'{uid}.Dockerfile',
             '--push',
             '.',
