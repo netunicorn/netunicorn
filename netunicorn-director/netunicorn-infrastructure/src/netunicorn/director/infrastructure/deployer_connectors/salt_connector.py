@@ -75,18 +75,9 @@ class SaltConnector(Connector):
             logger.debug(
                 f"Deployment of executor {deployment.executor_id} to minion {deployment.minion}, result: {results}")
 
-            if results and all(len(x) == 0 for x in results):
-                exception = Exception(f"Minion {deployment.minion.name} do not exist or is not responding")
-                logger.exception(exception)
-                logger.debug(f"Deployment: {deployment}")
-                await redis_connection.set(
-                    f"executor:{deployment.executor_id}:result",
-                    dumps(Failure(exception))
-                )
-                continue
-
-            if any(
-                    (isinstance(result, Exception) or
+            if not results or any(
+                    (not result or
+                     isinstance(result, Exception) or
                      not result[deployment.minion.name] or
                      result[deployment.minion.name]['retcode'] != 0)
                     for result in results
