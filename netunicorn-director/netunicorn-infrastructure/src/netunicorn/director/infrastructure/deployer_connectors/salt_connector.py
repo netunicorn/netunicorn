@@ -131,11 +131,11 @@ class SaltConnector(Connector):
 
             try:
                 if isinstance(deployment.environment_definition, DockerImage):
-                    await loop.run_in_executor(None, functools.partial(
+                    result = await loop.run_in_executor(None, functools.partial(
                         self.local.cmd,
                         deployment.minion.name,
                         'cmd.run',
-                        [(f'docker run --rm -d '
+                        [(f'docker run -d '
                           f'-e NETUNICORN_EXECUTOR_ID={executor_id} '
                           f'-e NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
                           f'-e NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
@@ -143,7 +143,7 @@ class SaltConnector(Connector):
                         full_return=True,
                     ))
                 elif isinstance(deployment.environment_definition, ShellExecution):
-                    await loop.run_in_executor(None, functools.partial(
+                    result = await loop.run_in_executor(None, functools.partial(
                         self.local.cmd_async,
                         deployment.minion.name,
                         'cmd.run',
@@ -162,7 +162,7 @@ class SaltConnector(Connector):
                 await redis_connection.set(f"executor:{executor_id}:result", dumps(e))
                 continue
 
-            logger.debug(f"Executor {executor_id} on minion {deployment.minion} started")
+            logger.debug(f"Result of starting executor {executor_id} on minion {deployment.minion}: {result}")
 
         logger.debug(f"Experiment {experiment_id} execution successfully started")
         await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.RUNNING))
