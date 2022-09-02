@@ -36,6 +36,7 @@ class SaltConnector(Connector):
             logger.error(f"Experiment {experiment_id} not found")
             return
         experiment: Experiment = loads(experiment_data)
+        logger.debug(f"Starting deployment of experiment {experiment_id}")
 
         # stage 1: make every minion to create corresponding environment
         # (for docker: download docker image, for bare_metal - execute commands)
@@ -52,18 +53,17 @@ class SaltConnector(Connector):
                     full_return=True
                 ))]
             elif isinstance(deployment.environment_definition, ShellExecution):
-                results = [
-                    await loop.run_in_executor(
-                        None,
-                        functools.partial(
-                            self.local.cmd, deployment.minion.name, 'cmd.run', arg=[(command,)], full_return=True
-                        )
-                    )
-                    for command in deployment.environment_definition.commands
-                ]
+                results = [await loop.run_in_executor(None, functools.partial(
+                    self.local.cmd,
+                    deployment.minion.name,
+                    'cmd.run',
+                    arg=[(command,)],
+                    full_return=True
+                )) for command in deployment.environment_definition.commands]
             else:
                 logger.error(f'Unknown environment definition: {deployment.environment_definition}')
                 continue
+            logger.debug(results)
 
             if results and all(len(x) == 0 for x in results):
                 exception = Exception(f"Minion {deployment.minion.name} do not exist or is not responding")
@@ -82,10 +82,13 @@ class SaltConnector(Connector):
                     f"executor:{deployment.executor_id}:result",
                     dumps(Failure(exception))
                 )
+            logger.debug(f"Deployment {deployment.minion} - {deployment.executor_id} successfully finished")
 
+        logger.debug(f"Experiment {experiment_id} deployment successfully finished")
         await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.READY))
 
     async def start_execution(self, experiment_id: str):
+        logger.debug(f"Starting execution of experiment {experiment_id}")
         loop = asyncio.get_event_loop()
 
         # get experiment from redis
@@ -103,6 +106,7 @@ class SaltConnector(Connector):
         for deployment in experiment:
             if not deployment.prepared:
                 # You are not prepared!
+                logger.debug(f"Deployment with executor {deployment.executor_id} is not prepared, skipping")
                 await redis_connection.set(f"executor:{deployment.executor_id}:result", dumps(
                     (Failure([Exception("Deployment is not prepared")]), [])
                 ))
@@ -142,4 +146,5 @@ class SaltConnector(Connector):
                 logger.error(f'Unknown environment definition: {deployment.environment_definition}')
                 continue
 
+        logger.debug(f"Experiment {experiment_id} execution successfully started")
         await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.RUNNING))
