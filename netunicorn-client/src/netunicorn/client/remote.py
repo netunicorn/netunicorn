@@ -79,6 +79,11 @@ class RemoteClient(BaseClient):
             result = pickle.loads(result.content)
             if not (isinstance(result, tuple) and len(result) == 3):
                 raise RemoteClientException(f"Invalid response from the server. Result: {result}")
+
+            # decode experiment
+            if result[1] is not None:
+                result = (result[0], pickle.loads(result[1]), result[2])
+
             if isinstance(result[2], list):
                 data = [cloudpickle.loads(v) for v in result[2]]
                 result = (result[0], result[1], data)
