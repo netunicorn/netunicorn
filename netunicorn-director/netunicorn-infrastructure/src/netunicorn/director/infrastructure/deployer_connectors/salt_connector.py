@@ -54,6 +54,7 @@ class SaltConnector(Connector):
                         deployment.minion.name,
                         'cmd.run',
                         arg=[(f'docker pull {deployment.environment_definition.image}',)],
+                        timeout=300,
                         full_return=True
                     ))]
                 elif isinstance(deployment.environment_definition, ShellExecution):
@@ -62,6 +63,7 @@ class SaltConnector(Connector):
                         deployment.minion.name,
                         'cmd.run',
                         arg=[(command,)],
+                        timeout=300,
                         full_return=True
                     )) for command in deployment.environment_definition.commands]
                 else:
