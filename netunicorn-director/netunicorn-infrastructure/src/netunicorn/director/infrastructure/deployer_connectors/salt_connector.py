@@ -42,28 +42,38 @@ class SaltConnector(Connector):
         # (for docker: download docker image, for bare_metal - execute commands)
         for deployment in experiment:
             if not deployment.prepared:
+                logger.debug(
+                    f"Skipping deployment of not prepared executor {deployment.executor_id}, minion {deployment.minion}")
                 continue
 
-            if isinstance(deployment.environment_definition, DockerImage):
-                results = [await loop.run_in_executor(None, functools.partial(
-                    self.local.cmd,
-                    deployment.minion.name,
-                    'cmd.run',
-                    arg=[(f'docker pull {deployment.environment_definition.image}',)],
-                    full_return=True
-                ))]
-            elif isinstance(deployment.environment_definition, ShellExecution):
-                results = [await loop.run_in_executor(None, functools.partial(
-                    self.local.cmd,
-                    deployment.minion.name,
-                    'cmd.run',
-                    arg=[(command,)],
-                    full_return=True
-                )) for command in deployment.environment_definition.commands]
-            else:
-                logger.error(f'Unknown environment definition: {deployment.environment_definition}')
-                continue
-            logger.debug(results)
+            results = []
+            try:
+                if isinstance(deployment.environment_definition, DockerImage):
+                    results = [await loop.run_in_executor(None, functools.partial(
+                        self.local.cmd,
+                        deployment.minion.name,
+                        'cmd.run',
+                        arg=[(f'docker pull {deployment.environment_definition.image}',)],
+                        full_return=True
+                    ))]
+                elif isinstance(deployment.environment_definition, ShellExecution):
+                    results = [await loop.run_in_executor(None, functools.partial(
+                        self.local.cmd,
+                        deployment.minion.name,
+                        'cmd.run',
+                        arg=[(command,)],
+                        full_return=True
+                    )) for command in deployment.environment_definition.commands]
+                else:
+                    logger.error(f'Unknown environment definition: {deployment.environment_definition}')
+                    continue
+            except Exception as e:
+                logger.error(
+                    f"Exception during deployment of executor {deployment.executor_id}, minion {deployment.minion}: {e}")
+                results.append(e)
+
+            logger.debug(
+                f"Deployment of executor {deployment.executor_id} to minion {deployment.minion}, result: {results}")
 
             if results and all(len(x) == 0 for x in results):
                 exception = Exception(f"Minion {deployment.minion.name} do not exist or is not responding")
@@ -73,15 +83,22 @@ class SaltConnector(Connector):
                     f"executor:{deployment.executor_id}:result",
                     dumps(Failure(exception))
                 )
+                continue
 
-            if any(result[deployment.minion.name]['retcode'] != 0 for result in results):
-                exception = Exception('Failed to create environment, see exception arguments for the log', results)
+            if any(
+                    (isinstance(result, Exception) or
+                     not result[deployment.minion.name] or
+                     result[deployment.minion.name]['retcode'] != 0)
+                    for result in results
+            ):
+                exception = Exception('Failed to create environment, see exception arguments for the log: ', results)
                 logger.exception(exception)
                 logger.debug(f"Deployment: {deployment}")
                 await redis_connection.set(
                     f"executor:{deployment.executor_id}:result",
                     dumps(Failure(exception))
                 )
+                continue
             logger.debug(f"Deployment {deployment.minion} - {deployment.executor_id} successfully finished")
 
         logger.debug(f"Experiment {experiment_id} deployment successfully finished")
