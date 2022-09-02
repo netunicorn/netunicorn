@@ -1,4 +1,6 @@
 import asyncio
+import base64
+
 import requests as req
 from uuid import uuid4
 from typing import Union, Optional, Dict, Tuple
@@ -12,7 +14,8 @@ from .preprocessors import experiment_preprocessors
 from .resources import logger, \
     NETUNICORN_COMPILATION_IP, NETUNICORN_COMPILATION_PORT, \
     NETUNICORN_INFRASTRUCTURE_IP, NETUNICORN_INFRASTRUCTURE_PORT, \
-    NETUNICORN_PROCESSOR_IP, NETUNICORN_PROCESSOR_PORT
+    NETUNICORN_PROCESSOR_IP, NETUNICORN_PROCESSOR_PORT, \
+    DOCKER_REGISTRY_URL
 
 
 async def find_experiment_id_and_status_by_name(experiment_name: str, username: str) -> (str, ExperimentStatus):
@@ -37,35 +40,44 @@ async def get_minion_pool(username: str) -> bytes:
 async def prepare_experiment_task(experiment_name: str, experiment: Experiment, username: str) -> None:
     async def prepare_deployment(deployment: Deployment) -> None:
         deployment.executor_id = str(uuid4())
-        key = (deployment.environment_definition, deployment.pipeline, deployment.minion.get_architecture())
+        key = hash((deployment.environment_definition, deployment.pipeline, deployment.minion.get_architecture()))
         if key not in envs:
-            envs[key] = str(uuid4())
+            compilation_uid = str(uuid4())
+            envs[key] = compilation_uid
             url = f"http://{NETUNICORN_COMPILATION_IP}:{NETUNICORN_COMPILATION_PORT}/compile/"
-            if isinstance(deployment.environment_definition, DockerImage):
+
+            if isinstance(deployment.environment_definition, DockerImage) and deployment.environment_definition.image is not None:
+                await redis_connection.set(f"experiment:compilation:{compilation_uid}", dumps((True, "Docker image provided explicitly")))
+            elif isinstance(deployment.environment_definition, DockerImage) and deployment.environment_definition.image is None:
                 url += "docker"
                 data = {
-                    "uid": envs[key],
+                    "uid": compilation_uid,
                     "architecture": deployment.minion.get_architecture(),
-                    "environment_definition": dumps(deployment.environment_definition),
-                    "pipeline": deployment.pipeline,
+                    "environment_definition": base64.b64encode(dumps(deployment.environment_definition)).decode('utf-8'),
+                    "pipeline": base64.b64encode(deployment.pipeline).decode("utf-8"),
                 }
                 try:
-                    result = req.post(url, data=data, timeout=30)
+                    result = req.post(url, json=data, timeout=30)
                     if result.status_code != 200:
                         raise Exception(f"Compilation failed: {result.content}")
                 except Exception as e:
                     logger.exception(e)
-                    await redis_connection.set(f"experiment:compilation:{envs[key]}", dumps((False, str(e))))
+                    await redis_connection.set(f"experiment:compilation:{compilation_uid}", dumps((False, str(e))))
             elif isinstance(deployment.environment_definition, ShellExecution):
                 # no preparation needed, commands would be executed during deployment stage
-                await redis_connection.set(f"experiment:compilation:{envs[key]}", dumps((True, "")))
+                await redis_connection.set(f"experiment:compilation:{compilation_uid}", dumps((True, "")))
             else:
-                await redis_connection.set(f"experiment:compilation:{envs[key]}", dumps(
+                await redis_connection.set(f"experiment:compilation:{compilation_uid}", dumps(
                     (False, f"Unknown environment definition type: {deployment.environment_definition}")))
+        else:
+            compilation_uid = envs[key]
 
-        if isinstance(deployment.environment_definition, DockerImage):
-            deployment.environment_definition.image = f"{envs[key]}:latest"
-        elif isinstance(deployment.environment_definition, ShellExecution):
+        if isinstance(deployment.environment_definition, DockerImage) and deployment.environment_definition.image is None:
+            deployment.environment_definition.image = deployment.environment_definition.image or f"{DOCKER_REGISTRY_URL}/{envs[key]}:latest"
+            key = hash((deployment.environment_definition, deployment.pipeline, deployment.minion.get_architecture()))
+            envs[key] = compilation_uid
+
+        if isinstance(deployment.environment_definition, ShellExecution):
             await redis_connection.set(f"executor:{deployment.executor_id}:pipeline", deployment.pipeline)
 
     # if experiment is already in progress - do nothing
@@ -93,7 +105,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
     for deployment in experiment:
         await prepare_deployment(deployment)
 
-    compilation_ids = list(envs.values())
+    compilation_ids = set(envs.values())
     await redis_connection.set(f"experiment:{experiment_id}", dumps(experiment))
     await redis_connection.set(f"experiment:{experiment_id}:executors", dumps([d.executor_id for d in experiment]))
     await redis_connection.set(f"experiment:{experiment_id}:compilations", dumps(compilation_ids))
@@ -115,7 +127,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
     }
 
     for deployment in experiment:
-        key = (deployment.environment_definition, deployment.pipeline, deployment.minion.get_architecture())
+        key = hash((deployment.environment_definition, deployment.pipeline, deployment.minion.get_architecture()))
         compilation_result = compilation_results[envs[key]]
         deployment.prepared = compilation_result[0]
         if not compilation_result[0]:

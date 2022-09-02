@@ -1,4 +1,3 @@
-import os
 import pickle
 import subprocess
 import re
@@ -16,7 +15,6 @@ from netunicorn.director.base.resources import get_logger, redis_connection
 logger = get_logger('netunicorn.director.compiler')
 
 app = FastAPI()
-docker_registry_url = os.environ['NETUNICORN_DOCKER_REGISTRY_URL']  # required
 
 
 class CompilationRequest(BaseModel):
@@ -43,8 +41,8 @@ async def docker_compilation(request: CompilationRequest, background_tasks: Back
 
 
 async def docker_compilation_task(uid: str, architecture: str, environment_definition: DockerImage, pipeline: bytes) -> None:
-    if environment_definition.image is not None:
-        await record_compilation_result(uid, True, f'Image {environment_definition.image} is provided explicitly.')
+    if environment_definition.image is None:
+        await record_compilation_result(uid, False, f'Container image name is not provided')
         return
 
     if architecture not in {'linux/arm64', 'linux/amd64'}:
@@ -94,7 +92,7 @@ async def docker_compilation_task(uid: str, architecture: str, environment_defin
         result = subprocess.run([
             'docker', 'buildx', 'build',
             '--platform', architecture,
-            '-t', f'{docker_registry_url}/{uid}:latest',
+            '-t', f'{environment_definition.image}:latest',
             '-f', f'{uid}.Dockerfile',
             '--push',
             '.',

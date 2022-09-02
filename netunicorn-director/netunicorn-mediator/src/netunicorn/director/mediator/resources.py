@@ -15,3 +15,5 @@ NETUNICORN_PROCESSOR_IP = os.environ.get('NETUNICORN_PROCESSOR_IP', '127.0.0.1')
 NETUNICORN_PROCESSOR_PORT = int(os.environ.get('NETUNICORN_PROCESSOR_PORT', '26515'))
 logger.info(f"Using infrastructure service at: {NETUNICORN_PROCESSOR_IP}:{NETUNICORN_PROCESSOR_PORT}")
 
+DOCKER_REGISTRY_URL = os.environ['NETUNICORN_DOCKER_REGISTRY_URL']  # required
+DOCKER_REGISTRY_URL = DOCKER_REGISTRY_URL.removeprefix("http://").removeprefix("https://").removesuffix("/")
