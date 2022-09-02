@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import copy
 from enum import Enum
-from typing import Iterator, List, Optional, Tuple
+from typing import Iterator, List, Tuple
 from dataclasses import dataclass
-from cloudpickle import dumps
 
 from returns.result import Result
 
 from .minions import Minion
+from .deployment import Deployment
 from .pipeline import Pipeline, PipelineResult
-from .task import TaskDispatcher
-from .utils import SerializedPipelineType, LogType
+from .utils import LogType
 
 
 class ExperimentStatus(Enum):
@@ -20,29 +19,6 @@ class ExperimentStatus(Enum):
     READY = 2
     RUNNING = 3
     FINISHED = 4
-
-
-class Deployment:
-    def __init__(self, minion: Minion, pipeline: Pipeline):
-        self.minion = minion
-        self.prepared = False
-        self.executor_id = "Unknown"
-        self.error: Optional[Exception] = None
-        self.pipeline: SerializedPipelineType = b''
-        self.environment_definition = pipeline.environment_definition
-
-        for element in pipeline.tasks:
-            element = [x.dispatch(minion) if isinstance(x, TaskDispatcher) else x for x in element]
-            for x in element:
-                self.environment_definition.commands.extend(x.requirements)
-
-        self.pipeline = dumps(pipeline)
-
-    def __str__(self):
-        return f"Deployment: Minion={self.minion.name}, executor_id={self.executor_id}, prepared={self.prepared}"
-
-    def __repr__(self):
-        return self.__str__()
 
 
 class Experiment:

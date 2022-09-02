@@ -1,19 +1,14 @@
 from typing import List
 
+from netunicorn.base.architecture import Architecture
+
 
 class Minion:
-    def __init__(self, name: str, properties: dict):
+    def __init__(self, name: str, properties: dict, architecture: Architecture = Architecture.UNKNOWN):
         self.name = name
         self.properties = properties
         self.additional_properties = {}
-
-    def get_architecture(self) -> str:
-        # TODO: temporary for our infrastructure
-        if 'architecture' in self.properties:
-            architectures = set(self['architecture'])
-            if 'arm64' in architectures:
-                return 'linux/arm64'
-        return "linux/amd64"
+        self.architecture = architecture
 
     def __getitem__(self, item):
         return self.properties[item]
@@ -33,6 +28,7 @@ class MinionPool:
     Represents a pool of minions.
     # TODO: change representation to support cloud providers
     """
+
     def __init__(self, minions: List[Minion]):
         self.minions = minions
 

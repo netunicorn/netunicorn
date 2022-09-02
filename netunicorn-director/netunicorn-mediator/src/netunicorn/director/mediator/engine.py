@@ -59,11 +59,10 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
             # specific case: if key is in the envs, that means that we need to wait this deployment too
             # description: that happens when 2 deployments have the same environment definition object in memory,
             #  so update of image name for one deployment will affect another deployment
-            key = hash((deployment.pipeline, env_def, deployment.minion.get_architecture()))
+            key = hash((deployment.pipeline, env_def, deployment.minion.architecture))
             if key in envs:
                 deployments_waiting_for_compilation.append(deployment)
                 return
-
 
             # if docker image is provided - just provide pipeline
             await redis_connection.set(f"executor:{deployment.executor_id}:pipeline", deployment.pipeline)
@@ -74,7 +73,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
             deployments_waiting_for_compilation.append(deployment)
 
             # unique compilation is combination of pipeline, docker commands, and minion architecture
-            key = hash((deployment.pipeline, env_def, deployment.minion.get_architecture()))
+            key = hash((deployment.pipeline, env_def, deployment.minion.architecture))
             if key in envs:
                 # we already started this compilation
                 env_def.image = f"{DOCKER_REGISTRY_URL}/{envs[key]}:latest"
@@ -88,13 +87,13 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
             #  - original key without image name (so any similar deployments will find it)
             #  - key with image name (so we can find it later)
             envs[key] = compilation_uid
-            envs[hash((deployment.pipeline, env_def, deployment.minion.get_architecture()))] = compilation_uid
+            envs[hash((deployment.pipeline, env_def, deployment.minion.architecture))] = compilation_uid
 
             # start compilation process for this compilation request
             url = f"http://{NETUNICORN_COMPILATION_IP}:{NETUNICORN_COMPILATION_PORT}/compile/docker"
             data = {
                 "uid": compilation_uid,
-                "architecture": deployment.minion.get_architecture(),
+                "architecture": deployment.minion.architecture.value,
                 "environment_definition": base64.b64encode(dumps(deployment.environment_definition)).decode(
                     'utf-8'),
                 "pipeline": base64.b64encode(deployment.pipeline).decode("utf-8"),
@@ -156,7 +155,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
     }
 
     for deployment in deployments_waiting_for_compilation:
-        key = hash((deployment.pipeline, deployment.environment_definition, deployment.minion.get_architecture()))
+        key = hash((deployment.pipeline, deployment.environment_definition, deployment.minion.architecture))
         compilation_result = compilation_results.get(envs.get(key, None), (False, "Compilation result not found"))
         deployment.prepared = compilation_result[0]
         if not compilation_result[0]:

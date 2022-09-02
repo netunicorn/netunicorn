@@ -4,6 +4,7 @@ import functools
 from returns.result import Failure
 from pickle import dumps, loads
 
+from netunicorn.base.architecture import Architecture
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.minions import MinionPool, Minion
@@ -24,10 +25,37 @@ class SaltConnector(Connector):
         self.runner = salt.runner.RunnerClient(self.master_opts)
         # self.runner.cmd(fun, arg=None, pub_data=None, kwarg=None, print_event=True, full_return=False)
 
+    async def get_minion_architecture(self, minion: Minion) -> Architecture:
+        try:
+            arch = ""
+
+            loop = asyncio.get_event_loop()
+            calling_function = lambda arg: functools.partial(self.local.cmd, minion.name, 'grains.get', arg=[arg])
+            result = await loop.run_in_executor(None, calling_function('kernel'))
+
+            result = result.get(minion.name, "")
+            if isinstance(result, str):
+                arch += result.lower()
+
+            result = await loop.run_in_executor(None, calling_function('osarch'))
+            result = result.get(minion.name, "")
+            if isinstance(result, str):
+                arch += result.lower()
+
+            return Architecture(arch)
+        except Exception as e:
+            logger.error(f"Exception during architecture detection for minion {minion.name}, {e}")
+            logger.exception(e)
+            return Architecture.UNKNOWN
+
     async def get_minion_pool(self) -> MinionPool:
         loop = asyncio.get_event_loop()
         minions = await loop.run_in_executor(None, functools.partial(self.runner.cmd, 'manage.up', print_event=False))
-        return MinionPool([Minion(name=x, properties={}) for x in minions])
+        pool = MinionPool([Minion(name=x, properties={}) for x in minions])
+        for minion in pool:
+            minion.architecture = await self.get_minion_architecture(minion)
+
+        return pool
 
     async def start_deployment(self, experiment_id: str) -> None:
         loop = asyncio.get_event_loop()
