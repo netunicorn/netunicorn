@@ -1,7 +1,7 @@
 import asyncio
 from pickle import loads, dumps
 from typing import Dict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from netunicorn.base.experiment import ExperimentStatus, Experiment, ExperimentExecutionResult
 from netunicorn.director.base.resources import get_logger, redis_connection
@@ -37,7 +37,7 @@ async def watch_experiment_task(experiment_id: str) -> None:
 
     experiment: Experiment = loads(experiment_data)
     timeout_minutes = experiment.keep_alive_timeout_minutes
-    start_time = datetime.now()
+    start_time = datetime.utcnow()
 
     status = await redis_connection.get(f"experiment:{experiment_id}:status")
     if status is None:
@@ -45,8 +45,20 @@ async def watch_experiment_task(experiment_id: str) -> None:
         return
 
     status = loads(status)
+    while status == ExperimentStatus.READY:
+        # haven't started yet, waiting
+        await asyncio.sleep(5)
+        logger.debug(f"Experiment {experiment_id} is still not running, waiting")
+        status = loads(await redis_connection.get(f"experiment:{experiment_id}:status"))
+        if datetime.utcnow() > start_time + timedelta(minutes=timeout_minutes):
+            exc = Exception(f"Experiment {experiment_id} timeout reached and still not started.")
+            logger.exception(exc)
+            await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
+            await redis_connection.set(f"experiment:{experiment_id}:result", dumps(exc))
+            return
+
     if status != ExperimentStatus.RUNNING:
-        logger.error(f"Experiment {experiment_id} is not running.")
+        logger.error(f"Experiment {experiment_id} is in unexpected status {status}")
         return
 
     logger.debug(f"Experiment {experiment_id} started at {start_time}, keep alive timeout: {timeout_minutes} minutes")
