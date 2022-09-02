@@ -106,6 +106,7 @@ async def docker_compilation_task(uid: str, architecture: str, environment_defin
         await record_compilation_result(uid, False, log)
         return
 
+    logger.debug(f'Finished compilation of {uid} with result: {result}')
     await record_compilation_result(uid, True, result.stdout.decode('utf-8') + '\n' + result.stderr.decode('utf-8'))
 
 

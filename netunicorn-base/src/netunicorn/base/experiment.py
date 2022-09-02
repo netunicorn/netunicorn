@@ -58,8 +58,11 @@ class Experiment:
 @dataclass
 class ExperimentExecutionResult:
     minion: Minion
-    pipeline: Pipeline
+    pipeline: SerializedExperimentExecutionResult
     result: Tuple[Result[PipelineResult, PipelineResult], LogType]
+
+    def __str__(self) -> str:
+        return f"ExperimentExecutionResult(minion={self.minion}, result={self.result})"
 
 
 SerializedExperimentExecutionResult = bytes
