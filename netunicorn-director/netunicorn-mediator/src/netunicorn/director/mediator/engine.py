@@ -5,7 +5,6 @@ from typing import Union, Optional, Dict, Tuple
 from pickle import dumps, loads
 
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.minions import MinionPool
 from netunicorn.base.experiment import Experiment, ExperimentStatus, Deployment, \
     SerializedExperimentExecutionResult
 from netunicorn.director.base.resources import redis_connection
@@ -51,7 +50,9 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
                     "pipeline": deployment.pipeline,
                 }
                 try:
-                    req.post(url, data=data, timeout=30).raise_for_status()
+                    result = req.post(url, data=data, timeout=30)
+                    if result.status_code != 200:
+                        raise Exception(f"Compilation failed: {result.content}")
                 except Exception as e:
                     logger.exception(e)
                     await redis_connection.set(f"experiment:compilation:{envs[key]}", dumps((False, str(e))))
@@ -101,10 +102,11 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
     while not everything_compiled:
         await asyncio.sleep(5)
         logger.debug(f"Waiting for compilation of {compilation_ids}")
-        everything_compiled = all(
-            await redis_connection.exists(f"experiment:compilation:{compilation_id}")
+        compilation_flags = await asyncio.gather(*[
+            redis_connection.exists(f"experiment:compilation:{compilation_id}")
             for compilation_id in compilation_ids
-        )
+        ])
+        everything_compiled = all(compilation_flags)
 
     # collect compilation results and set preparation flag for all minions
     compilation_results: Dict[str, Tuple[bool, str]] = {
