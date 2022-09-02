@@ -54,6 +54,15 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
             return
 
         if isinstance(env_def, DockerImage) and deployment.environment_definition.image is not None:
+            # specific case: if key is in the envs, that means that we need to wait this deployment too
+            # description: that happens when 2 deployments have the same environment definition object in memory,
+            #  so update of image name for one deployment will affect another deployment
+            key = hash((deployment.pipeline, env_def, deployment.minion.get_architecture()))
+            if key in envs:
+                deployments_waiting_for_compilation.append(deployment)
+                return
+
+
             # if docker image is provided - just provide pipeline
             await redis_connection.set(f"executor:{deployment.executor_id}:pipeline", deployment.pipeline)
             deployment.prepared = True
@@ -71,8 +80,15 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
 
             # if not - we create a new compilation request
             compilation_uid = str(uuid4())
-            envs[key] = compilation_uid
             deployment.environment_definition.image = f"{DOCKER_REGISTRY_URL}/{compilation_uid}:latest"
+
+            # put compilation_uid both to:
+            #  - original key without image name (so any similar deployments will find it)
+            #  - key with image name (so we can find it later)
+            envs[key] = compilation_uid
+            envs[hash((deployment.pipeline, env_def, deployment.minion.get_architecture()))] = compilation_uid
+
+            # start compilation process for this compilation request
             url = f"http://{NETUNICORN_COMPILATION_IP}:{NETUNICORN_COMPILATION_PORT}/compile/docker"
             data = {
                 "uid": compilation_uid,
@@ -131,6 +147,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         everything_compiled = all(compilation_flags)
 
     # collect compilation results and set preparation flag for all minions
+    # TODO: check that all types are valid because it's received from external source
     compilation_results: Dict[str, Tuple[bool, str]] = {
         compilation_id: loads(await redis_connection.get(f"experiment:compilation:{compilation_id}"))
         for compilation_id in compilation_ids
