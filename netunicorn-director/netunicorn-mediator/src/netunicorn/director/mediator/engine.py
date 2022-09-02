@@ -33,7 +33,7 @@ async def find_experiment_id_and_status_by_name(experiment_name: str, username: 
 
 async def get_minion_pool(username: str) -> bytes:
     url = f"http://{NETUNICORN_INFRASTRUCTURE_IP}:{NETUNICORN_INFRASTRUCTURE_PORT}/minions"
-    result = req.get(url, timeout=30)
+    result = req.get(url, timeout=300)
     result.raise_for_status()
     return result.content
 

@@ -35,7 +35,7 @@ class SaltConnector(Connector):
 
             result = result.get(minion.name, "")
             if isinstance(result, str):
-                arch += result.lower()
+                arch += result.lower() + "/"
 
             result = await loop.run_in_executor(None, calling_function('osarch'))
             result = result.get(minion.name, "")
