@@ -68,7 +68,7 @@ async def docker_compilation_task(uid: str, architecture: str, environment_defin
         f.write(pipeline)
 
     filelines = [
-        f'FROM python:{python_version}',
+        f'FROM python:{python_version}-slim',
         "RUN apt update",
         *['RUN ' + str(x).removeprefix('sudo ') for x in commands],
         f'COPY {uid}.pipeline unicorn.pipeline',
