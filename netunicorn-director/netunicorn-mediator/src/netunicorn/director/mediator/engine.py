@@ -22,6 +22,8 @@ async def find_experiment_id_and_status_by_name(experiment_name: str, username: 
     experiment_id = await redis_connection.get(f"{username}:experiment:name:{experiment_name}")
     if experiment_id is None:
         raise Exception(f"Experiment {experiment_name} not found")
+    if isinstance(experiment_id, bytes):
+        experiment_id = experiment_id.decode('utf-8')
     status_data = await redis_connection.get(f"experiment:{experiment_id}:status")
     if status_data is None:
         raise Exception(f"Experiment {experiment_name} status is unknown")

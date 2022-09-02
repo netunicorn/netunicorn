@@ -129,32 +129,40 @@ class SaltConnector(Connector):
 
             executor_id = deployment.executor_id
 
-            if isinstance(deployment.environment_definition, DockerImage):
-                await loop.run_in_executor(None, functools.partial(
-                    self.local.cmd,
-                    deployment.minion.name,
-                    'cmd.run',
-                    [(f'docker run --rm -d '
-                      f'-e NETUNICORN_EXECUTOR_ID={executor_id} '
-                      f'-e NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
-                      f'-e NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
-                      f'{deployment.environment_definition.image}',)],
-                    full_return=True,
-                ))
-            elif isinstance(deployment.environment_definition, ShellExecution):
-                await loop.run_in_executor(None, functools.partial(
-                    self.local.cmd_async,
-                    deployment.minion.name,
-                    'cmd.run',
-                    [(f'NETUNICORN_EXECUTOR_ID={executor_id} '
-                      f'NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
-                      f'NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
-                      f'python3 -m netunicorn.executor',)],
-                    full_return=True,
-                ))
-            else:
-                logger.error(f'Unknown environment definition: {deployment.environment_definition}')
+            try:
+                if isinstance(deployment.environment_definition, DockerImage):
+                    await loop.run_in_executor(None, functools.partial(
+                        self.local.cmd,
+                        deployment.minion.name,
+                        'cmd.run',
+                        [(f'docker run --rm -d '
+                          f'-e NETUNICORN_EXECUTOR_ID={executor_id} '
+                          f'-e NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
+                          f'-e NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
+                          f'{deployment.environment_definition.image}',)],
+                        full_return=True,
+                    ))
+                elif isinstance(deployment.environment_definition, ShellExecution):
+                    await loop.run_in_executor(None, functools.partial(
+                        self.local.cmd_async,
+                        deployment.minion.name,
+                        'cmd.run',
+                        [(f'NETUNICORN_EXECUTOR_ID={executor_id} '
+                          f'NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
+                          f'NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
+                          f'python3 -m netunicorn.executor',)],
+                        full_return=True,
+                    ))
+                else:
+                    exception = Exception(f'Unknown environment definition: {deployment.environment_definition}')
+                    logger.exception(exception)
+                    await redis_connection.set(f"executor:{executor_id}:result", dumps(exception))
+                    continue
+            except Exception as e:
+                await redis_connection.set(f"executor:{executor_id}:result", dumps(e))
                 continue
+
+            logger.debug(f"Executor {executor_id} on minion {deployment.minion} started")
 
         logger.debug(f"Experiment {experiment_id} execution successfully started")
         await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.RUNNING))
