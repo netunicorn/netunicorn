@@ -23,7 +23,7 @@ class RemoteClient(BaseClient):
         :param login: Your login.
         :param password: Your password.
         """
-        self.base_url = f"https://{host}:{port}"
+        self.base_url = f"{host}:{port}"
         self.login = login
         self.password = password
 
