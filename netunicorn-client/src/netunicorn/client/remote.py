@@ -74,22 +74,26 @@ class RemoteClient(BaseClient):
             List[ExperimentExecutionResult]
         ]
     ]:
-        result = req.get(f"{self.base_url}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
-        if result.status_code == 200:
-            result = pickle.loads(result.content)
+        result_data = req.get(f"{self.base_url}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
+        if result_data.status_code == 200:
+            result = pickle.loads(result_data.content)
             if not (isinstance(result, tuple) and len(result) == 3):
                 raise RemoteClientException(f"Invalid response from the server. Result: {result}")
 
+            result = list(result)
             # decode experiment
             if result[1] is not None:
-                result = (result[0], pickle.loads(result[1]), result[2])
+                result[1] = pickle.loads(result[1])
+
+            if result[2] is not None:
+                result[2] = pickle.loads(result[2])
 
             if isinstance(result[2], list):
-                data = [cloudpickle.loads(v) for v in result[2]]
-                result = (result[0], result[1], data)
-            return result
+                result[2] = [pickle.loads(v) if isinstance(v, bytes) else v for v in result[2]]
+
+            return tuple(result)
 
         raise RemoteClientException(
             "Failed to get experiment status. "
-            f"Status code: {result.status_code}, content: {result.content}"
+            f"Status code: {result_data.status_code}, content: {result_data.content}"
         )

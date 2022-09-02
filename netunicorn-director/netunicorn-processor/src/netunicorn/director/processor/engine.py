@@ -34,6 +34,7 @@ async def watch_experiment_task(experiment_id: str) -> None:
     if experiment_data is None:
         logger.error(f"Experiment {experiment_id} not found.")
         return
+
     experiment: Experiment = loads(experiment_data)
     timeout_minutes = experiment.keep_alive_timeout_minutes
     start_time = datetime.now()
@@ -48,10 +49,13 @@ async def watch_experiment_task(experiment_id: str) -> None:
         logger.error(f"Experiment {experiment_id} is not running.")
         return
 
+    logger.debug(f"Experiment {experiment_id} started at {start_time}, keep alive timeout: {timeout_minutes} minutes")
     # executor_id: finished_flag
     executor_status: Dict[str, bool] = {x.executor_id: not x.prepared for x in experiment}
+    logger.debug(f"Executors finished: {executor_status}")
 
     while True:
+        logger.debug(f"New cycle iteration for experiment {experiment_id}")
         status = await redis_connection.get(f"experiment:{experiment_id}:status")
         status = loads(status) if status else ExperimentStatus.UNKNOWN
         if status == ExperimentStatus.FINISHED:
@@ -59,9 +63,10 @@ async def watch_experiment_task(experiment_id: str) -> None:
             break
 
         if status != ExperimentStatus.RUNNING:
+            exception = Exception(f"Experiment {experiment_id} is in unexpected status {status}. ")
             await redis_connection.set(
                 f"experiment:{experiment_id}:result",
-                dumps(Exception(f"Experiment {experiment_id} is in unexpected status {status}. "))
+                dumps(exception)
             )
             break
 
