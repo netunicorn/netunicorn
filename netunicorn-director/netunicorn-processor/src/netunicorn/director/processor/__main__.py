@@ -4,7 +4,7 @@ from fastapi import FastAPI, BackgroundTasks
 
 from netunicorn.director.base.resources import get_logger, redis_connection
 
-from .engine import watch_experiment_task, deploy_experiment_task
+from .engine import watch_experiment_task
 
 logger = get_logger('netunicorn.director.processor')
 
@@ -14,13 +14,13 @@ app = FastAPI()
 @app.on_event("startup")
 async def on_startup():
     await redis_connection.ping()
-    logger.info("Mediator started, connection to Redis established")
+    logger.info("Processor started, connection to Redis established")
 
 
 @app.on_event("shutdown")
 async def on_shutdown():
     await redis_connection.close()
-    logger.info("Mediator stopped")
+    logger.info("Processor stopped")
 
 
 @app.post("/watch_experiment/{experiment_id}", status_code=200)

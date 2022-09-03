@@ -1,6 +1,6 @@
 import pickle
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, Response
 import uvicorn
 
 from .deployer_connectors.salt_connector import SaltConnector
@@ -11,7 +11,7 @@ connector = SaltConnector()
 
 @app.get("/minions")
 async def get_minion_pool():
-    return pickle.dumps(await connector.get_minion_pool())
+    return Response(content=pickle.dumps(await connector.get_minion_pool()), status_code=200)
 
 
 @app.post("/start_deployment/{experiment_id}")

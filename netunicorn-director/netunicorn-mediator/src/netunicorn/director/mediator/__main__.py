@@ -2,7 +2,7 @@ import os
 from pickle import loads, dumps
 
 import uvicorn
-from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request
+from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, Body
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
 from netunicorn.base.experiment import Experiment
@@ -14,6 +14,11 @@ logger = get_logger('netunicorn.director.gateway')
 
 app = FastAPI()
 security = HTTPBasic()
+
+
+async def parse_body(request: Request):
+    data: bytes = await request.body()
+    return data
 
 
 @app.exception_handler(Exception)
@@ -36,14 +41,17 @@ async def on_shutdown():
 
 @app.get("/api/v1/minion_pool", status_code=200)
 async def minion_pool_handler(credentials: HTTPBasicCredentials = Depends(security)):
-    return await get_minion_pool(credentials.username)
+    return Response(await get_minion_pool(credentials.username))
 
 
 @app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
 async def prepare_experiment_handler(
-        experiment_name: str, experiment: bytes,
-        background_tasks: BackgroundTasks, credentials: HTTPBasicCredentials = Depends(security)
+        experiment_name: str,
+        request: Request,
+        background_tasks: BackgroundTasks,
+        credentials: HTTPBasicCredentials = Depends(security)
 ):
+    experiment = await request.body()
     experiment = loads(experiment)
     if not isinstance(experiment, Experiment):
         logger.debug(experiment)
@@ -61,11 +69,11 @@ async def start_experiment_handler(experiment_name: str, credentials: HTTPBasicC
 
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(experiment_name: str, credentials: HTTPBasicCredentials = Depends(security)):
-    return dumps(await get_experiment_status(experiment_name, credentials.username))
+    return Response(dumps(await get_experiment_status(experiment_name, credentials.username)))
 
 
 if __name__ == '__main__':
     IP = os.environ.get('NETUNICORN_MEDIATOR_IP', '0.0.0.0')
-    PORT = int(os.environ.get('NETUNICORN_MEDIATOR_PORT', '26512'))
+    PORT = int(os.environ.get('NETUNICORN_MEDIATOR_PORT', '26511'))
     logger.info(f"Starting mediator on {IP}, {PORT}")
     uvicorn.run(app, host=IP, port=PORT)
