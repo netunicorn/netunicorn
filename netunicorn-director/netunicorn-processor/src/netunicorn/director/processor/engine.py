@@ -111,4 +111,5 @@ async def watch_experiment_task(experiment_id: str) -> None:
     # again update final experiment result
     await collect_all_executor_results(experiment, experiment_id)
     await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
+    logger.debug(f"Experiment {experiment_id} finished.")
     return
