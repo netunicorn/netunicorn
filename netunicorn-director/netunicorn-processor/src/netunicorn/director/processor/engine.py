@@ -90,7 +90,12 @@ async def watch_experiment_task(experiment_id: str) -> None:
                 continue
             last_time_contacted = await redis_connection.get(f"executor:{executor_id}:keepalive")
             last_time_contacted = loads(last_time_contacted) if last_time_contacted else start_time
-            if (datetime.now() - last_time_contacted).total_seconds() > timeout_minutes * 60:
+            time_elapsed = (datetime.utcnow() - last_time_contacted).total_seconds()
+            logger.debug(
+                f"Executor {executor_id} last time contacted: {last_time_contacted},"
+                f" time elapsed: {time_elapsed / 60} minutes, timeout: {timeout_minutes} minutes"
+            )
+            if time_elapsed > timeout_minutes * 60:
                 executor_status[executor_id] = True
                 await redis_connection.set(
                     f"executor:{executor_id}:result",
