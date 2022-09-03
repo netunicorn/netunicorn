@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from typing import Optional
+
+import cloudpickle
 from cloudpickle import dumps
 
 from .minions import Minion
 from .pipeline import Pipeline
 from .task import TaskDispatcher
 from .utils import SerializedPipelineType
+
+try:
+    import netunicorn.library
+    cloudpickle.register_pickle_by_value(netunicorn.library)
+except ImportError:
+    pass
 
 
 class Deployment:

@@ -186,7 +186,7 @@ class PipelineExecutor:
         """
         This method reports the results to the communicator.
         """
-        if not self.pipeline.report_results:
+        if isinstance(self.pipeline, Pipeline) and not self.pipeline.report_results:
             self.logger.info("Skipping reporting results due to pipeline setting.")
             self.state = PipelineExecutorState.FINISHED
             return
