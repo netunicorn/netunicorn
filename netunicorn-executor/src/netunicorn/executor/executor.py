@@ -36,6 +36,11 @@ class PipelineExecutor:
     def __init__(self, executor_id: str = None, gateway_ip: str = None, gateway_port: int = None):
         # load up our own ID and the local communicator info
         self.dir_ip: str = gateway_ip or os.environ["NETUNICORN_GATEWAY_IP"]
+        if self.dir_ip[:7] == "http://":
+            self.dir_ip = self.dir_ip[7:]
+        if self.dir_ip[:8] == "https://":
+            self.dir_ip = self.dir_ip[8:]
+
         self.dir_port: int = int(gateway_port or os.environ.get("NETUNICORN_GATEWAY_PORT") or "26512")
         self.executor_id: str = executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
 
