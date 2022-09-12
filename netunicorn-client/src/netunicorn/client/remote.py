@@ -1,8 +1,7 @@
 import pickle
 
-import cloudpickle
 import requests as req
-from typing import Dict, Union, Tuple, Optional, List
+from typing import Union, Tuple, Optional, List
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
 from netunicorn.base.minions import MinionPool
@@ -15,20 +14,21 @@ class RemoteClientException(Exception):
 
 
 class RemoteClient(BaseClient):
-    def __init__(self, host: str, port: int, login: str, password: str):
+    def __init__(self, endpoint: str, login: str, password: str):
         """
         Remote client for Unicorn.
-        :param host: Engine host.
-        :param port: Engine port.
-        :param login: Your login.
-        :param password: Your password.
+        :param endpoint: Unicorn installation endpoint.
+        :param login: Unicorn installation login.
+        :param password: Unicorn installation password.
         """
-        self.base_url = f"{host}:{port}"
+        if endpoint.endswith("/"):
+            endpoint = endpoint[:-1]
+        self.endpoint = endpoint
         self.login = login
         self.password = password
 
     def get_minion_pool(self) -> MinionPool:
-        result = req.get(f"{self.base_url}/api/v1/minion_pool", auth=(self.login, self.password))
+        result = req.get(f"{self.endpoint}/api/v1/minion_pool", auth=(self.login, self.password))
         if result.status_code == 200:
             return pickle.loads(result.content)
 
@@ -40,7 +40,7 @@ class RemoteClient(BaseClient):
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
         data = pickle.dumps(experiment)
         result = req.post(
-            f"{self.base_url}/api/v1/experiment/{experiment_id}/prepare",
+            f"{self.endpoint}/api/v1/experiment/{experiment_id}/prepare",
             auth=(self.login, self.password),
             data=data
         )
@@ -54,7 +54,7 @@ class RemoteClient(BaseClient):
 
     def start_execution(self, experiment_id: str) -> str:
         result = req.post(
-            f"{self.base_url}/api/v1/experiment/{experiment_id}/start",
+            f"{self.endpoint}/api/v1/experiment/{experiment_id}/start",
             auth=(self.login, self.password)
         )
         if result.status_code == 200:
@@ -74,7 +74,7 @@ class RemoteClient(BaseClient):
             List[ExperimentExecutionResult]
         ]
     ]:
-        result_data = req.get(f"{self.base_url}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
+        result_data = req.get(f"{self.endpoint}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
         if result_data.status_code == 200:
             result = pickle.loads(result_data.content)
             if not (isinstance(result, tuple) and len(result) == 3):

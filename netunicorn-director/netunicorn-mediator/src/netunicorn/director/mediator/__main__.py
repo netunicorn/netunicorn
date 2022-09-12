@@ -2,7 +2,7 @@ import os
 from pickle import loads, dumps
 
 import uvicorn
-from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, Body
+from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
 from netunicorn.base.experiment import Experiment
@@ -75,5 +75,5 @@ async def experiment_status_handler(experiment_name: str, credentials: HTTPBasic
 if __name__ == '__main__':
     IP = os.environ.get('NETUNICORN_MEDIATOR_IP', '0.0.0.0')
     PORT = int(os.environ.get('NETUNICORN_MEDIATOR_PORT', '26511'))
-    logger.info(f"Starting mediator on {IP}, {PORT}")
+    logger.info(f"Starting mediator on {IP}:{PORT}")
     uvicorn.run(app, host=IP, port=PORT)

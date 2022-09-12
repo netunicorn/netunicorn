@@ -4,10 +4,10 @@ import redis.asyncio as __redis
 
 __logging.basicConfig()
 
-__REDIS_IP = __os.environ.get('NETUNICORN_REDIS_IP', '127.0.0.1')
-__REDIS_PORT = int(__os.environ.get('NETUNICORN_REDIS_PORT', '6379'))
-__logging.info(f"Connecting to Redis on {__REDIS_IP}:{__REDIS_PORT}")
-redis_connection = __redis.Redis(host=__REDIS_IP, port=__REDIS_PORT, db=0)
+__redis_endpoint = __os.environ.get('NETUNICORN_REDIS_ENDPOINT', '127.0.0.1:6379')
+__redis_host, __redis_port = __redis_endpoint.split(':')
+__logging.info(f"Connecting to Redis on {__redis_endpoint}")
+redis_connection = __redis.Redis(host=__redis_host, port=__redis_port, db=0)
 
 __logging_levels = {
     'DEBUG': __logging.DEBUG,

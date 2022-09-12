@@ -12,10 +12,8 @@ from netunicorn.base.experiment import Experiment, ExperimentStatus, Deployment,
 from netunicorn.director.base.resources import redis_connection
 from .preprocessors import experiment_preprocessors
 from .resources import logger, \
-    NETUNICORN_COMPILATION_IP, NETUNICORN_COMPILATION_PORT, \
-    NETUNICORN_INFRASTRUCTURE_IP, NETUNICORN_INFRASTRUCTURE_PORT, \
-    NETUNICORN_PROCESSOR_IP, NETUNICORN_PROCESSOR_PORT, \
-    DOCKER_REGISTRY_URL
+    NETUNICORN_COMPILATION_ENDPOINT, NETUNICORN_INFRASTRUCTURE_ENDPOINT, \
+    NETUNICORN_PROCESSOR_ENDPOINT, DOCKER_REGISTRY_URL
 
 
 async def find_experiment_id_and_status_by_name(experiment_name: str, username: str) -> (str, ExperimentStatus):
@@ -32,7 +30,7 @@ async def find_experiment_id_and_status_by_name(experiment_name: str, username: 
 
 
 async def get_minion_pool(username: str) -> bytes:
-    url = f"http://{NETUNICORN_INFRASTRUCTURE_IP}:{NETUNICORN_INFRASTRUCTURE_PORT}/minions"
+    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/minions"
     result = req.get(url, timeout=300)
     result.raise_for_status()
     return result.content
@@ -90,7 +88,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
             envs[hash((deployment.pipeline, env_def, deployment.minion.architecture))] = compilation_uid
 
             # start compilation process for this compilation request
-            url = f"http://{NETUNICORN_COMPILATION_IP}:{NETUNICORN_COMPILATION_PORT}/compile/docker"
+            url = f"{NETUNICORN_COMPILATION_ENDPOINT}/compile/docker"
             data = {
                 "uid": compilation_uid,
                 "architecture": deployment.minion.architecture.value,
@@ -165,7 +163,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
 
     # start deployment of environments
     try:
-        url = f"http://{NETUNICORN_INFRASTRUCTURE_IP}:{NETUNICORN_INFRASTRUCTURE_PORT}/start_deployment/{experiment_id}"
+        url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/start_deployment/{experiment_id}"
         req.post(url, timeout=30).raise_for_status()
     except Exception as e:
         logger.exception(e)
@@ -195,8 +193,8 @@ async def start_experiment(experiment_name: str, username: str) -> None:
     if status != ExperimentStatus.READY:
         raise Exception(f"Experiment {experiment_name} is not ready to start. Current status: {status}")
 
-    url = f"http://{NETUNICORN_INFRASTRUCTURE_IP}:{NETUNICORN_INFRASTRUCTURE_PORT}/start_execution/{experiment_id}"
+    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/start_execution/{experiment_id}"
     req.post(url, timeout=30).raise_for_status()
 
-    url = f"http://{NETUNICORN_PROCESSOR_IP}:{NETUNICORN_PROCESSOR_PORT}/watch_experiment/{experiment_id}"
+    url = f"{NETUNICORN_PROCESSOR_ENDPOINT}/watch_experiment/{experiment_id}"
     req.post(url, timeout=30).raise_for_status()

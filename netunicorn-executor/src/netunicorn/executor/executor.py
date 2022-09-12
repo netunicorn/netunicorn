@@ -33,15 +33,14 @@ class PipelineExecutorState(Enum):
 
 
 class PipelineExecutor:
-    def __init__(self, executor_id: str = None, gateway_ip: str = None, gateway_port: int = None):
+    def __init__(self, executor_id: str = None, gateway_endpoint: str = None):
         # load up our own ID and the local communicator info
-        self.dir_ip: str = gateway_ip or os.environ["NETUNICORN_GATEWAY_IP"]
-        if self.dir_ip[:7] == "http://":
-            self.dir_ip = self.dir_ip[7:]
-        if self.dir_ip[:8] == "https://":
-            self.dir_ip = self.dir_ip[8:]
+        self.gateway_endpoint: str = gateway_endpoint or os.environ["NETUNICORN_GATEWAY_ENDPOINT"]
+        if self.gateway_endpoint[:7] == "http://":
+            self.gateway_endpoint = self.gateway_endpoint[7:]
+        if self.gateway_endpoint[:8] == "https://":
+            self.gateway_endpoint = self.gateway_endpoint[8:]
 
-        self.dir_port: int = int(gateway_port or os.environ.get("NETUNICORN_GATEWAY_PORT") or "26512")
         self.executor_id: str = executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
 
         self.logfile_name = f'executor_{executor_id}.log'
@@ -49,7 +48,7 @@ class PipelineExecutor:
 
         logging.basicConfig()
         self.logger = self.create_logger()
-        self.logger.info(f"Parsed configuration: Gateway located on {self.dir_ip}:{self.dir_port}")
+        self.logger.info(f"Parsed configuration: Gateway located on {self.gateway_endpoint}")
         self.logger.info(f"Current directory: {os.getcwd()}")
 
         # increasing timeout in msecs to wait between network requests
@@ -113,7 +112,7 @@ class PipelineExecutor:
         try:
             # TODO: https
             result = req.get(
-                f"http://{self.dir_ip}:{self.dir_port}/api/v1/executor/pipeline?executor_id={self.executor_id}",
+                f"http://{self.gateway_endpoint}/api/v1/executor/pipeline?executor_id={self.executor_id}",
                 timeout=30
             )
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
@@ -209,7 +208,7 @@ class PipelineExecutor:
         try:
             # TODO: https
             result = req.post(
-                f"http://{self.dir_ip}:{self.dir_port}/api/v1/executor/result",
+                f"http://{self.gateway_endpoint}/api/v1/executor/result",
                 json={"executor_id": self.executor_id, "results": results},
                 timeout=30
             )

@@ -8,7 +8,7 @@ from netunicorn.base.architecture import Architecture
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.minions import MinionPool, Minion
-from ..resources import logger, redis_connection, GATEWAY_IP, GATEWAY_PORT
+from ..resources import logger, redis_connection, GATEWAY_ENDPOINT
 
 from .base import Connector
 
@@ -165,8 +165,7 @@ class SaltConnector(Connector):
                         'cmd.run',
                         [(f'docker run -d '
                           f'-e NETUNICORN_EXECUTOR_ID={executor_id} '
-                          f'-e NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
-                          f'-e NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
+                          f'-e NETUNICORN_GATEWAY_ENDPOINT={GATEWAY_ENDPOINT} '
                           f'{deployment.environment_definition.image}',)],
                         full_return=True,
                     ))
@@ -176,8 +175,7 @@ class SaltConnector(Connector):
                         deployment.minion.name,
                         'cmd.run',
                         [(f'NETUNICORN_EXECUTOR_ID={executor_id} '
-                          f'NETUNICORN_GATEWAY_IP={GATEWAY_IP} '
-                          f'NETUNICORN_GATEWAY_PORT={GATEWAY_PORT} '
+                          f'NETUNICORN_GATEWAY_ENDPOINT={GATEWAY_ENDPOINT} '
                           f'python3 -m netunicorn.executor',)],
                         full_return=True,
                     ))
