@@ -39,7 +39,7 @@ class UploadToWebDav(TaskDispatcher):
             result = UploadToWebDavImplementation(
                 self.filepaths, self.endpoint, self.username, self.password, self.authentication
             )
-            result.requirements = ['sudo apt install curl']
+            result.requirements = ['sudo apt-get install -y curl']
             result.run = self.__run_implementation
             return result
 

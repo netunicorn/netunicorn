@@ -41,7 +41,7 @@ class Ping(TaskDispatcher):
 
 
 class PingLinuxImplementation(Task):
-    requirements = ['apt install -y inetutils-ping']
+    requirements = ['sudo apt-get install -y inetutils-ping']
 
     def __init__(self, address: str, count: int = 1):
         super().__init__()

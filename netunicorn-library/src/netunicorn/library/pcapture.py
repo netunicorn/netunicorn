@@ -20,7 +20,7 @@ class StartCapture(TaskDispatcher):
 
 
 class StartCaptureLinuxImplementation(Task):
-    requirements = ['sudo apt update', 'sudo apt install tcpdump']
+    requirements = ['sudo apt-get update', 'sudo apt-get install -y tcpdump']
 
     def __init__(self, filepath: str, arguments: Optional[List[str]] = None):
         self.arguments = arguments or []
