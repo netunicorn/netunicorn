@@ -2,16 +2,15 @@ from __future__ import annotations
 
 from typing import Optional
 
-import cloudpickle
-from cloudpickle import dumps
-
 from .minions import Minion
 from .pipeline import Pipeline
 from .task import TaskDispatcher
 from .utils import SerializedPipelineType
 
 try:
+    import cloudpickle  # it's needed only on client side, but this module is also imported on engine side
     import netunicorn.library
+
     cloudpickle.register_pickle_by_value(netunicorn.library)
 except ImportError:
     pass
@@ -31,7 +30,7 @@ class Deployment:
             for x in element:
                 self.environment_definition.commands.extend(x.requirements)
 
-        self.pipeline = dumps(pipeline)
+        self.pipeline = cloudpickle.dumps(pipeline)
 
     def __str__(self):
         return f"Deployment: Minion={self.minion.name}, executor_id={self.executor_id}, prepared={self.prepared}"
