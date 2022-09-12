@@ -12,6 +12,7 @@ class EnvironmentDefinition:
         return hash(tuple(self.commands))
 
 
+@dataclass
 class ShellExecution(EnvironmentDefinition):
     """
     This class represents Environment Definition that's created by executing shell commands.
@@ -19,13 +20,14 @@ class ShellExecution(EnvironmentDefinition):
     pass
 
 
+@dataclass
 class DockerImage(EnvironmentDefinition):
     """
     This class represents Environment Definition that is created by using a Docker image.
     If image name is not provided, then it would be created automatically
     """
     image: Optional[str] = None
-    python_version: str = field(default_factory=lambda: platform.python_version())
+    python_version: str = platform.python_version()
 
     def __hash__(self):
         if self.image:
