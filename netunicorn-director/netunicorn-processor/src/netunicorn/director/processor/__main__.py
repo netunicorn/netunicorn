@@ -11,6 +11,12 @@ logger = get_logger('netunicorn.director.processor')
 app = FastAPI()
 
 
+@app.get('/health')
+async def health_check() -> str:
+    await redis_connection.ping()
+    return 'OK'
+
+
 @app.on_event("startup")
 async def on_startup():
     await redis_connection.ping()

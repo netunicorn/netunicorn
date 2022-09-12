@@ -27,6 +27,12 @@ async def unicorn_exception_handler(_: Request, exc: Exception):
     return Response(status_code=500, content=str(exc))
 
 
+@app.get('/health')
+async def health_check() -> str:
+    await redis_connection.ping()
+    return 'OK'
+
+
 @app.on_event("startup")
 async def on_startup():
     await redis_connection.ping()

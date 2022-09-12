@@ -4,9 +4,26 @@ from fastapi import FastAPI, BackgroundTasks, Response
 import uvicorn
 
 from .deployer_connectors.salt_connector import SaltConnector
+from .resources import redis_connection
 
 app = FastAPI()
 connector = SaltConnector()
+
+
+@app.get('/health')
+async def health_check() -> str:
+    await redis_connection.ping()
+    return 'OK'
+
+
+@app.on_event("startup")
+async def startup():
+    await redis_connection.ping()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await redis_connection.close()
 
 
 @app.get("/minions")

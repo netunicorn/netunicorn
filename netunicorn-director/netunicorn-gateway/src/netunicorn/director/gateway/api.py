@@ -18,6 +18,12 @@ logger.info(f"Starting gateway on {GATEWAY_IP}:{GATEWAY_PORT}")
 app = FastAPI()
 
 
+@app.get('/health')
+async def health_check() -> str:
+    await redis_connection.ping()
+    return 'OK'
+
+
 @app.on_event("startup")
 async def startup():
     await redis_connection.ping()

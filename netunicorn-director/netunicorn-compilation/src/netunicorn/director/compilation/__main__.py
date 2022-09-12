@@ -1,27 +1,37 @@
 import pickle
 import subprocess
 import re
+import uvicorn
 
 from collections.abc import Iterable
 from base64 import b64decode
 
 from fastapi import FastAPI, BackgroundTasks
-from pydantic import BaseModel
-import uvicorn
 
 from netunicorn.base.environment_definitions import EnvironmentDefinition, DockerImage
 from netunicorn.director.base.resources import get_logger, redis_connection
+
+from .api_types import CompilationRequest
 
 logger = get_logger('netunicorn.director.compiler')
 
 app = FastAPI()
 
 
-class CompilationRequest(BaseModel):
-    uid: str
-    architecture: str
-    environment_definition: bytes
-    pipeline: bytes
+@app.get('/health')
+async def health_check() -> str:
+    await redis_connection.ping()
+    return 'OK'
+
+
+@app.on_event("startup")
+async def startup():
+    await redis_connection.ping()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await redis_connection.close()
 
 
 @app.post("/compile/shell")
@@ -40,7 +50,8 @@ async def docker_compilation(request: CompilationRequest, background_tasks: Back
     return {"result": "success"}
 
 
-async def docker_compilation_task(uid: str, architecture: str, environment_definition: DockerImage, pipeline: bytes) -> None:
+async def docker_compilation_task(uid: str, architecture: str, environment_definition: DockerImage,
+                                  pipeline: bytes) -> None:
     if environment_definition.image is None:
         await record_compilation_result(uid, False, f'Container image name is not provided')
         return
