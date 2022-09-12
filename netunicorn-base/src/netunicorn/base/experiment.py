@@ -64,5 +64,8 @@ class ExperimentExecutionResult:
     def __str__(self) -> str:
         return f"ExperimentExecutionResult(minion={self.minion}, result={self.result})"
 
+    def __repr__(self):
+        return self.__str__()
+
 
 SerializedExperimentExecutionResult = bytes
