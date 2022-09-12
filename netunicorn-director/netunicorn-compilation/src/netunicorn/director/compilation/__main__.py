@@ -60,6 +60,7 @@ async def docker_compilation_task(uid: str, architecture: str, environment_defin
         await record_compilation_result(uid, False, f"Unknown architecture for docker container: {architecture}")
         return
 
+    logger.debug(f"Received compilation request: {uid=}, {architecture=}, {environment_definition=}, {environment_definition.python_version=}")
     match_result = re.fullmatch(r'\d\.\d+\.\d+', environment_definition.python_version)
     if not match_result:
         await record_compilation_result(uid, False, f'Unknown Python version: {environment_definition.python_version}')
