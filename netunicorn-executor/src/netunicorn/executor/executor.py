@@ -36,10 +36,8 @@ class PipelineExecutor:
     def __init__(self, executor_id: str = None, gateway_endpoint: str = None):
         # load up our own ID and the local communicator info
         self.gateway_endpoint: str = gateway_endpoint or os.environ["NETUNICORN_GATEWAY_ENDPOINT"]
-        if self.gateway_endpoint[:7] == "http://":
-            self.gateway_endpoint = self.gateway_endpoint[7:]
-        if self.gateway_endpoint[:8] == "https://":
-            self.gateway_endpoint = self.gateway_endpoint[8:]
+        if self.gateway_endpoint[-1] == "/":
+            self.gateway_endpoint = self.gateway_endpoint[:-1]
 
         self.executor_id: str = executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
 
@@ -110,9 +108,8 @@ class PipelineExecutor:
                 return
 
         try:
-            # TODO: https
             result = req.get(
-                f"http://{self.gateway_endpoint}/api/v1/executor/pipeline?executor_id={self.executor_id}",
+                f"{self.gateway_endpoint}/api/v1/executor/pipeline?executor_id={self.executor_id}",
                 timeout=30
             )
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
@@ -206,9 +203,8 @@ class PipelineExecutor:
             results = pickle.dumps([e, current_log])
         results = b64encode(results).decode()
         try:
-            # TODO: https
             result = req.post(
-                f"http://{self.gateway_endpoint}/api/v1/executor/result",
+                f"{self.gateway_endpoint}/api/v1/executor/result",
                 json={"executor_id": self.executor_id, "results": results},
                 timeout=30
             )
