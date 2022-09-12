@@ -8,7 +8,8 @@ from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from netunicorn.base.experiment import Experiment
 from netunicorn.director.base.resources import get_logger, redis_connection
 
-from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status
+from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status, \
+    check_services_availability
 
 logger = get_logger('netunicorn.director.gateway')
 
@@ -30,6 +31,7 @@ async def unicorn_exception_handler(_: Request, exc: Exception):
 @app.get('/health')
 async def health_check() -> str:
     await redis_connection.ping()
+    await check_services_availability()
     return 'OK'
 
 

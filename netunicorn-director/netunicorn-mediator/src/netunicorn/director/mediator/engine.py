@@ -16,6 +16,11 @@ from .resources import logger, \
     NETUNICORN_PROCESSOR_ENDPOINT, DOCKER_REGISTRY_URL
 
 
+async def check_services_availability():
+    for url in [NETUNICORN_INFRASTRUCTURE_ENDPOINT, NETUNICORN_PROCESSOR_ENDPOINT, NETUNICORN_COMPILATION_ENDPOINT]:
+        req.get(f"{url}/health", timeout=30).raise_for_status()
+
+
 async def find_experiment_id_and_status_by_name(experiment_name: str, username: str) -> (str, ExperimentStatus):
     experiment_id = await redis_connection.get(f"{username}:experiment:name:{experiment_name}")
     if experiment_id is None:
