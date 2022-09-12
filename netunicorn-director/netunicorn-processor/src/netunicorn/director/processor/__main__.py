@@ -36,7 +36,7 @@ async def watch_experiment_handler(experiment_id: str, background_tasks: Backgro
 
 
 if __name__ == '__main__':
-    IP = os.environ.get('NETUNICORN_PROCESSOR_IP', '0.0.0.0')
+    IP = os.environ.get('NETUNICORN_PROCESSOR_IP', '127.0.0.1')
     PORT = int(os.environ.get('NETUNICORN_PROCESSOR_PORT', '26515'))
     logger.info(f"Starting processor on {IP}:{PORT}")
     uvicorn.run(app, host=IP, port=PORT)

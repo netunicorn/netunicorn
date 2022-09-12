@@ -43,4 +43,4 @@ async def start_execution(experiment_id: str, background_tasks: BackgroundTasks)
     return {"result": "success"}
 
 
-uvicorn.run(app, host="0.0.0.0", port=26514)
+uvicorn.run(app, host="127.0.0.1", port=26514)

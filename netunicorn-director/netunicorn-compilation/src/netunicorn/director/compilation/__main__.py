@@ -129,4 +129,4 @@ async def record_compilation_result(uid: str, success: bool, log: str) -> None:
     return
 
 
-uvicorn.run(app, host="0.0.0.0", port=26513)
+uvicorn.run(app, host="127.0.0.1", port=26513)
