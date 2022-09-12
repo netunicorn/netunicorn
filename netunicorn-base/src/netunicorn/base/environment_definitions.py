@@ -25,7 +25,7 @@ class DockerImage(EnvironmentDefinition):
     If image name is not provided, then it would be created automatically
     """
     image: Optional[str] = None
-    python_version: str = platform.python_version()
+    python_version: str = field(default_factory=lambda: platform.python_version())
 
     def __hash__(self):
         if self.image:
