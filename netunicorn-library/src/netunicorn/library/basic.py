@@ -25,4 +25,4 @@ class ShellCommand(Task):
         super().__init__()
 
     def run(self):
-        return subprocess.check_output(self.command)
+        return subprocess.check_output(self.command, shell=True)
