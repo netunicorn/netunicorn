@@ -80,6 +80,7 @@ async def docker_compilation_task(uid: str, architecture: str, environment_defin
 
     filelines = [
         f'FROM python:{python_version}-slim',
+        "ENV DEBIAN_FRONTEND=noninteractive",
         "RUN apt update",
         *['RUN ' + str(x).removeprefix('sudo ') for x in commands],
         f'COPY {uid}.pipeline unicorn.pipeline',
