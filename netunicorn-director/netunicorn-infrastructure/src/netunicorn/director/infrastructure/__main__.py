@@ -1,7 +1,5 @@
-import pickle
-
 from fastapi import FastAPI, BackgroundTasks
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response
 import uvicorn
 
 import json
@@ -31,7 +29,7 @@ async def shutdown():
 
 @app.get("/minions", status_code=200)
 async def get_minion_pool():
-    return JSONResponse(content=json.dumps(await connector.get_minion_pool(), cls=UnicornEncoder))
+    return Response(content=json.dumps(await connector.get_minion_pool(), cls=UnicornEncoder), media_type="application/json")
 
 
 @app.post("/start_deployment/{experiment_id}")
