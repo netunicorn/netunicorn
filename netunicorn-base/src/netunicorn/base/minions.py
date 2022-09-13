@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Dict, Union, Set
 
 from netunicorn.base.architecture import Architecture
 
 
 class Minion:
-    def __init__(self, name: str, properties: dict, architecture: Architecture = Architecture.UNKNOWN):
+    def __init__(self, name: str, properties: Dict[str, Union[str, Set[str]]],
+                 architecture: Architecture = Architecture.UNKNOWN):
         self.name = name
         self.properties = properties
         self.additional_properties = {}
@@ -13,8 +14,21 @@ class Minion:
     def __getitem__(self, item):
         return self.properties[item]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Union[str, Set[str]]):
         self.properties[key] = value
+
+    def check_property(self, key: str, value: str) -> bool:
+        if key not in self.properties:
+            return False
+        self_value = self.properties[key]
+
+        if isinstance(self_value, str):
+            return self_value == value
+
+        if isinstance(self_value, set):
+            return value in self_value
+
+        return False
 
     def __str__(self):
         return self.name
@@ -52,3 +66,12 @@ class MinionPool:
 
     def __repr__(self):
         return str(self.minions)
+
+    def filter(self, key: str, value: str) -> 'MinionPool':
+        return MinionPool([x for x in self.minions if x.check_property(key, value)])
+
+    def take(self, count: int) -> 'MinionPool':
+        if count > len(self.minions):
+            print(f'Warning: asked for {count} minions, but only {len(self.minions)} available')
+            return self
+        return MinionPool(self.minions[:count])
