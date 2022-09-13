@@ -4,7 +4,6 @@ import asyncio
 import logging
 import sys
 
-import pickle
 import time
 
 import cloudpickle
@@ -198,9 +197,9 @@ class PipelineExecutor:
         results = self.pipeline_results
 
         try:
-            results = pickle.dumps([results, current_log])
+            results = cloudpickle.dumps([results, current_log])
         except Exception as e:
-            results = pickle.dumps([e, current_log])
+            results = cloudpickle.dumps([e, current_log])
         results = b64encode(results).decode()
         try:
             result = req.post(

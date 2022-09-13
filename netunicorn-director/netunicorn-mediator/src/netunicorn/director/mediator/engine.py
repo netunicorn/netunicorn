@@ -43,7 +43,7 @@ async def get_minion_pool(username: str) -> bytes:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/minions"
     result = req.get(url, timeout=300)
     result.raise_for_status()
-    return result.content
+    return result.json()
 
 
 async def prepare_experiment_task(experiment_name: str, experiment: Experiment, username: str) -> None:

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import base64
 import copy
 from enum import Enum
 from typing import Iterator, List, Tuple
-from dataclasses import dataclass
 
+import cloudpickle
 from returns.result import Result
 
 from .minions import Minion, MinionPool
@@ -19,6 +20,13 @@ class ExperimentStatus(Enum):
     READY = 2
     RUNNING = 3
     FINISHED = 4
+
+    def __json__(self):
+        return self.value
+
+    @classmethod
+    def from_json(cls, value: str) -> ExperimentStatus:
+        return cls(value)
 
 
 class Experiment:
@@ -38,6 +46,19 @@ class Experiment:
         for minion in minions:
             self.append(minion, pipeline)
         return self
+
+    def __json__(self) -> dict:
+        return {
+            "deployment_map": [x.__json__() for x in self.deployment_map],
+            "keep_alive_timeout_minutes": self.keep_alive_timeout_minutes,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict):
+        instance = cls.__new__(cls)
+        instance.deployment_map = [Deployment.from_json(x) for x in data["deployment_map"]]
+        instance.keep_alive_timeout_minutes = data["keep_alive_timeout_minutes"]
+        return instance
 
     def __getitem__(self, item) -> Deployment:
         return self.deployment_map[item]
@@ -60,17 +81,40 @@ class Experiment:
         return new_map
 
 
-@dataclass
 class ExperimentExecutionResult:
-    minion: Minion
-    pipeline: SerializedExperimentExecutionResult
-    result: Tuple[Result[PipelineResult, PipelineResult], LogType]
+    def __init__(self, minion: Minion, serialized_pipeline: bytes, result: bytes):
+        self.minion = minion
+        self._pipeline = serialized_pipeline
+        self._result = result
+
+    @property
+    def pipeline(self) -> Pipeline:
+        return cloudpickle.loads(self._pipeline)
+
+    @property
+    def result(self) -> Tuple[Result[PipelineResult, PipelineResult], LogType]:
+        return cloudpickle.loads(self._result)
 
     def __str__(self) -> str:
         return f"ExperimentExecutionResult(minion={self.minion}, result={self.result})"
 
     def __repr__(self):
         return self.__str__()
+
+    def __json__(self) -> dict:
+        return {
+            "minion": self.minion.__json__(),
+            "pipeline": base64.b64encode(self._pipeline).decode("utf-8"),
+            "result": base64.b64encode(self._result).decode("utf-8"),
+        }
+
+    @classmethod
+    def from_json(cls, data: dict):
+        return cls(
+            Minion.from_json(data["minion"]),
+            base64.b64decode(data["pipeline"]),
+            base64.b64decode(data["result"]),
+        )
 
 
 SerializedExperimentExecutionResult = bytes

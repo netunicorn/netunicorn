@@ -1,3 +1,4 @@
+import json
 import pickle
 
 import requests as req
@@ -5,6 +6,7 @@ from typing import Union, Tuple, Optional, List
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
 from netunicorn.base.minions import MinionPool
+from netunicorn.base.utils import UnicornEncoder
 
 from .base import BaseClient
 
@@ -30,7 +32,7 @@ class RemoteClient(BaseClient):
     def get_minion_pool(self) -> MinionPool:
         result = req.get(f"{self.endpoint}/api/v1/minion_pool", auth=(self.login, self.password))
         if result.status_code == 200:
-            return pickle.loads(result.content)
+            return MinionPool.from_json(result.json())
 
         raise RemoteClientException(
             f"Failed to get minion pool. "
@@ -38,11 +40,11 @@ class RemoteClient(BaseClient):
         )
 
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
-        data = pickle.dumps(experiment)
+        data = json.dumps(experiment, cls=UnicornEncoder)
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/prepare",
             auth=(self.login, self.password),
-            data=data
+            json=data
         )
         if result.status_code == 200:
             return result.content.decode()
@@ -76,20 +78,24 @@ class RemoteClient(BaseClient):
     ]:
         result_data = req.get(f"{self.endpoint}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
         if result_data.status_code == 200:
-            result = pickle.loads(result_data.content)
-            if not (isinstance(result, tuple) and len(result) == 3):
+            result = result_data.json()
+            if not (isinstance(result, list) and len(result) == 3):
                 raise RemoteClientException(f"Invalid response from the server. Result: {result}")
 
-            result = list(result)
             # decode experiment
-            if result[1] is not None:
-                result[1] = pickle.loads(result[1])
+            result[0] = ExperimentStatus.from_json(result[0])
 
-            if result[2] is not None:
-                result[2] = pickle.loads(result[2])
+            if result[1] is not None:
+                result[1] = Experiment.from_json(result[1])
+
+            # decode execution results
+            if isinstance(result[2], str):
+                result[2] = Exception(result[2])
 
             if isinstance(result[2], list):
-                result[2] = [pickle.loads(v) if isinstance(v, bytes) else v for v in result[2]]
+                result[2] = [
+                    pickle.loads(x) for x in result[2]
+                ]
 
             return tuple(result)
 

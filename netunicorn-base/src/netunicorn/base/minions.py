@@ -36,6 +36,28 @@ class Minion:
     def __repr__(self):
         return self.name
 
+    def __eq__(self, other):
+        return (
+                self.name == other.name and
+                self.properties == other.properties and
+                self.additional_properties == other.additional_properties and
+                self.architecture == other.architecture
+        )
+
+    def __json__(self):
+        return {
+            "name": self.name,
+            "properties": self.properties,
+            "additional_properties": self.additional_properties,
+            "architecture": self.architecture.value,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict):
+        instance = cls(data["name"], data["properties"], Architecture(data["architecture"]))
+        instance.additional_properties = data["additional_properties"]
+        return instance
+
 
 class MinionPool:
     """
@@ -48,6 +70,13 @@ class MinionPool:
 
     def append(self, minion):
         self.minions.append(minion)
+
+    def __json__(self):
+        return [x.__json__() for x in self.minions]
+
+    @classmethod
+    def from_json(cls, data: dict):
+        return cls([Minion.from_json(x) for x in data])
 
     def __str__(self):
         return str(self.minions)

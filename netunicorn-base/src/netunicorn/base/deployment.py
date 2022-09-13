@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from base64 import b64decode
 from typing import Optional
+from dataclasses import asdict
 
 from .minions import Minion
 from .pipeline import Pipeline
 from .task import TaskDispatcher
 from .utils import SerializedPipelineType
+from .environment_definitions import EnvironmentDefinition, ShellExecution, DockerImage
 
 try:
     import cloudpickle  # it's needed only on client side, but this module is also imported on engine side
@@ -37,3 +40,29 @@ class Deployment:
 
     def __repr__(self):
         return self.__str__()
+
+    def __json__(self):
+        return {
+            "minion": self.minion.__json__(),
+            "prepared": self.prepared,
+            "executor_id": self.executor_id,
+            "error": str(self.error) if self.error else None,
+            "pipeline": self.pipeline,
+            "environment_definition": asdict(self.environment_definition),
+            "environment_definition_type": self.environment_definition.__class__.__name__,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict):
+        instance = cls.__new__(cls)
+
+        instance.minion = Minion.from_json(data["minion"])
+        instance.prepared = data["prepared"]
+        instance.executor_id = data["executor_id"]
+        instance.error = Exception(data["error"]) if data['error'] else None
+        instance.pipeline = b64decode(data["pipeline"])
+        instance.environment_definition = getattr(
+            netunicorn.base.environment_definitions,
+            data["environment_definition_type"]
+        )(**data["environment_definition"])
+        return instance
