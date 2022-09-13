@@ -1,5 +1,7 @@
 import logging as __logging
 import os as __os
+import sys
+
 import redis.asyncio as __redis
 
 __logging.basicConfig()
@@ -22,8 +24,18 @@ __logger_level = __logging_levels.get(__logger_level, __logging.INFO)
 
 
 def get_logger(name: str, level: int = __logger_level) -> __logging.Logger:
+    formatter = __logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logger = __logging.getLogger(name)
-    logger.addHandler(__logging.FileHandler(f'{name}.log'))
+    logger.handlers.clear()
+
+    stream_handler = __logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+    file_handler = __logging.FileHandler(f'{name}.log')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
     logger.setLevel(level)
     logger.info(f"Logger {name} created with level {level}")
     return logger

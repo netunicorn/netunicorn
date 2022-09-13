@@ -25,9 +25,9 @@ class Deployment:
         self.pipeline: SerializedPipelineType = b''
         self.environment_definition = pipeline.environment_definition
 
-        for element in pipeline.tasks:
-            element = [x.dispatch(minion) if isinstance(x, TaskDispatcher) else x for x in element]
-            for x in element:
+        for i, element in enumerate(pipeline.tasks):
+            pipeline.tasks[i] = [x.dispatch(minion) if isinstance(x, TaskDispatcher) else x for x in element]
+            for x in pipeline.tasks[i]:
                 self.environment_definition.commands.extend(x.requirements)
 
         self.pipeline = cloudpickle.dumps(pipeline)

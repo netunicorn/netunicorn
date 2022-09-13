@@ -11,7 +11,7 @@ from netunicorn.director.base.resources import get_logger, redis_connection
 from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status, \
     check_services_availability
 
-logger = get_logger('netunicorn.director.gateway')
+logger = get_logger('netunicorn.director.mediator')
 
 app = FastAPI()
 security = HTTPBasic()
