@@ -17,7 +17,12 @@ from .resources import logger, \
 
 
 async def check_services_availability():
-    for url in [NETUNICORN_INFRASTRUCTURE_ENDPOINT, NETUNICORN_PROCESSOR_ENDPOINT, NETUNICORN_COMPILATION_ENDPOINT]:
+    for url in [
+        NETUNICORN_INFRASTRUCTURE_ENDPOINT,
+        NETUNICORN_PROCESSOR_ENDPOINT,
+        NETUNICORN_COMPILATION_ENDPOINT,
+        NETUNICORN_AUTH_ENDPOINT,
+    ]:
         req.get(f"{url}/health", timeout=30).raise_for_status()
 
 
