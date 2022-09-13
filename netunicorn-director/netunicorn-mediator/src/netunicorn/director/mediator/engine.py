@@ -194,7 +194,11 @@ async def get_experiment_status(experiment_name: str, username: str) -> Tuple[
 ]:
     experiment_id, status = await find_experiment_id_and_status_by_name(experiment_name, username)
     experiment = await redis_connection.get(f"experiment:{experiment_id}")
+    if experiment is not None:
+        experiment = loads(experiment)
     result = await redis_connection.get(f"experiment:{experiment_id}:result")
+    if result is not None:
+        result = loads(result)
     return status, experiment, result
 
 

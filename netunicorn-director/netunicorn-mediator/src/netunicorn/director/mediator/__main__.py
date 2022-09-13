@@ -4,7 +4,6 @@ import os
 import uvicorn
 from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, HTTPException
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
-from fastapi.responses import JSONResponse
 
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.utils import UnicornEncoder
@@ -92,7 +91,10 @@ async def start_experiment_handler(experiment_name: str, username: str = Depends
 
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(experiment_name: str, username: str = Depends(check_credentials)):
-    return JSONResponse(content=json.dumps(await get_experiment_status(experiment_name, username), cls=UnicornEncoder))
+    return Response(
+        content=json.dumps(await get_experiment_status(experiment_name, username), cls=UnicornEncoder),
+        media_type="application/json",
+    )
 
 
 if __name__ == '__main__':

@@ -44,7 +44,8 @@ class RemoteClient(BaseClient):
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/prepare",
             auth=(self.login, self.password),
-            json=data
+            data=data,
+            headers={"Content-Type": "application/json"}
         )
         if result.status_code == 200:
             return result.content.decode()
