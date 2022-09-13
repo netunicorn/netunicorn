@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from returns.result import Result
 
-from .minions import Minion
+from .minions import Minion, MinionPool
 from .deployment import Deployment
 from .pipeline import Pipeline, PipelineResult
 from .utils import LogType
@@ -32,6 +32,11 @@ class Experiment:
 
     def append(self, minion: Minion, pipeline: Pipeline) -> Experiment:
         self.deployment_map.append(Deployment(minion, pipeline))
+        return self
+
+    def map(self, minions: MinionPool, pipeline: Pipeline) -> Experiment:
+        for minion in minions:
+            self.append(minion, pipeline)
         return self
 
     def __getitem__(self, item) -> Deployment:
