@@ -13,7 +13,7 @@ from netunicorn.director.base.resources import redis_connection
 from .preprocessors import experiment_preprocessors
 from .resources import logger, \
     NETUNICORN_COMPILATION_ENDPOINT, NETUNICORN_INFRASTRUCTURE_ENDPOINT, \
-    NETUNICORN_PROCESSOR_ENDPOINT, DOCKER_REGISTRY_URL
+    NETUNICORN_PROCESSOR_ENDPOINT, DOCKER_REGISTRY_URL, NETUNICORN_AUTH_ENDPOINT
 
 
 async def check_services_availability():
@@ -130,7 +130,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         return
 
     # get all distinct combinations of environment_definitions and pipelines, and add compilation_request info to experiment items
-    envs = {}    # key: unique compilation request, result: compilation_uid
+    envs = {}  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation = []
     for deployment in experiment:
         await prepare_deployment(deployment)
@@ -203,3 +203,17 @@ async def start_experiment(experiment_name: str, username: str) -> None:
 
     url = f"{NETUNICORN_PROCESSOR_ENDPOINT}/watch_experiment/{experiment_id}"
     req.post(url, timeout=30).raise_for_status()
+
+
+async def credentials_check(username: str, token: str) -> bool:
+    url = f"{NETUNICORN_AUTH_ENDPOINT}/auth"
+    data = {
+        "username": username,
+        "token": token,
+    }
+    try:
+        result = req.post(url, json=data, timeout=30)
+        return result.status_code == 200
+    except Exception as e:
+        logger.exception(e)
+        return False
