@@ -14,6 +14,8 @@ from .base import Connector
 
 
 class SaltConnector(Connector):
+    PUBLIC_GRAINS = ['location']
+
     def __init__(self):
         import salt.config
         import salt.runner
@@ -48,12 +50,24 @@ class SaltConnector(Connector):
             logger.exception(e)
             return Architecture.UNKNOWN
 
+    async def get_custom_grains(self, minion_name: str) -> dict:
+        result = {}
+        for grain in self.PUBLIC_GRAINS:
+            try:
+                output = self.local.cmd(minion_name, 'grains.get', arg=[grain])
+                result[grain] = output.get(minion_name, None)
+            except Exception as e:
+                logger.error(f"Exception during getting grain {grain} for minion {minion_name}, {e}")
+                logger.exception(e)
+        return result
+
     async def get_minion_pool(self) -> MinionPool:
         loop = asyncio.get_event_loop()
         minions = await loop.run_in_executor(None, functools.partial(self.runner.cmd, 'manage.up', print_event=False))
         pool = MinionPool([Minion(name=x, properties={}) for x in minions])
         for minion in pool:
             minion.architecture = await self.get_minion_architecture(minion)
+            minion.properties.update(await self.get_custom_grains(minion.name))
 
         return pool
 
