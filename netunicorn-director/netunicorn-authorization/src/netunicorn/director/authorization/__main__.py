@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from netunicorn.director.base.resources import get_logger, redis_connection
@@ -25,9 +25,16 @@ async def health_check() -> str:
     return 'OK'
 
 
-@app.post("/auth")
+@app.post("/auth", status_code=200)
 async def auth(data: AuthorizationRequest):
-    return data.username in USERS and USERS[data.username] == data.token
+    if data.username in USERS and USERS[data.username] == data.token:
+        return
+
+    raise HTTPException(
+        status_code=401,
+        detail="Incorrect username or token",
+        headers={"WWW-Authenticate": "Basic"}
+    )
 
 
 if __name__ == '__main__':
