@@ -20,7 +20,7 @@ security = HTTPBasic()
 async def check_credentials(credentials: HTTPBasicCredentials = Depends(security)):
     current_username = credentials.username
     current_token = credentials.password
-    if not credentials_check(current_username, current_token):
+    if not await credentials_check(current_username, current_token):
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or token",
