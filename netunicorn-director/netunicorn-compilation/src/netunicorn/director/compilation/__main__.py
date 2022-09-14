@@ -50,7 +50,7 @@ async def shell_compilation(request: CompilationRequest):
 
 @app.post("/compile/docker")
 async def docker_compilation(request: CompilationRequest, background_tasks: BackgroundTasks):
-    environment_definition = environment_definitions.DockerImage(**request.environment_definition["environment_definition"])
+    environment_definition = environment_definitions.DockerImage(**request.environment_definition)
     background_tasks.add_task(docker_compilation_task, request.experiment_id, request.compilation_id, request.architecture, environment_definition,
                               b64decode(request.pipeline))
     return {"result": "success"}
