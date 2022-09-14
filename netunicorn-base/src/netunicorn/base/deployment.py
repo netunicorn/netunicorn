@@ -3,6 +3,7 @@ from __future__ import annotations
 from base64 import b64decode
 from typing import Optional
 from dataclasses import asdict
+import netunicorn.base.environment_definitions
 
 from .minions import Minion
 from .pipeline import Pipeline
