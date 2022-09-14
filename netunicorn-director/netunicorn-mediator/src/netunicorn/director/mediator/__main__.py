@@ -50,7 +50,7 @@ async def health_check() -> str:
 @app.on_event("startup")
 async def on_startup():
     await open_db_connection()
-    logger.info("Mediator started, connection to Redis established")
+    logger.info("Mediator started, connection to DB established")
 
 
 @app.on_event("shutdown")
