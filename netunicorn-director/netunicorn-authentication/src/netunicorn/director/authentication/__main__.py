@@ -43,7 +43,7 @@ async def shutdown():
 @app.post("/auth", status_code=200)
 async def auth(data: AuthenticationRequest):
     sql_query = 'SELECT EXISTS(SELECT 1 FROM authentication WHERE username = $1 AND token = $2)'
-    if db_conn.fetchval(sql_query, data.username, data.token):
+    if await db_conn.fetchval(sql_query, data.username, data.token):
         return
 
     raise HTTPException(
