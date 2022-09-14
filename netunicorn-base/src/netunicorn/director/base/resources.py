@@ -27,6 +27,7 @@ def get_logger(name: str, level: int = __logger_level) -> __logging.Logger:
     formatter = __logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logger = __logging.getLogger(name)
     logger.handlers.clear()
+    logger.propagate = False
 
     stream_handler = __logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(formatter)
