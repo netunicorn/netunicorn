@@ -203,7 +203,6 @@ class SaltConnector(Connector):
             logger.debug(f"Result of starting executor {executor_id} on minion {deployment.minion}: {result}")
 
         logger.debug(f"Experiment {experiment_id} execution successfully started")
-        # TODO: set start execution time
         await self.db_connection.execute(
             "UPDATE experiments SET status = $1, start_time = $2 WHERE experiment_id = $2",
             ExperimentStatus.RUNNING.value, datetime.datetime.utcnow(), experiment_id
