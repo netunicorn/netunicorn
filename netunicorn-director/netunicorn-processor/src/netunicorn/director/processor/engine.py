@@ -24,10 +24,11 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
 
     experiment_result = []
     for deployment in experiment:
-        executor_result, error = await db_connection.fetchval(
+        row = await db_connection.fetchval(
             "SELECT result::bytea, error FROM executors WHERE experiment_id = $1 AND executor_id = $2",
             experiment_id, deployment.executor_id
         )
+        executor_result, error = row["result"], row["error"]
 
         experiment_result.append(
             ExperimentExecutionResult(
