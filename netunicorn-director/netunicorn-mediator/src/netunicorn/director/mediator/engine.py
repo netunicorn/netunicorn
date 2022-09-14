@@ -3,7 +3,7 @@ import base64
 
 import requests as req
 from uuid import uuid4
-from typing import Union, Optional, Dict, Tuple
+from typing import Union, Optional, Dict, Tuple, List
 from pickle import dumps, loads
 
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
@@ -43,7 +43,7 @@ async def get_minion_pool(username: str) -> bytes:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/minions"
     result = req.get(url, timeout=300)
     result.raise_for_status()
-    return result.content
+    return result.json()
 
 
 async def prepare_experiment_task(experiment_name: str, experiment: Experiment, username: str) -> None:
@@ -130,7 +130,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         logger.exception(e)
         await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
         await redis_connection.set(f"experiment:{experiment_id}:result", dumps(
-            f"Error occurred during applying preprocessors, ask administrator for details. \n{e}"
+            Exception(f"Error occurred during applying preprocessors, ask administrator for details. \n{e}")
         ))
         return
 
@@ -179,7 +179,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         logger.exception(e)
         await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
         await redis_connection.set(f"experiment:{experiment_id}:result", dumps(
-            f"Error occurred during deployment, ask administrator for details. \n{e}"
+            Exception(f"Error occurred during deployment, ask administrator for details. \n{e}")
         ))
 
 
@@ -189,12 +189,16 @@ async def get_experiment_status(experiment_name: str, username: str) -> Tuple[
     Union[
         None,
         Exception,
-        Dict[str, SerializedExperimentExecutionResult],
+        List[SerializedExperimentExecutionResult],
     ]
 ]:
     experiment_id, status = await find_experiment_id_and_status_by_name(experiment_name, username)
     experiment = await redis_connection.get(f"experiment:{experiment_id}")
+    if experiment is not None:
+        experiment = loads(experiment)
     result = await redis_connection.get(f"experiment:{experiment_id}:result")
+    if result is not None:
+        result = loads(result)
     return status, experiment, result
 
 

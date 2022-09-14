@@ -18,11 +18,10 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
     experiment_result = []
     for deployment in experiment:
         executor_result = await redis_connection.get(f"executor:{deployment.executor_id}:result")
-        executor_result = loads(executor_result) if executor_result else None
         experiment_result.append(
             ExperimentExecutionResult(
                 minion=deployment.minion,
-                pipeline=deployment.pipeline,
+                serialized_pipeline=deployment.pipeline,
                 result=executor_result
             )
         )

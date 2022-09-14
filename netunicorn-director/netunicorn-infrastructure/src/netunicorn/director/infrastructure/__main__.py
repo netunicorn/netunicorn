@@ -1,8 +1,9 @@
-import pickle
-
-from fastapi import FastAPI, BackgroundTasks, Response
+from fastapi import FastAPI, BackgroundTasks
+from fastapi.responses import Response
 import uvicorn
 
+import json
+from netunicorn.base.utils import UnicornEncoder
 from .deployer_connectors.salt_connector import SaltConnector
 from .resources import redis_connection
 
@@ -26,9 +27,9 @@ async def shutdown():
     await redis_connection.close()
 
 
-@app.get("/minions")
+@app.get("/minions", status_code=200)
 async def get_minion_pool():
-    return Response(content=pickle.dumps(await connector.get_minion_pool()), status_code=200)
+    return Response(content=json.dumps(await connector.get_minion_pool(), cls=UnicornEncoder), media_type="application/json")
 
 
 @app.post("/start_deployment/{experiment_id}")

@@ -1,11 +1,12 @@
+import json
 import os
-from pickle import loads, dumps
 
 import uvicorn
 from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, HTTPException
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
 from netunicorn.base.experiment import Experiment
+from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger, redis_connection
 
 from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status, \
@@ -61,7 +62,7 @@ async def on_shutdown():
 
 @app.get("/api/v1/minion_pool", status_code=200)
 async def minion_pool_handler(username: str = Depends(check_credentials)):
-    return Response(await get_minion_pool(username))
+    return await get_minion_pool(username)
 
 
 @app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
@@ -71,11 +72,12 @@ async def prepare_experiment_handler(
         background_tasks: BackgroundTasks,
         username: str = Depends(check_credentials)
 ):
-    experiment = await request.body()
-    experiment = loads(experiment)
-    if not isinstance(experiment, Experiment):
-        logger.debug(experiment)
-        raise Exception(f"Invalid payload provided of type {type(experiment)}")
+    try:
+        data = await request.json()
+        experiment = Experiment.from_json(data)
+    except Exception as e:
+        logger.exception(e)
+        raise Exception(f"Couldn't parse experiment from the provided data: {e}")
 
     background_tasks.add_task(prepare_experiment_task, experiment_name, experiment, username)
     return experiment_name
@@ -89,7 +91,10 @@ async def start_experiment_handler(experiment_name: str, username: str = Depends
 
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(experiment_name: str, username: str = Depends(check_credentials)):
-    return Response(dumps(await get_experiment_status(experiment_name, username)))
+    return Response(
+        content=json.dumps(await get_experiment_status(experiment_name, username), cls=UnicornEncoder),
+        media_type="application/json",
+    )
 
 
 if __name__ == '__main__':

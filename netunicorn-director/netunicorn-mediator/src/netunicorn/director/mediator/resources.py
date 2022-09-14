@@ -16,4 +16,4 @@ NETUNICORN_AUTH_ENDPOINT = os.environ.get('NETUNICORN_AUTH_ENDPOINT', 'http://12
 logger.info(f"Using authorization service at: {NETUNICORN_AUTH_ENDPOINT}")
 
 DOCKER_REGISTRY_URL = os.environ['NETUNICORN_DOCKER_REGISTRY_URL']  # required
-DOCKER_REGISTRY_URL = DOCKER_REGISTRY_URL.removeprefix("http://").removeprefix("https://").removesuffix("/")
+# DOCKER_REGISTRY_URL = DOCKER_REGISTRY_URL.removeprefix("http://").removeprefix("https://").removesuffix("/")
