@@ -73,7 +73,7 @@ async def receive_result(result: PipelineResult):
     """
     pipeline_results = b64decode(result.results)
     await db_connection.execute(
-        "UPDATE executors SET result = $1::bytea WHERE executor_id = $2",
+        "UPDATE executors SET result = $1::bytea, finished = TRUE WHERE executor_id = $2",
         pipeline_results, result.executor_id
     )
 

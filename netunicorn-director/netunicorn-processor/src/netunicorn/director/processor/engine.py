@@ -1,59 +1,85 @@
 import asyncio
-from pickle import loads, dumps
-from typing import Dict
+import json
+
+import asyncpg
+from typing import Dict, Optional
 from datetime import datetime, timedelta
 
 from netunicorn.base.experiment import ExperimentStatus, Experiment, ExperimentExecutionResult
-from netunicorn.director.base.resources import get_logger, redis_connection
+from netunicorn.base.utils import UnicornEncoder
+from netunicorn.director.base.resources import get_logger, \
+    DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 
 logger = get_logger('netunicorn.director.processor')
+db_connection: Optional[asyncpg.Connection] = None
 
 
 async def collect_all_executor_results(experiment: Experiment, experiment_id: str) -> None:
-    experiment_result = await redis_connection.get(f"experiment:{experiment_id}:result")
-    if experiment_result is not None and isinstance(loads(experiment_result), Exception):
-        # do nothing
+    if await db_connection.fetchval(
+            "SELECT error FROM experiments WHERE experiment_id = $1",
+            experiment_id
+    ):
+        # do nothing - already finished with error
         return
 
     experiment_result = []
     for deployment in experiment:
-        executor_result = await redis_connection.get(f"executor:{deployment.executor_id}:result")
+        executor_result, error = await db_connection.fetchval(
+            "SELECT result::bytea, error FROM executors WHERE experiment_id = $1 AND executor_id = $2",
+            experiment_id, deployment.executor_id
+        )
+
         experiment_result.append(
             ExperimentExecutionResult(
                 minion=deployment.minion,
                 serialized_pipeline=deployment.pipeline,
-                result=executor_result
+                result=executor_result,
+                error=error
             )
         )
-    await redis_connection.set(f"experiment:{experiment_id}:result", dumps(experiment_result))
+    await db_connection.execute(
+        "UPDATE experiments SET execution_results = $1 WHERE experiment_id = $2",
+        experiment_result, experiment_id
+    )
 
 
 async def watch_experiment_task(experiment_id: str, lock: str) -> None:
-    experiment_data = await redis_connection.get(f"experiment:{experiment_id}")
+    experiment_data = await db_connection.fetchval(
+        "SELECT data::json FROM experiments WHERE experiment_id = $1",
+        experiment_id
+    )
     if experiment_data is None:
         logger.error(f"Experiment {experiment_id} not found.")
         return
 
-    experiment: Experiment = loads(experiment_data)
+    experiment: Experiment = Experiment.from_json(experiment_data)
     timeout_minutes = experiment.keep_alive_timeout_minutes
     start_time = datetime.utcnow()
 
-    status = await redis_connection.get(f"experiment:{experiment_id}:status")
-    if status is None:
-        logger.error(f"Experiment {experiment_id} status is not found.")
+    try:
+        status = ExperimentStatus(await db_connection.fetchval(
+            "SELECT status FROM experiments WHERE experiment_id = $1",
+            experiment_id
+        ))
+    except ValueError:
+        logger.error(f"Unknown status for experiment {experiment_id}")
         return
 
-    status = loads(status)
     while status == ExperimentStatus.READY:
         # haven't started yet, waiting
         await asyncio.sleep(5)
         logger.debug(f"Experiment {experiment_id} is still not running, waiting")
-        status = loads(await redis_connection.get(f"experiment:{experiment_id}:status"))
+        status = ExperimentStatus(await db_connection.fetchval(
+            "SELECT status FROM experiments WHERE experiment_id = $1",
+            experiment_id
+        ))
         if datetime.utcnow() > start_time + timedelta(minutes=timeout_minutes):
-            exc = Exception(f"Experiment {experiment_id} timeout reached and still not started.")
-            logger.exception(exc)
-            await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
-            await redis_connection.set(f"experiment:{experiment_id}:result", dumps(exc))
+            exc = f"Experiment {experiment_id} timeout reached and still not started."
+            logger.error(exc)
+            await db_connection.execute(
+                "UPDATE experiments SET status = $1, error = $2 WHERE experiment_id = $3",
+                ExperimentStatus.FINISHED.value, exc, experiment_id
+            )
             return
 
     if status != ExperimentStatus.RUNNING:
@@ -67,28 +93,37 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
 
     while True:
         logger.debug(f"New cycle iteration for experiment {experiment_id}")
-        status = await redis_connection.get(f"experiment:{experiment_id}:status")
-        status = loads(status) if status else ExperimentStatus.UNKNOWN
+        status = ExperimentStatus(await db_connection.fetchval(
+            "SELECT status FROM experiments WHERE experiment_id = $1",
+            experiment_id
+        ))
         if status == ExperimentStatus.FINISHED:
-            logger.warning("Unexpected status FINISHED for experiment {experiment_id}.")
+            logger.warning(f"Unexpected status FINISHED for experiment {experiment_id}.")
             break
 
         if status != ExperimentStatus.RUNNING:
-            exception = Exception(f"Experiment {experiment_id} is in unexpected status {status}. ")
-            await redis_connection.set(
-                f"experiment:{experiment_id}:result",
-                dumps(exception)
+            exception = f"Experiment {experiment_id} is in unexpected status {status}. "
+            await db_connection.execute(
+                "UPDATE experiments SET error = $1 WHERE experiment_id = $2",
+                ExperimentStatus.FINISHED.value, exception, experiment_id
             )
             break
 
         for executor_id, finished in executor_status.items():
             if finished:
                 continue
-            if await redis_connection.exists(f"executor:{executor_id}:result"):
+            if await db_connection.fetchval(
+                "SELECT finished from executors WHERE experiment_id = $1 AND executor_id = $2",
+                experiment_id, executor_id
+            ):
                 executor_status[executor_id] = True
                 continue
-            last_time_contacted = await redis_connection.get(f"executor:{executor_id}:keepalive")
-            last_time_contacted = loads(last_time_contacted) if last_time_contacted else start_time
+
+            last_time_contacted = await db_connection.fetchval(
+                "SELECT keepalive FROM executors WHERE experiment_id = $1 AND executor_id = $2",
+                experiment_id, executor_id
+            ) or start_time
+
             time_elapsed = (datetime.utcnow() - last_time_contacted).total_seconds()
             logger.debug(
                 f"Executor {executor_id} last time contacted: {last_time_contacted},"
@@ -96,9 +131,10 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
             )
             if time_elapsed > timeout_minutes * 60:
                 executor_status[executor_id] = True
-                await redis_connection.set(
-                    f"executor:{executor_id}:result",
-                    dumps(Exception(f"Executor {executor_id} is not responding."))
+                exception = f"Executor {executor_id} timeout reached."
+                await db_connection.execute(
+                    "UPDATE executors SET error = $1, finished = TRUE WHERE experiment_id = $2 AND executor_id = $3",
+                    exception, experiment_id, executor_id
                 )
 
         await collect_all_executor_results(experiment, experiment_id)
@@ -109,13 +145,41 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
 
     # again update final experiment result
     await collect_all_executor_results(experiment, experiment_id)
-    await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
+    await db_connection.execute(
+        "UPDATE experiments SET status = $1 WHERE experiment_id = $2",
+        ExperimentStatus.FINISHED.value, experiment_id
+    )
 
     # remove all locks from minions
-    for deployment in experiment:
-        current_lock = await redis_connection.get(f"minion:{deployment.minion.name}:lock")
-        if current_lock == lock:
-            await redis_connection.delete(f"minion:{deployment.minion.name}:lock")
-
+    minion_names = [x.minion.name for x in experiment]
+    await db_connection.execute(
+        "UPDATE locks SET username = NULL WHERE username = $1 AND minion_name = ANY($2)",
+        lock, minion_names
+    )
     logger.debug(f"Experiment {experiment_id} finished.")
     return
+
+
+async def healthcheck() -> None:
+    await db_connection.fetchval("SELECT 1")
+
+
+async def on_startup() -> None:
+    global db_connection
+    db_connection = await asyncpg.connect(
+        host=DATABASE_ENDPOINT,
+        user=DATABASE_USER,
+        password=DATABASE_PASSWORD,
+        database=DATABASE_DB
+    )
+    await db_connection.set_type_codec(
+        'json',
+        encoder=lambda x: json.dumps(x, cls=UnicornEncoder),
+        decoder=json.loads,
+        schema='pg_catalog'
+    )
+    await healthcheck()
+
+
+async def on_shutdown() -> None:
+    await db_connection.close()

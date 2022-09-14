@@ -1,9 +1,9 @@
 import os
-from netunicorn.director.base.resources import get_logger, redis_connection
+from netunicorn.director.base.resources import get_logger, \
+    DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 
 # set logger
 logger = get_logger('netunicorn.director.infrastructure')
-redis_connection = redis_connection
 
 # gateway IP and port
 # no alternatives, this variable should be defined explicitly to allow minions to connect to the gateway

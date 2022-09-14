@@ -11,7 +11,10 @@ CREATE TABLE IF NOT EXISTS Experiments (
     experiment_id TEXT NOT NULL,
     data jsonb,
     status SMALLINT NOT NULL,
-    result jsonb,
+    error TEXT,
+    execution_results jsonb[],
+    creation_time TIMESTAMP NOT NULL,
+    start_time TIMESTAMP,
     PRIMARY KEY (experiment_id),
     UNIQUE (username, experiment_name)
 );
@@ -35,5 +38,8 @@ CREATE TABLE IF NOT EXISTS Executors (
     executor_id TEXT NOT NULL,
     pipeline BYTEA,
     result BYTEA,
-    keepalive TIMESTAMP
+    keepalive TIMESTAMP,
+    error TEXT,
+    finished BOOLEAN NOT NULL,
+    PRIMARY KEY (experiment_id, executor_id)
 );

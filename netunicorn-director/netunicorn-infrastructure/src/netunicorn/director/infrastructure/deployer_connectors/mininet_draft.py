@@ -4,12 +4,11 @@ import uuid
 from typing import Dict
 
 from cloudpickle import dumps
-from pickle import dumps as pickledumps
 
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.minions import MinionPool, Minion
-from ..resources import logger, redis_connection, GATEWAY_ENDPOINT, GATEWAY_PORT
+from ..resources import logger, redis_connection, GATEWAY_ENDPOINT
 
 
 class MininetConnector:
