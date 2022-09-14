@@ -28,7 +28,11 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
             "SELECT result::bytea, error FROM executors WHERE experiment_id = $1 AND executor_id = $2",
             experiment_id, deployment.executor_id
         )
-        executor_result, error = row["result"], row["error"]
+
+        if row is not None:
+            executor_result, error = row["result"], row["error"]
+        else:
+            executor_result, error = None, None
 
         experiment_result.append(
             ExperimentExecutionResult(

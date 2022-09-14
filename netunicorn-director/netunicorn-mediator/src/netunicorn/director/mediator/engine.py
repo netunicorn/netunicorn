@@ -55,12 +55,13 @@ async def check_services_availability():
 
 
 async def get_experiment_id_and_status(experiment_name: str, username: str) -> (str, ExperimentStatus):
-    experiment_id, status_data = await db_connection.fetchval(
+    data = await db_connection.fetchrow(
         "SELECT experiment_id, status FROM experiments WHERE username = $1 AND experiment_name = $2",
         username, experiment_name
     )
-    if experiment_id is None:
+    if data is None:
         raise Exception(f"Experiment {experiment_name} not found")
+    experiment_id, status_data = data["experiment_id"], data["status"]
     try:
         status: ExperimentStatus = ExperimentStatus(status_data)
     except ValueError:
@@ -163,7 +164,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
             _url = f"{NETUNICORN_COMPILATION_ENDPOINT}/compile/docker"
             data = {
                 "experiment_id": experiment_id,
-                "compilation_uid": compilation_uid,
+                "compilation_id": compilation_uid,
                 "architecture": _deployment.minion.architecture.value,
                 "environment_definition": _deployment.environment_definition.__json__(),
                 "pipeline": base64.b64encode(_deployment.pipeline).decode("utf-8"),
@@ -230,7 +231,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         logger.debug(f"Waiting for compilation of {compilation_ids}")
         compilation_flags = await asyncio.gather(*[
             db_connection.fetchval(
-                "SELECT status FROM compilations WHERE experiment_id = $1 AND compilation_id = $2",
+                "SELECT status IS NOT NULL FROM compilations WHERE experiment_id = $1 AND compilation_id = $2",
                 experiment_id, compilation_id
             )
             for compilation_id in compilation_ids
@@ -238,13 +239,16 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         everything_compiled = all(compilation_flags)
 
     # collect compilation results and set preparation flag for all minions
-    compilation_results: Dict[str, Tuple[bool, str]] = {
-        compilation_id: await db_connection.fetchval(
+    compilation_results: Dict[str, Tuple[bool, str]] = {}
+    for compilation_id in compilation_ids:
+        data = await db_connection.fetchrow(
             "SELECT status, result FROM compilations WHERE experiment_id = $1 AND compilation_id = $2",
             experiment_id, compilation_id
         )
-        for compilation_id in compilation_ids
-    }
+        if data is None:
+            compilation_results[compilation_id] = (False, "Compilation result not found")
+            continue
+        compilation_results[compilation_id] = (data["status"], data["result"])
 
     for deployment in deployments_waiting_for_compilation:
         key = hash((deployment.pipeline, deployment.environment_definition, deployment.minion.architecture))
@@ -281,10 +285,13 @@ async def get_experiment_status(experiment_name: str, username: str) -> Tuple[
     ]
 ]:
     experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
-    experiment, error, execution_results = await db_connection.fetchval(
-        "SELECT data::json, error, execution_results::json FROM experiments WHERE experiment_id = $1",
+    row = await db_connection.fetchrow(
+        "SELECT data::json, error, execution_results FROM experiments WHERE experiment_id = $1",
         experiment_id
     )
+    if row is None:
+        raise Exception("Experiment not found")
+    experiment, error, execution_results = row["data"], row["error"], row["execution_results"]
     if experiment is not None:
         experiment = Experiment.from_json(experiment)
     if error is not None:
