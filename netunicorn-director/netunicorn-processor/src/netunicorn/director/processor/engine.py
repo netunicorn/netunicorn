@@ -28,7 +28,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
     await redis_connection.set(f"experiment:{experiment_id}:result", dumps(experiment_result))
 
 
-async def watch_experiment_task(experiment_id: str) -> None:
+async def watch_experiment_task(experiment_id: str, lock: str) -> None:
     experiment_data = await redis_connection.get(f"experiment:{experiment_id}")
     if experiment_data is None:
         logger.error(f"Experiment {experiment_id} not found.")
@@ -110,5 +110,12 @@ async def watch_experiment_task(experiment_id: str) -> None:
     # again update final experiment result
     await collect_all_executor_results(experiment, experiment_id)
     await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
+
+    # remove all locks from minions
+    for deployment in experiment:
+        current_lock = await redis_connection.get(f"minion:{deployment.minion.name}:lock")
+        if current_lock == lock:
+            await redis_connection.delete(f"minion:{deployment.minion.name}:lock")
+
     logger.debug(f"Experiment {experiment_id} finished.")
     return

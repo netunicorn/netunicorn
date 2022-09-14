@@ -29,9 +29,9 @@ async def on_shutdown():
     logger.info("Processor stopped")
 
 
-@app.post("/watch_experiment/{experiment_id}", status_code=200)
-async def watch_experiment_handler(experiment_id: str, background_tasks: BackgroundTasks):
-    background_tasks.add_task(watch_experiment_task, experiment_id)
+@app.post("/watch_experiment/{experiment_id}/{lock}", status_code=200)
+async def watch_experiment_handler(experiment_id: str, lock: str, background_tasks: BackgroundTasks):
+    background_tasks.add_task(watch_experiment_task, experiment_id, lock)
     return experiment_id
 
 

@@ -39,17 +39,31 @@ async def find_experiment_id_and_status_by_name(experiment_name: str, username: 
     return experiment_id, status
 
 
-async def get_minion_pool(username: str) -> bytes:
+async def get_minion_pool(username: str) -> list:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/minions"
     result = req.get(url, timeout=300)
     result.raise_for_status()
-    return result.json()
+    serialized_minion_pool = result.json()
+    result = []
+    for minion in serialized_minion_pool:
+        minion_name = minion.get("name", "")
+        current_lock = await redis_connection.get(f"minion:{minion_name}:lock")
+        if current_lock is None or current_lock == username:
+            result.append(minion)
+    return result
 
 
 async def prepare_experiment_task(experiment_name: str, experiment: Experiment, username: str) -> None:
-    async def prepare_deployment(deployment: Deployment) -> None:
+    async def prepare_deployment(username: str, deployment: Deployment) -> None:
         deployment.executor_id = str(uuid4())
         env_def = deployment.environment_definition
+
+        # check and set lock on device for the user
+        try_set_lock = await redis_connection.set(f"minion:{deployment.minion.name}:lock", username, nx=True)
+        if not try_set_lock and (current_lock := await redis_connection.get(f"minion:{deployment.minion.name}:lock")) != username:
+            deployment.prepared = False
+            deployment.error = Exception(f"Minion {deployment.minion.name} is already locked by {current_lock}")
+            return
 
         if isinstance(env_def, ShellExecution):
             # nothing to do with shell execution
@@ -138,7 +152,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
     envs = {}  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation = []
     for deployment in experiment:
-        await prepare_deployment(deployment)
+        await prepare_deployment(username, deployment)
 
     compilation_ids = set(envs.values())
     await redis_connection.set(f"experiment:{experiment_id}", dumps(experiment))
@@ -210,7 +224,7 @@ async def start_experiment(experiment_name: str, username: str) -> None:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/start_execution/{experiment_id}"
     req.post(url, timeout=30).raise_for_status()
 
-    url = f"{NETUNICORN_PROCESSOR_ENDPOINT}/watch_experiment/{experiment_id}"
+    url = f"{NETUNICORN_PROCESSOR_ENDPOINT}/watch_experiment/{experiment_id}/{username}"
     req.post(url, timeout=30).raise_for_status()
 
 
