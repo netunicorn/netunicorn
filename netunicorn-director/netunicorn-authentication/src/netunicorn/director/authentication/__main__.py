@@ -14,11 +14,6 @@ logger = get_logger('netunicorn.director.authentication')
 app = FastAPI()
 db_conn: Optional[asyncpg.connection.Connection] = None
 
-USERS = {
-    "simpleuser": "JbsbLIG8b4aMbnan",
-    "jiamo": "nmUBa4bab204Bggas",
-}
-
 
 class AuthenticationRequest(BaseModel):
     username: str
@@ -47,7 +42,8 @@ async def shutdown():
 
 @app.post("/auth", status_code=200)
 async def auth(data: AuthenticationRequest):
-    if data.username in USERS and USERS[data.username] == data.token:
+    sql_query = 'SELECT EXISTS(SELECT 1 FROM authentication WHERE username = $1 AND token = $2)'
+    if db_conn.fetchval(sql_query, data.username, data.token):
         return
 
     raise HTTPException(
