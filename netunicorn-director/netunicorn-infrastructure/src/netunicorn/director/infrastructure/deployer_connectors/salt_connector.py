@@ -14,7 +14,7 @@ from .base import Connector
 
 
 class SaltConnector(Connector):
-    PUBLIC_GRAINS = ['location']
+    PUBLIC_GRAINS = ['location', 'osarch', 'kernel']
 
     def __init__(self):
         import salt.config
@@ -27,49 +27,21 @@ class SaltConnector(Connector):
         self.runner = salt.runner.RunnerClient(self.master_opts)
         # self.runner.cmd(fun, arg=None, pub_data=None, kwarg=None, print_event=True, full_return=False)
 
-    async def get_minion_architecture(self, minion: Minion) -> Architecture:
-        try:
-            arch = ""
-
-            loop = asyncio.get_event_loop()
-            calling_function = lambda arg: functools.partial(self.local.cmd, minion.name, 'grains.get', arg=[arg])
-            result = await loop.run_in_executor(None, calling_function('kernel'))
-
-            result = result.get(minion.name, "")
-            if isinstance(result, str):
-                arch += result.lower() + "/"
-
-            result = await loop.run_in_executor(None, calling_function('osarch'))
-            result = result.get(minion.name, "")
-            if isinstance(result, str):
-                arch += result.lower()
-
-            return Architecture(arch)
-        except Exception as e:
-            logger.error(f"Exception during architecture detection for minion {minion.name}, {e}")
-            logger.exception(e)
-            return Architecture.UNKNOWN
-
-    async def get_custom_grains(self, minion_name: str) -> dict:
-        result = {}
-        for grain in self.PUBLIC_GRAINS:
-            try:
-                output = self.local.cmd(minion_name, 'grains.get', arg=[grain])
-                result[grain] = output.get(minion_name, None)
-            except Exception as e:
-                logger.error(f"Exception during getting grain {grain} for minion {minion_name}, {e}")
-                logger.exception(e)
-        return result
-
     async def get_minion_pool(self) -> MinionPool:
-        loop = asyncio.get_event_loop()
-        minions = await loop.run_in_executor(None, functools.partial(self.runner.cmd, 'manage.up', print_event=False))
-        pool = MinionPool([Minion(name=x, properties={}) for x in minions])
-        for minion in pool:
-            minion.architecture = await self.get_minion_architecture(minion)
-            minion.properties.update(await self.get_custom_grains(minion.name))
-
-        return pool
+        minions = self.local.cmd('*', 'grains.item', arg=self.PUBLIC_GRAINS)
+        minion_pool = MinionPool([])
+        for minion_name, properties in minions.items():
+            if not properties:
+                continue
+            instance = Minion(minion_name, properties)
+            minion_architecture = f'{instance.properties.get("kernel", "")}/{instance.properties.get("osarch", "")}'
+            try:
+                instance.architecture = Architecture(minion_architecture)
+            except Exception as e:
+                logger.warning(f"Unknown architecture {minion_architecture} for minion {instance.name}, {e}")
+                instance.architecture = Architecture.UNKNOWN
+            minion_pool.append(instance)
+        return minion_pool
 
     async def start_deployment(self, experiment_id: str) -> None:
         loop = asyncio.get_event_loop()
