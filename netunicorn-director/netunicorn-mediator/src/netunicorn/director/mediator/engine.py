@@ -161,7 +161,8 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
             # start compilation process for this compilation request
             url = f"{NETUNICORN_COMPILATION_ENDPOINT}/compile/docker"
             data = {
-                "uid": compilation_uid,
+                "experiment_id": experiment_id,
+                "compilation_uid": compilation_uid,
                 "architecture": deployment.minion.architecture.value,
                 "environment_definition": json.dumps(deployment.environment_definition, cls=UnicornEncoder),
                 "pipeline": base64.b64encode(deployment.pipeline).decode("utf-8"),
