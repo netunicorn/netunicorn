@@ -22,7 +22,7 @@ class AuthenticationRequest(BaseModel):
 
 @app.get('/health')
 async def health_check() -> str:
-    await db_conn.get_server_version()
+    await db_conn.fetchval('SELECT 1')
     return 'OK'
 
 
