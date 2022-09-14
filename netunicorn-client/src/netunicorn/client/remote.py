@@ -1,8 +1,7 @@
 import json
-import pickle
 
 import requests as req
-from typing import Union, Tuple, Optional, Dict
+from typing import Union, Tuple, Optional, List
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
 from netunicorn.base.minions import MinionPool
@@ -48,7 +47,7 @@ class RemoteClient(BaseClient):
             headers={"Content-Type": "application/json"}
         )
         if result.status_code == 200:
-            return result.content.decode()
+            return result.json()
 
         raise RemoteClientException(
             "Failed to prepare an experiment. "
@@ -61,7 +60,7 @@ class RemoteClient(BaseClient):
             auth=(self.login, self.password)
         )
         if result.status_code == 200:
-            return result.content.decode()
+            return result.json()
 
         raise RemoteClientException(
             "Failed to start experiment execution. "
@@ -74,7 +73,7 @@ class RemoteClient(BaseClient):
         Union[
             None,
             Exception,
-            Dict[str, ExperimentExecutionResult]
+            List[ExperimentExecutionResult]
         ]
     ]:
         result_data = req.get(f"{self.endpoint}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
@@ -94,9 +93,7 @@ class RemoteClient(BaseClient):
                 result[2] = Exception(result[2])
 
             if isinstance(result[2], list):
-                result[2] = {
-                    x: pickle.loads(y) for x, y in result[2].items()
-                }
+                result[2] = [ExperimentExecutionResult.from_json(r) for r in result[2]]
 
             return tuple(result)
 

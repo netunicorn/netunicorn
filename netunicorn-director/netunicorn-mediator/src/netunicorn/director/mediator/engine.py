@@ -3,7 +3,7 @@ import base64
 
 import requests as req
 from uuid import uuid4
-from typing import Union, Optional, Dict, Tuple
+from typing import Union, Optional, Dict, Tuple, List
 from pickle import dumps, loads
 
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
@@ -189,7 +189,7 @@ async def get_experiment_status(experiment_name: str, username: str) -> Tuple[
     Union[
         None,
         Exception,
-        Dict[str, SerializedExperimentExecutionResult],
+        List[SerializedExperimentExecutionResult],
     ]
 ]:
     experiment_id, status = await find_experiment_id_and_status_by_name(experiment_name, username)
