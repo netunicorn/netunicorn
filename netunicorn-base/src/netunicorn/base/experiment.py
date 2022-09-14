@@ -113,7 +113,7 @@ class ExperimentExecutionResult:
         return cls(
             Minion.from_json(data["minion"]),
             base64.b64decode(data["pipeline"]),
-            base64.b64decode(data["result"]),
+            base64.b64decode(data["result"]) if data["result"] else None,
         )
 
 
