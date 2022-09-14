@@ -79,9 +79,8 @@ class TestAllJSONSerialization(unittest.TestCase):
         pipeline = b'dsa'
         results = b'asd'
 
-        for x in results:
-            execution_result = ExperimentExecutionResult(minion, pipeline, results)
-            json_execution_result = UnicornEncoder().encode(execution_result)
-            deserialized_execution_result = ExperimentExecutionResult.from_json(json.loads(json_execution_result))
+        execution_result = ExperimentExecutionResult(minion, pipeline, results)
+        json_execution_result = UnicornEncoder().encode(execution_result)
+        deserialized_execution_result = ExperimentExecutionResult.from_json(json.loads(json_execution_result))
 
-            self.assertEqual(execution_result.minion, deserialized_execution_result.minion)
+        self.assertEqual(execution_result.minion, deserialized_execution_result.minion)

@@ -71,6 +71,8 @@ class NonStablePool(multiprocessing.pool.Pool):
 
 class UnicornEncoder(JSONEncoder):
     def default(self, obj):
+        if isinstance(obj, Exception):
+            return obj.__reduce__()
         if dataclasses.is_dataclass(obj):
             return dataclasses.asdict(obj)
         if hasattr(obj, '__json__'):

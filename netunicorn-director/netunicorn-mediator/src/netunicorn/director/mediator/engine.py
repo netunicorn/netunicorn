@@ -130,7 +130,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         logger.exception(e)
         await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
         await redis_connection.set(f"experiment:{experiment_id}:result", dumps(
-            f"Error occurred during applying preprocessors, ask administrator for details. \n{e}"
+            Exception(f"Error occurred during applying preprocessors, ask administrator for details. \n{e}")
         ))
         return
 
@@ -179,7 +179,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         logger.exception(e)
         await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
         await redis_connection.set(f"experiment:{experiment_id}:result", dumps(
-            f"Error occurred during deployment, ask administrator for details. \n{e}"
+            Exception(f"Error occurred during deployment, ask administrator for details. \n{e}")
         ))
 
 

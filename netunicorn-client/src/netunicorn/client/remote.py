@@ -2,7 +2,7 @@ import json
 import pickle
 
 import requests as req
-from typing import Union, Tuple, Optional, List
+from typing import Union, Tuple, Optional, Dict
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
 from netunicorn.base.minions import MinionPool
@@ -74,7 +74,7 @@ class RemoteClient(BaseClient):
         Union[
             None,
             Exception,
-            List[ExperimentExecutionResult]
+            Dict[str, ExperimentExecutionResult]
         ]
     ]:
         result_data = req.get(f"{self.endpoint}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
@@ -94,9 +94,9 @@ class RemoteClient(BaseClient):
                 result[2] = Exception(result[2])
 
             if isinstance(result[2], list):
-                result[2] = [
-                    pickle.loads(x) for x in result[2]
-                ]
+                result[2] = {
+                    x: pickle.loads(y) for x, y in result[2].items()
+                }
 
             return tuple(result)
 
