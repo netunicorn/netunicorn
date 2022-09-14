@@ -8,6 +8,8 @@ from typing import Callable, Union, TypeVar, List
 from json import JSONEncoder
 from base64 import b64encode
 
+from netunicorn.base.environment_definitions import EnvironmentDefinition
+
 _ValueType = TypeVar("_ValueType", covariant=True)
 _FailureValueType = TypeVar("_FailureValueType", covariant=True)
 
@@ -83,5 +85,10 @@ class UnicornEncoder(JSONEncoder):
             return {
                 'result_type': obj.__class__.__name__,
                 'result': obj._inner_value
+            }
+        if isinstance(obj, EnvironmentDefinition):
+            return {
+                'environment_definition_type': obj.__class__.__name__,
+                'environment_definition': obj
             }
         return JSONEncoder.default(self, obj)
