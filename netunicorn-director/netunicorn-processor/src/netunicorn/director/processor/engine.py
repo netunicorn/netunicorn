@@ -21,7 +21,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
         experiment_result.append(
             ExperimentExecutionResult(
                 minion=deployment.minion,
-                pipeline=deployment.pipeline,
+                serialized_pipeline=deployment.pipeline,
                 result=executor_result
             )
         )
