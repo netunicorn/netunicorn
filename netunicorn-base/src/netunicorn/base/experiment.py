@@ -4,8 +4,6 @@ import base64
 import copy
 from enum import Enum
 from typing import Iterator, List, Tuple, Optional
-
-import cloudpickle
 from returns.result import Result
 
 from .minions import Minion, MinionPool
@@ -89,10 +87,12 @@ class ExperimentExecutionResult:
 
     @property
     def pipeline(self) -> Pipeline:
+        import cloudpickle
         return cloudpickle.loads(self._pipeline)
 
     @property
     def result(self) -> Optional[Tuple[Result[PipelineResult, PipelineResult], LogType]]:
+        import cloudpickle
         return cloudpickle.loads(self._result) if self._result else None
 
     def __str__(self) -> str:
