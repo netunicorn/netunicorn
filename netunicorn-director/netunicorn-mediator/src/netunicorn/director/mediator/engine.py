@@ -48,9 +48,8 @@ async def get_minion_pool(username: str) -> list:
     for minion in serialized_minion_pool:
         minion_name = minion.get("name", "")
         current_lock = await redis_connection.get(f"minion:{minion_name}:lock")
-        if current_lock != username:
-            continue
-        result.append(minion)
+        if current_lock is None or current_lock == username:
+            result.append(minion)
     return result
 
 
