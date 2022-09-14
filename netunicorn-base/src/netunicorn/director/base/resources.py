@@ -2,14 +2,13 @@ import logging as __logging
 import os as __os
 import sys
 
-import redis.asyncio as __redis
-
 __logging.basicConfig()
 
-__redis_endpoint = __os.environ.get('NETUNICORN_REDIS_ENDPOINT', '127.0.0.1:6379')
-__redis_host, __redis_port = __redis_endpoint.split(':')
-__logging.info(f"Connecting to Redis on {__redis_endpoint}")
-redis_connection = __redis.Redis(host=__redis_host, port=__redis_port, db=0)
+DATABASE_ENDPOINT = __os.environ.get('NETUNICORN_DATABASE_ENDPOINT', '127.0.0.1')
+DATABASE_USER = __os.environ.get('NETUNICORN_DATABASE_USER', 'unicorn')
+DATABASE_PASSWORD = __os.environ.get('NETUNICORN_DATABASE_PASSWORD', 'unicorn')
+DATABASE_DB = __os.environ.get('NETUNICORN_DATABASE_DB', 'unicorndb')
+__logging.info(f"Connecting to {DATABASE_ENDPOINT}/{DATABASE_DB} as {DATABASE_USER}")
 
 __logging_levels = {
     'DEBUG': __logging.DEBUG,
