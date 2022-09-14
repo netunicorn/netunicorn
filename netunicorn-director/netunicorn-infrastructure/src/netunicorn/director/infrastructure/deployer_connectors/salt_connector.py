@@ -34,7 +34,7 @@ class SaltConnector(Connector):
             if not properties:
                 continue
             instance = Minion(minion_name, properties)
-            minion_architecture = f'{instance.properties.get("kernel", "")}/{instance.properties.get("osarch", "")}'
+            minion_architecture = f'{instance.properties.get("kernel", "").lower()}/{instance.properties.get("osarch", "").lower()}'
             try:
                 instance.architecture = Architecture(minion_architecture)
             except Exception as e:
