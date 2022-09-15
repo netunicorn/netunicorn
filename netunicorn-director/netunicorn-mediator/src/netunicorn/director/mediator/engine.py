@@ -31,7 +31,7 @@ async def open_db_connection() -> None:
     )
 
     await db_connection.set_type_codec(
-        'json',
+        'jsonb',
         encoder=lambda x: json.dumps(x, cls=UnicornEncoder),
         decoder=json.loads,
         schema='pg_catalog'
@@ -213,7 +213,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
 
     compilation_ids = set(envs.values())
     await db_connection.execute(
-        "UPDATE experiments SET data = $1::json WHERE experiment_id = $2",
+        "UPDATE experiments SET data = $1::jsonb WHERE experiment_id = $2",
         experiment, experiment_id
     )
     await db_connection.executemany(
@@ -258,7 +258,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
             deployment.error = Exception(compilation_result[1])
 
     await db_connection.execute(
-        "UPDATE experiments SET data = $1::json WHERE experiment_id = $2",
+        "UPDATE experiments SET data = $1::jsonb WHERE experiment_id = $2",
         experiment, experiment_id
     )
 
@@ -286,7 +286,7 @@ async def get_experiment_status(experiment_name: str, username: str) -> Tuple[
 ]:
     experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
     row = await db_connection.fetchrow(
-        "SELECT data::json, error, execution_results FROM experiments WHERE experiment_id = $1",
+        "SELECT data::jsonb, error, execution_results::jsonb[] FROM experiments WHERE experiment_id = $1",
         experiment_id
     )
     if row is None:

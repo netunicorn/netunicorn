@@ -50,7 +50,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
 
 async def watch_experiment_task(experiment_id: str, lock: str) -> None:
     experiment_data = await db_connection.fetchval(
-        "SELECT data::json FROM experiments WHERE experiment_id = $1",
+        "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
         experiment_id
     )
     if experiment_data is None:
@@ -178,7 +178,7 @@ async def on_startup() -> None:
         database=DATABASE_DB
     )
     await db_connection.set_type_codec(
-        'json',
+        'jsonb',
         encoder=lambda x: json.dumps(x, cls=UnicornEncoder),
         decoder=json.loads,
         schema='pg_catalog'

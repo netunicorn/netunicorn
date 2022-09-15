@@ -50,7 +50,7 @@ class SaltConnector(Connector):
     async def start_deployment(self, experiment_id: str) -> None:
         loop = asyncio.get_event_loop()
         experiment_data = await self.db_connection.fetchval(
-            "SELECT data::json FROM experiments WHERE experiment_id = $1",
+            "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
             experiment_id
         )
         if experiment_data is None:
@@ -127,7 +127,7 @@ class SaltConnector(Connector):
 
         # get experiment from redis
         data = await self.db_connection.fetchval(
-            "SELECT data::json FROM experiments WHERE experiment_id = $1",
+            "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
             experiment_id
         )
         if not data:
@@ -216,7 +216,7 @@ class SaltConnector(Connector):
             host=DATABASE_ENDPOINT, user=DATABASE_USER, password=DATABASE_PASSWORD, database=DATABASE_DB
         )
         await self.db_connection.set_type_codec(
-            'json',
+            'jsonb',
             encoder=lambda x: json.dumps(x, cls=UnicornEncoder),
             decoder=json.loads,
             schema='pg_catalog'
