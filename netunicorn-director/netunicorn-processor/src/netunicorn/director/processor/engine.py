@@ -22,7 +22,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
         # do nothing - already finished with error
         return
 
-    experiment_result = []
+    execution_results = []
     for deployment in experiment:
         row = await db_connection.fetchval(
             "SELECT result::bytea, error FROM executors WHERE experiment_id = $1 AND executor_id = $2",
@@ -34,7 +34,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
         else:
             executor_result, error = None, None
 
-        experiment_result.append(
+        execution_results.append(
             ExperimentExecutionResult(
                 minion=deployment.minion,
                 serialized_pipeline=deployment.pipeline,
@@ -43,8 +43,8 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
             )
         )
     await db_connection.execute(
-        "UPDATE experiments SET execution_results = $1 WHERE experiment_id = $2",
-        experiment_result, experiment_id
+        "UPDATE experiments SET execution_results = $1::jsonb[] WHERE experiment_id = $2",
+        json.dumps(execution_results, cls=UnicornEncoder), experiment_id
     )
 
 
