@@ -44,7 +44,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
         )
     await db_connection.execute(
         "UPDATE experiments SET execution_results = $1::jsonb[] WHERE experiment_id = $2",
-        json.dumps(execution_results, cls=UnicornEncoder), experiment_id
+        [json.dumps(x, cls=UnicornEncoder) for x in execution_results], experiment_id
     )
 
 
