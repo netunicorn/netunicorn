@@ -2,7 +2,8 @@ from pydantic import BaseModel
 
 
 class CompilationRequest(BaseModel):
-    uid: str
+    experiment_id: str
+    compilation_id: str
     architecture: str
-    environment_definition: bytes
+    environment_definition: dict
     pipeline: bytes

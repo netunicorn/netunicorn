@@ -2,9 +2,9 @@ import os
 import uvicorn
 from fastapi import FastAPI, BackgroundTasks
 
-from netunicorn.director.base.resources import get_logger, redis_connection
+from netunicorn.director.base.resources import get_logger
 
-from .engine import watch_experiment_task
+from .engine import watch_experiment_task, healthcheck, on_startup, on_shutdown
 
 logger = get_logger('netunicorn.director.processor')
 
@@ -13,19 +13,19 @@ app = FastAPI()
 
 @app.get('/health')
 async def health_check() -> str:
-    await redis_connection.ping()
+    await healthcheck()
     return 'OK'
 
 
 @app.on_event("startup")
-async def on_startup():
-    await redis_connection.ping()
-    logger.info("Processor started, connection to Redis established")
+async def on_startup_handler():
+    await on_startup()
+    logger.info("Processor started, connection to DB established")
 
 
 @app.on_event("shutdown")
-async def on_shutdown():
-    await redis_connection.close()
+async def on_shutdown_handler():
+    await on_shutdown()
     logger.info("Processor stopped")
 
 

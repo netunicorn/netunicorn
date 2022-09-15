@@ -1,14 +1,17 @@
 import asyncio
+import datetime
 import functools
+import json
+from typing import Optional
 
-from returns.result import Failure
-from pickle import dumps, loads
+import asyncpg
 
 from netunicorn.base.architecture import Architecture
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.minions import MinionPool, Minion
-from ..resources import logger, redis_connection, GATEWAY_ENDPOINT
+from netunicorn.base.utils import UnicornEncoder
+from ..resources import logger, GATEWAY_ENDPOINT, DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 
 from .base import Connector
 
@@ -26,6 +29,7 @@ class SaltConnector(Connector):
         # self.local.cmd_async
         self.runner = salt.runner.RunnerClient(self.master_opts)
         # self.runner.cmd(fun, arg=None, pub_data=None, kwarg=None, print_event=True, full_return=False)
+        self.db_connection: Optional[asyncpg.Connection] = None
 
     async def get_minion_pool(self) -> MinionPool:
         minions = self.local.cmd('*', 'grains.item', arg=self.PUBLIC_GRAINS)
@@ -45,11 +49,14 @@ class SaltConnector(Connector):
 
     async def start_deployment(self, experiment_id: str) -> None:
         loop = asyncio.get_event_loop()
-        experiment_data = await redis_connection.get(f"experiment:{experiment_id}")
+        experiment_data = await self.db_connection.fetchval(
+            "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
+            experiment_id
+        )
         if experiment_data is None:
             logger.error(f"Experiment {experiment_id} not found")
             return
-        experiment: Experiment = loads(experiment_data)
+        experiment: Experiment = Experiment.from_json(experiment_data)
         logger.debug(f"Starting deployment of experiment {experiment_id}")
 
         # stage 1: make every minion to create corresponding environment
@@ -98,32 +105,41 @@ class SaltConnector(Connector):
                      result[deployment.minion.name]['retcode'] != 0)
                     for result in results
             ):
-                exception = Exception('Failed to create environment, see exception arguments for the log: ', results)
-                logger.exception(exception)
+                exception = f'Failed to create environment, see exception arguments for the log: {results}'
+                logger.error(exception)
                 logger.debug(f"Deployment: {deployment}")
-                await redis_connection.set(
-                    f"executor:{deployment.executor_id}:result",
-                    dumps(Failure(exception))
+                await self.db_connection.execute(
+                    "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                    exception, experiment_id, deployment.executor_id
                 )
                 continue
             logger.debug(f"Deployment {deployment.minion} - {deployment.executor_id} successfully finished")
 
         logger.debug(f"Experiment {experiment_id} deployment successfully finished")
-        await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.READY))
+        await self.db_connection.execute(
+            "UPDATE experiments SET status = $1 WHERE experiment_id = $2",
+            ExperimentStatus.READY.value, experiment_id
+        )
 
     async def start_execution(self, experiment_id: str):
         logger.debug(f"Starting execution of experiment {experiment_id}")
         loop = asyncio.get_event_loop()
 
         # get experiment from redis
-        data = await redis_connection.get(f"experiment:{experiment_id}")
+        data = await self.db_connection.fetchval(
+            "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
+            experiment_id
+        )
         if not data:
-            exception = Exception(f"Experiment {experiment_id} not found")
-            await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.FINISHED))
-            await redis_connection.set(f"experiment:{experiment_id}:result", dumps(exception))
-            logger.exception(exception)
+            error = Exception(f"Experiment {experiment_id} not found")
+            await self.db_connection.execute(
+                "INSERT INTO experiments (experiment_id, status, error, experiment_name, creation_time, username) "
+                "VALUES ($1, $2, $3, 'Unknown', NOW(), 'Unknown')",
+                experiment_id, ExperimentStatus.FINISHED.value, error
+            )
+            logger.error(error)
             return
-        experiment: Experiment = loads(data)
+        experiment = Experiment.from_json(data)
 
         # stage 2: make every minion to start corresponding environment
         # (for docker: start docker container, for bare_metal - start executor)
@@ -131,12 +147,16 @@ class SaltConnector(Connector):
             if not deployment.prepared:
                 # You are not prepared!
                 logger.debug(f"Deployment with executor {deployment.executor_id} is not prepared, skipping")
-                await redis_connection.set(f"executor:{deployment.executor_id}:result", dumps(
-                    (Failure([Exception("Deployment is not prepared")]), [])
-                ))
+                await self.db_connection.execute(
+                    "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                    "Deployment is not prepared", experiment_id, deployment.executor_id
+                )
                 continue
 
-            if await redis_connection.exists(f"executor:{deployment.executor_id}:result"):
+            if await self.db_connection.fetchval(
+                    "SELECT finished FROM executors WHERE experiment_id = $1 AND executor_id = $2",
+                    experiment_id, deployment.executor_id
+            ):
                 # Already failed (probably during preparation step) or finished
                 logger.warning(f"Executor {deployment.executor_id} of experiment {experiment_id} already finished")
                 continue
@@ -166,15 +186,42 @@ class SaltConnector(Connector):
                         full_return=True,
                     ))
                 else:
-                    exception = Exception(f'Unknown environment definition: {deployment.environment_definition}')
-                    logger.exception(exception)
-                    await redis_connection.set(f"executor:{executor_id}:result", dumps(exception))
+                    exception = f'Unknown environment definition: {deployment.environment_definition}'
+                    logger.error(exception)
+                    await self.db_connection.execute(
+                        "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                        exception, experiment_id, deployment.executor_id
+                    )
                     continue
             except Exception as e:
-                await redis_connection.set(f"executor:{executor_id}:result", dumps(e))
+                await self.db_connection.execute(
+                    "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                    str(e), experiment_id, deployment.executor_id
+                )
                 continue
 
             logger.debug(f"Result of starting executor {executor_id} on minion {deployment.minion}: {result}")
 
         logger.debug(f"Experiment {experiment_id} execution successfully started")
-        await redis_connection.set(f"experiment:{experiment_id}:status", dumps(ExperimentStatus.RUNNING))
+        await self.db_connection.execute(
+            "UPDATE experiments SET status = $1, start_time = $2 WHERE experiment_id = $3",
+            ExperimentStatus.RUNNING.value, datetime.datetime.utcnow(), experiment_id
+        )
+
+    async def healthcheck(self):
+        await self.db_connection.fetchval("SELECT 1")
+
+    async def on_startup(self):
+        self.db_connection = await asyncpg.connect(
+            host=DATABASE_ENDPOINT, user=DATABASE_USER, password=DATABASE_PASSWORD, database=DATABASE_DB
+        )
+        await self.db_connection.set_type_codec(
+            'jsonb',
+            encoder=lambda x: json.dumps(x, cls=UnicornEncoder),
+            decoder=json.loads,
+            schema='pg_catalog'
+        )
+
+    async def on_shutdown(self):
+        await self.db_connection.close()
+        pass

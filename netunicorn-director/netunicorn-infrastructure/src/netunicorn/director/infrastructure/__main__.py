@@ -5,7 +5,6 @@ import uvicorn
 import json
 from netunicorn.base.utils import UnicornEncoder
 from .deployer_connectors.salt_connector import SaltConnector
-from .resources import redis_connection
 
 app = FastAPI()
 connector = SaltConnector()
@@ -13,18 +12,18 @@ connector = SaltConnector()
 
 @app.get('/health')
 async def health_check() -> str:
-    await redis_connection.ping()
+    await connector.healthcheck()
     return 'OK'
 
 
 @app.on_event("startup")
 async def startup():
-    await redis_connection.ping()
+    await connector.on_startup()
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    await redis_connection.close()
+    await connector.on_shutdown()
 
 
 @app.get("/minions", status_code=200)

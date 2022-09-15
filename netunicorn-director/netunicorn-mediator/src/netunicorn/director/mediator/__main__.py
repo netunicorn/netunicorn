@@ -7,10 +7,10 @@ from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.utils import UnicornEncoder
-from netunicorn.director.base.resources import get_logger, redis_connection
+from netunicorn.director.base.resources import get_logger
 
 from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status, \
-    check_services_availability, credentials_check
+    check_services_availability, credentials_check, open_db_connection, close_db_connection
 
 logger = get_logger('netunicorn.director.mediator')
 
@@ -43,20 +43,19 @@ async def unicorn_exception_handler(_: Request, exc: Exception):
 
 @app.get('/health')
 async def health_check() -> str:
-    await redis_connection.ping()
     await check_services_availability()
     return 'OK'
 
 
 @app.on_event("startup")
 async def on_startup():
-    await redis_connection.ping()
-    logger.info("Mediator started, connection to Redis established")
+    await open_db_connection()
+    logger.info("Mediator started, connection to DB established")
 
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    await redis_connection.close()
+    await close_db_connection()
     logger.info("Mediator stopped")
 
 

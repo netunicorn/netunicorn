@@ -4,8 +4,6 @@ import base64
 import copy
 from enum import Enum
 from typing import Iterator, List, Tuple, Optional
-
-import cloudpickle
 from returns.result import Result
 
 from .minions import Minion, MinionPool
@@ -82,21 +80,24 @@ class Experiment:
 
 
 class ExperimentExecutionResult:
-    def __init__(self, minion: Minion, serialized_pipeline: bytes, result: Optional[bytes]):
+    def __init__(self, minion: Minion, serialized_pipeline: bytes, result: Optional[bytes], error: Optional[str] = None):
         self.minion = minion
         self._pipeline = serialized_pipeline
         self._result = result
+        self.error = error
 
     @property
     def pipeline(self) -> Pipeline:
+        import cloudpickle
         return cloudpickle.loads(self._pipeline)
 
     @property
     def result(self) -> Optional[Tuple[Result[PipelineResult, PipelineResult], LogType]]:
+        import cloudpickle
         return cloudpickle.loads(self._result) if self._result else None
 
     def __str__(self) -> str:
-        return f"ExperimentExecutionResult(minion={self.minion}, result={self.result})"
+        return f"ExperimentExecutionResult(minion={self.minion}, result={self.result}, error={self.error})"
 
     def __repr__(self):
         return self.__str__()
@@ -106,6 +107,7 @@ class ExperimentExecutionResult:
             "minion": self.minion.__json__(),
             "pipeline": base64.b64encode(self._pipeline).decode("utf-8"),
             "result": base64.b64encode(self._result).decode("utf-8") if self._result else None,
+            "error": self.error,
         }
 
     @classmethod
@@ -114,6 +116,7 @@ class ExperimentExecutionResult:
             Minion.from_json(data["minion"]),
             base64.b64decode(data["pipeline"]),
             base64.b64decode(data["result"]) if data["result"] else None,
+            data["error"],
         )
 
 
