@@ -24,7 +24,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
 
     execution_results = []
     for deployment in experiment:
-        row = await db_connection.fetchval(
+        row = await db_connection.fetchrow(
             "SELECT result::bytea, error FROM executors WHERE experiment_id = $1 AND executor_id = $2",
             experiment_id, deployment.executor_id
         )
