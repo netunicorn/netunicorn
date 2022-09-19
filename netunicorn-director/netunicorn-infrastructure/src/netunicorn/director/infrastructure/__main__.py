@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import Response
 import uvicorn
@@ -40,6 +42,12 @@ async def start_deployment(experiment_id: str, background_tasks: BackgroundTasks
 @app.post("/start_execution/{experiment_id}")
 async def start_execution(experiment_id: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(connector.start_execution, experiment_id)
+    return {"result": "success"}
+
+
+@app.post("/cancel_executors")
+async def cancel_executors(executors: List[str], background_tasks: BackgroundTasks):
+    background_tasks.add_task(connector.cancel_executors, executors)
     return {"result": "success"}
 
 

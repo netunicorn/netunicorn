@@ -19,6 +19,7 @@ from .resources import logger, \
     NETUNICORN_PROCESSOR_ENDPOINT, DOCKER_REGISTRY_URL, NETUNICORN_AUTH_ENDPOINT
 
 db_connection: Optional[asyncpg.connection.Connection] = None
+current_tasks = set()
 
 
 async def open_db_connection() -> None:
@@ -111,8 +112,8 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         if isinstance(env_def, ShellExecution):
             # nothing to do with shell execution
             await db_connection.execute(
-                "INSERT INTO executors (experiment_id, executor_id, pipeline, finished) VALUES ($1, $2, $3, FALSE) ON CONFLICT DO NOTHING",
-                experiment_id, _deployment.executor_id, _deployment.pipeline
+                "INSERT INTO executors (experiment_id, executor_id, pipeline, minion_name, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                experiment_id, _deployment.executor_id, _deployment.minion.name, _deployment.pipeline
             )
             _deployment.prepared = True
             return
@@ -134,8 +135,8 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
 
             # if docker image is provided - just provide pipeline
             await db_connection.execute(
-                "INSERT INTO executors (experiment_id, executor_id, pipeline, finished) VALUES ($1, $2, $3, FALSE) ON CONFLICT DO NOTHING",
-                experiment_id, _deployment.executor_id, _deployment.pipeline
+                "INSERT INTO executors (experiment_id, executor_id, minion_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                experiment_id, _deployment.executor_id, _deployment.minion.name, _deployment.pipeline
             )
             _deployment.prepared = True
             return
@@ -162,7 +163,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
 
             # start compilation process for this compilation request
             _url = f"{NETUNICORN_COMPILATION_ENDPOINT}/compile/docker"
-            data = {
+            _data = {
                 "experiment_id": experiment_id,
                 "compilation_id": compilation_uid,
                 "architecture": _deployment.minion.architecture.value,
@@ -170,7 +171,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
                 "pipeline": base64.b64encode(_deployment.pipeline).decode("utf-8"),
             }
             try:
-                req.post(_url, json=data, timeout=30).raise_for_status()
+                req.post(_url, json=_data, timeout=30).raise_for_status()
             except Exception as _e:
                 logger.exception(_e)
                 await db_connection.execute(
@@ -221,8 +222,8 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         [(experiment_id, compilation_id) for compilation_id in compilation_ids]
     )
     await db_connection.executemany(
-        "INSERT INTO executors (experiment_id, executor_id, finished) VALUES ($1, $2, FALSE) ON CONFLICT DO NOTHING",
-        [(experiment_id, d.executor_id) for d in experiment]
+        "INSERT INTO executors (experiment_id, executor_id, minion_name, finished) VALUES ($1, $2, $3, FALSE) ON CONFLICT DO NOTHING",
+        [(experiment_id, d.executor_id, d.minion.name) for d in experiment]
     )
 
     everything_compiled = False
@@ -323,3 +324,48 @@ async def credentials_check(username: str, token: str) -> bool:
     except Exception as e:
         logger.exception(e)
         return False
+
+
+async def cancel_experiment(experiment_name: str, username: str) -> str:
+    experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
+    if status in {ExperimentStatus.UNKNOWN, ExperimentStatus.FINISHED}:
+        return f"Experiment {experiment_name} is in {status} state, nothing to cancel"
+
+    executors = await db_connection.fetch(
+        "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",
+        experiment_id
+    )
+    await cancel_executors_task([x['executor_id'] for x in executors])
+    return f"Experiment {experiment_name} cancellation started"
+
+
+async def cancel_executors(executors: List[str], username: str) -> str:
+    # check data format
+    for executor in executors:
+        if not isinstance(executor, str):
+            raise Exception(f"Invalid executor name: {executor}, type: {type(executor)}")
+
+    # get all usernames of executors
+    usernames = await db_connection.fetch(
+        "SELECT username, executor_id FROM experiments "
+        "JOIN executors ON experiments.experiment_id = executors.experiment_id "
+        "WHERE executor_id = ANY($1::text[]) "
+        "AND finished = FALSE",
+        executors
+    )
+    usernames = {x['executor_id']: x['username'] for x in usernames}
+
+    if not usernames:
+        raise Exception(f"All executors already finished or no experiments found belonging to user {username} with given executors: {executors}")
+
+    if set(usernames.values()) != {username}:
+        other_executors = [x for x in executors if usernames[x] != username]
+        raise Exception(f"Some of executors do not belong to user {username}: \n {other_executors}")
+
+    await cancel_executors_task(executors)
+    return "Executors cancellation started"
+
+
+async def cancel_executors_task(executors: List[str]) -> None:
+    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/cancel_executors"
+    req.post(url, json=executors, timeout=30).raise_for_status()

@@ -1,7 +1,7 @@
 import json
 
 import requests as req
-from typing import Union, Tuple, Optional, List
+from typing import Union, Tuple, Optional, List, Iterable
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
 from netunicorn.base.minions import MinionPool
@@ -100,4 +100,31 @@ class RemoteClient(BaseClient):
         raise RemoteClientException(
             "Failed to get experiment status. "
             f"Status code: {result_data.status_code}, content: {result_data.content}"
+        )
+
+    def cancel_experiment(self, experiment_id: str) -> None:
+        result = req.post(
+            f"{self.endpoint}/api/v1/experiment/{experiment_id}/cancel",
+            auth=(self.login, self.password)
+        )
+        if result.status_code == 200:
+            return result.json()
+
+        raise RemoteClientException(
+            "Failed to cancel experiment execution. "
+            f"Status code: {result.status_code}, content: {result.content}"
+        )
+
+    def cancel_executors(self, executors: Iterable[str]) -> None:
+        result = req.post(
+            f"{self.endpoint}/api/v1/executors/cancel",
+            auth=(self.login, self.password),
+            json=executors
+        )
+        if result.status_code == 200:
+            return result.json()
+
+        raise RemoteClientException(
+            "Failed to cancel provided executors. "
+            f"Status code: {result.status_code}, content: {result.content}"
         )

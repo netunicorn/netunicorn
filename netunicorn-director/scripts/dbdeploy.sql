@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS Compilations (
 CREATE TABLE IF NOT EXISTS Executors (
     experiment_id TEXT NOT NULL,
     executor_id TEXT NOT NULL,
+    minion_name TEXT NOT NULL,
     pipeline BYTEA,
     result BYTEA,
     keepalive TIMESTAMP,

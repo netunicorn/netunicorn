@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import functools
 import json
-from typing import Optional
+from typing import Optional, List
 
 import asyncpg
 
@@ -172,6 +172,7 @@ class SaltConnector(Connector):
                         [(f'docker run -d '
                           f'-e NETUNICORN_EXECUTOR_ID={executor_id} '
                           f'-e NETUNICORN_GATEWAY_ENDPOINT={GATEWAY_ENDPOINT} '
+                          f'--name {deployment.executor_id} '
                           f'{deployment.environment_definition.image}',)],
                         full_return=True,
                     ))
@@ -225,3 +226,27 @@ class SaltConnector(Connector):
     async def on_shutdown(self):
         await self.db_connection.close()
         pass
+
+    async def cancel_executors(self, executors: List[str]) -> None:
+        if not executors:
+            return
+
+        loop = asyncio.get_event_loop()
+        minion_names = await self.db_connection.fetch(
+            "SELECT executor_id, minion_name FROM executors WHERE executor_id = ANY($1)",
+            executors
+        )
+        minion_names = {x['executor_id']: x['minion_name'] for x in minion_names}
+
+        for executor_id, minion_name in minion_names.items():
+            await loop.run_in_executor(None, functools.partial(
+                self.local.cmd_async,
+                minion_name,
+                'cmd.run',
+                [(f'docker stop {executor_id}',)],
+            ))
+
+        await self.db_connection.executemany(
+            "UPDATE executors SET finished = TRUE, error = $1 WHERE executor_id = $2",
+            [(f'Executor was cancelled', executor_id) for executor_id in executors]
+        )
