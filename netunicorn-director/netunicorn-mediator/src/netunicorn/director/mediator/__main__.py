@@ -93,12 +93,12 @@ async def experiment_status_handler(experiment_name: str, username: str = Depend
     )
 
 
-@app.get("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
+@app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
 async def cancel_experiment_handler(experiment_name: str, username: str = Depends(check_credentials)):
     return await cancel_experiment(experiment_name, username)
 
 
-@app.get("/api/v1/executors/cancel", status_code=200)
+@app.post("/api/v1/executors/cancel", status_code=200)
 async def cancel_executors_handler(executors: List[str], username: str = Depends(check_credentials)):
     return await cancel_executors(executors, username)
 
