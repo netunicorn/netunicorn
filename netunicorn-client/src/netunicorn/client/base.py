@@ -1,4 +1,4 @@
-from typing import Tuple, Union, Optional, List
+from typing import Tuple, Union, Optional, List, Iterable
 
 from netunicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
 from netunicorn.base.minions import MinionPool
@@ -56,5 +56,19 @@ class BaseClient:
         If experiment finished, you can explore results of the experiment
         :param experiment_id: id of the experiment returned by 'deploy_map' function
         :return: current status of the experiment, optionally experiment definition, optionally experiment results
+        """
+        raise NotImplementedError()
+
+    def cancel_experiment(self, experiment_id: str) -> None:
+        """
+        Cancels experiment execution.
+        :param experiment_id: id of the experiment
+        """
+        raise NotImplementedError()
+
+    def cancel_executors(self, executors: Iterable[str]) -> None:
+        """
+        Cancels particular executors.
+        :param executors: list of executors to cancel
         """
         raise NotImplementedError()

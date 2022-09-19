@@ -1,5 +1,6 @@
 import json
 import os
+from typing import List
 
 import uvicorn
 from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, HTTPException
@@ -10,7 +11,8 @@ from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
 
 from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status, \
-    check_services_availability, credentials_check, open_db_connection, close_db_connection
+    check_services_availability, credentials_check, open_db_connection, close_db_connection, \
+    cancel_experiment, cancel_executors
 
 logger = get_logger('netunicorn.director.mediator')
 
@@ -28,11 +30,6 @@ async def check_credentials(credentials: HTTPBasicCredentials = Depends(security
             headers={"WWW-Authenticate": "Basic"}
         )
     return current_username
-
-
-async def parse_body(request: Request):
-    data: bytes = await request.body()
-    return data
 
 
 @app.exception_handler(Exception)
@@ -94,6 +91,16 @@ async def experiment_status_handler(experiment_name: str, username: str = Depend
         content=json.dumps(await get_experiment_status(experiment_name, username), cls=UnicornEncoder),
         media_type="application/json",
     )
+
+
+@app.get("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
+async def cancel_experiment_handler(experiment_name: str, username: str = Depends(check_credentials)):
+    return await cancel_experiment(experiment_name, username)
+
+
+@app.get("/api/v1/executors/cancel", status_code=200)
+async def cancel_executors_handler(executors: List[str], username: str = Depends(check_credentials)):
+    return await cancel_executors(executors, username)
 
 
 if __name__ == '__main__':
