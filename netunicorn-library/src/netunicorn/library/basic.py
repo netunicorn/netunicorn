@@ -1,3 +1,5 @@
+import subprocess
+
 from netunicorn.base.task import Task
 import time
 
@@ -15,3 +17,12 @@ class SleepTask(Task):
     def run(self):
         time.sleep(self.seconds)
         return self.seconds
+
+
+class ShellCommand(Task):
+    def __init__(self, command: str):
+        self.command = command
+        super().__init__()
+
+    def run(self):
+        return subprocess.check_output(self.command, shell=True)

@@ -25,8 +25,8 @@ class StartQoECollectionServer(TaskDispatcher):
 
 class StartQoECollectionServerLinuxImplementation(Task):
     requirements = [
-        'sudo apt update',
-        'sudo apt install -y python3-pip uvicorn',
+        'sudo apt-get update',
+        'sudo apt-get install -y python3-pip uvicorn',
         'pip3 install fastapi uvicorn uvloop',
     ]
 

@@ -6,11 +6,11 @@ This module allows to add external preprocessors.
 # TODO: allow to add external preprocessors (not implemented yet :D)
 """
 
-from unicorn.base.experiment import Experiment
+from netunicorn.base.experiment import Experiment
 
-deployment_preprocessors = []
+experiment_preprocessors = []
 
 
 class BasePreprocessor:
-    def __call__(self, deployment_map: Experiment) -> Experiment:
-        return deployment_map
+    def __call__(self, experiment: Experiment) -> Experiment:
+        return experiment

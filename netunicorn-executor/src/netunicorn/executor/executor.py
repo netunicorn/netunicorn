@@ -4,7 +4,6 @@ import asyncio
 import logging
 import sys
 
-import pickle
 import time
 
 import cloudpickle
@@ -33,18 +32,20 @@ class PipelineExecutorState(Enum):
 
 
 class PipelineExecutor:
-    def __init__(self, executor_id: str = None, gateway_ip: str = None, gateway_port: int = None):
+    def __init__(self, executor_id: str = None, gateway_endpoint: str = None):
         # load up our own ID and the local communicator info
-        self.dir_ip: str = gateway_ip or os.environ["PINOT_GATEWAY_IP"]
-        self.dir_port: int = int(gateway_port or os.environ.get("PINOT_GATEWAY_PORT") or "26512")
-        self.executor_id: str = executor_id or os.environ.get("PINOT_EXECUTOR_ID") or "Unknown"
+        self.gateway_endpoint: str = gateway_endpoint or os.environ["NETUNICORN_GATEWAY_ENDPOINT"]
+        if self.gateway_endpoint[-1] == "/":
+            self.gateway_endpoint = self.gateway_endpoint[:-1]
+
+        self.executor_id: str = executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
 
         self.logfile_name = f'executor_{executor_id}.log'
         self.print_file = open(self.logfile_name, "at")
 
         logging.basicConfig()
         self.logger = self.create_logger()
-        self.logger.info(f"Parsed configuration: Gateway located on {self.dir_ip}:{self.dir_port}")
+        self.logger.info(f"Parsed configuration: Gateway located on {self.gateway_endpoint}")
         self.logger.info(f"Current directory: {os.getcwd()}")
 
         # increasing timeout in msecs to wait between network requests
@@ -106,9 +107,8 @@ class PipelineExecutor:
                 return
 
         try:
-            # TODO: https
             result = req.get(
-                f"http://{self.dir_ip}:{self.dir_port}/api/v1/executor/pipeline?executor_id={self.executor_id}",
+                f"{self.gateway_endpoint}/api/v1/executor/pipeline?executor_id={self.executor_id}",
                 timeout=30
             )
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
@@ -186,7 +186,7 @@ class PipelineExecutor:
         """
         This method reports the results to the communicator.
         """
-        if not self.pipeline.report_results:
+        if isinstance(self.pipeline, Pipeline) and not self.pipeline.report_results:
             self.logger.info("Skipping reporting results due to pipeline setting.")
             self.state = PipelineExecutorState.FINISHED
             return
@@ -195,12 +195,15 @@ class PipelineExecutor:
             current_log = f.readlines()
 
         results = self.pipeline_results
-        results = pickle.dumps([results, current_log])
+
+        try:
+            results = cloudpickle.dumps([results, current_log])
+        except Exception as e:
+            results = cloudpickle.dumps([e, current_log])
         results = b64encode(results).decode()
         try:
-            # TODO: https
             result = req.post(
-                f"http://{self.dir_ip}:{self.dir_port}/api/v1/executor/result",
+                f"{self.gateway_endpoint}/api/v1/executor/result",
                 json={"executor_id": self.executor_id, "results": results},
                 timeout=30
             )

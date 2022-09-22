@@ -62,32 +62,32 @@ class LocalClient(BaseClient):
 
             self.logger.info(f"Preparation of environment for pipeline {pipeline.name} finished")
 
-    def prepare_deployment(self, deployment_map: Experiment, deployment_id: str) -> str:
-        self.logger.info(f"Starting deployment preparation for {deployment_id}")
-        internal_deployment_id = f"depl_{deployment_id}"
+    def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
+        self.logger.info(f"Starting deployment preparation for {experiment_id}")
+        internal_deployment_id = f"depl_{experiment_id}"
         if internal_deployment_id in self.storage:
             self.logger.info("Deployment is already prepared.")
             return internal_deployment_id
 
-        for deployment in deployment_map:
-            if not isinstance(deployment.pipeline.environment_definition, ShellExecution):
+        for deployment in experiment:
+            if not isinstance(deployment.environment_definition, ShellExecution):
                 raise ValueError(f"Local client supports only ShellExecution environment definition")
             if deployment.minion.name != 'localhost':
                 raise ValueError(f"Local client supports only local minion")
 
         self.storage[internal_deployment_id + "_status"] = ExperimentStatus.PREPARING
-        for item in deployment_map:
+        for item in experiment:
             item.minion = copy.deepcopy(item.minion)  # bunch of hacks because local execution
             item.minion.additional_properties['executor_id'] = str(uuid4())
             self._install_pipeline(item.pipeline)
 
-        self.storage[internal_deployment_id] = deployment_map
+        self.storage[internal_deployment_id] = experiment
         self.storage[internal_deployment_id + "_status"] = ExperimentStatus.READY
-        return deployment_id
+        return experiment_id
 
-    def start_execution(self, deployment_id: str) -> str:
-        self.logger.info(f"Starting deployment for {deployment_id}")
-        internal_deployment_id = f"depl_{deployment_id}"
+    def start_execution(self, experiment_id: str) -> str:
+        self.logger.info(f"Starting deployment for {experiment_id}")
+        internal_deployment_id = f"depl_{experiment_id}"
         status = self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
         if status != ExperimentStatus.READY:
             raise ValueError(f"Deployment is in incorrect status: {status}")
@@ -106,11 +106,11 @@ class LocalClient(BaseClient):
             result,
             {x.minion.additional_properties['executor_id']: x.minion for x in deployment_map}
         )
-        self.logger.info(f"Spawned and started {len(deployment_map)} executor(s) for deployment {deployment_id}")
-        return deployment_id
+        self.logger.info(f"Spawned and started {len(deployment_map)} executor(s) for deployment {experiment_id}")
+        return experiment_id
 
-    def get_deployment_status(self, deployment_id: str) -> ExperimentStatus:
-        internal_deployment_id = f"depl_{deployment_id}"
+    def get_experiment_status(self, experiment_id: str) -> ExperimentStatus:
+        internal_deployment_id = f"depl_{experiment_id}"
         if not internal_deployment_id + "_data" in self.storage:
             return self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
 
@@ -120,11 +120,11 @@ class LocalClient(BaseClient):
             return ExperimentStatus.FINISHED
         return self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
 
-    def get_deployment_result(self, deployment_id: str) -> Tuple[
+    def get_experiment_result(self, experiment_id: str) -> Tuple[
         ExperimentStatus,
         Union[Dict[str, ExperimentExecutionResult], Exception]
     ]:
-        internal_deployment_id = f"depl_{deployment_id}"
+        internal_deployment_id = f"depl_{experiment_id}"
         if not self.storage[internal_deployment_id + "_data"][1].ready():
             self.logger.info("Pipelines are running. Use 'get_deployment_status' function to check status")
             return ExperimentStatus.RUNNING, {}
@@ -132,7 +132,7 @@ class LocalClient(BaseClient):
         self.storage[internal_deployment_id + "_data"][0].close()
         self.storage[internal_deployment_id + "_status"] = ExperimentStatus.FINISHED
         results = self.storage[internal_deployment_id + "_data"][1].get()
-        self.logger.info(f"Collected results for deployment {deployment_id}")
+        self.logger.info(f"Collected results for deployment {experiment_id}")
 
         return ExperimentStatus.FINISHED, {
             result[0]: ExperimentExecutionResult(
