@@ -7,6 +7,7 @@ import requests as req
 from uuid import uuid4
 from typing import Union, Optional, Dict, Tuple, List
 from datetime import datetime
+from returns.result import Result, Success, Failure
 
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.utils import UnicornEncoder
@@ -90,14 +91,14 @@ async def get_minion_pool(username: str) -> list:
     return result
 
 
-def experiment_precheck(experiment: Experiment) -> (bool, str):
+def experiment_precheck(experiment: Experiment) -> Result[None, str]:
     executor_names = set()
     for executor in experiment.deployment_map:
         if executor.executor_id != "":
             if executor.executor_id in executor_names:
-                return False, f"Experiment has non-unique non-empty executor id: {executor.executor_id}"
+                return Failure(f"Experiment has non-unique non-empty executor id: {executor.executor_id}")
             executor_names.add(executor.executor_id)
-    return True, ""
+    return Success(None)
 
 
 async def prepare_experiment_task(experiment_name: str, experiment: Experiment, username: str) -> None:
@@ -289,14 +290,18 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         )
 
 
-async def get_experiment_status(experiment_name: str, username: str) -> Tuple[
-    ExperimentStatus,
-    Optional[Experiment],
-    Union[
-        None,
-        Exception,
-        List[SerializedExperimentExecutionResult],
-    ]
+async def get_experiment_status(experiment_name: str, username: str) -> Result[
+    Tuple[
+        ExperimentStatus,
+        Optional[Experiment],
+        Union[
+            None,
+            Exception,
+            List[
+                SerializedExperimentExecutionResult],
+        ]
+    ],
+    str
 ]:
     experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
     row = await db_connection.fetchrow(
@@ -304,13 +309,13 @@ async def get_experiment_status(experiment_name: str, username: str) -> Tuple[
         experiment_id
     )
     if row is None:
-        raise Exception("Experiment not found")
+        return Failure(f"Experiment {experiment_name} of user {username} was not found")
     experiment, error, execution_results = row["data"], row["error"], row["execution_results"]
     if experiment is not None:
         experiment = Experiment.from_json(experiment)
     if error is not None:
-        return status, experiment, error
-    return status, experiment, execution_results
+        return Success((status, experiment, error))
+    return Success((status, experiment, execution_results))
 
 
 async def start_experiment(experiment_name: str, username: str) -> None:
