@@ -5,6 +5,7 @@ from typing import List
 import uvicorn
 from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, HTTPException
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
+from returns.pipeline import is_successful
 
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.utils import UnicornEncoder
@@ -75,9 +76,9 @@ async def prepare_experiment_handler(
         logger.exception(e)
         raise Exception(f"Couldn't parse experiment from the provided data: {e}")
 
-    result, error = experiment_precheck(experiment)
-    if not result:
-        return Response(status_code=400, content=f"Experiment precheck failed: {error}")
+    result = experiment_precheck(experiment)
+    if not is_successful(result):
+        return Response(status_code=400, content=f"Experiment precheck failed: {result.failure()}")
     background_tasks.add_task(prepare_experiment_task, experiment_name, experiment, username)
     return experiment_name
 
@@ -90,10 +91,17 @@ async def start_experiment_handler(experiment_name: str, username: str = Depends
 
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(experiment_name: str, username: str = Depends(check_credentials)):
-    return Response(
-        content=json.dumps(await get_experiment_status(experiment_name, username), cls=UnicornEncoder),
-        media_type="application/json",
-    )
+    result = await get_experiment_status(experiment_name, username)
+    if is_successful(result):
+        return Response(
+            content=json.dumps(result.unwrap(), cls=UnicornEncoder),
+            media_type="application/json",
+        )
+    else:
+        return Response(
+            content=result.failure(),
+            status_code=400,
+        )
 
 
 @app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
