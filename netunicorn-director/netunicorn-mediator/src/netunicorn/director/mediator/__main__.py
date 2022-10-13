@@ -77,7 +77,7 @@ async def prepare_experiment_handler(
 
     result, error = experiment_precheck(experiment)
     if not result:
-        raise Exception(f"Experiment precheck failed: {error}")
+        return Response(status_code=400, content=f"Experiment precheck failed: {error}")
     background_tasks.add_task(prepare_experiment_task, experiment_name, experiment, username)
     return experiment_name
 
