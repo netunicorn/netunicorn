@@ -125,7 +125,7 @@ class WatchYouTubeVideoLinuxImplementation(Task):
         super().__init__()
 
     def run(self):
-        from unicorn.library.qoe_youtube import qoe_collector, watcher
+        from netunicorn.library.qoe_youtube import qoe_collector, watcher
         adblock_crx_path = os.path.join('.', 'extensions', '4.46.2_0.crx')
         qoe_extension_path = os.path.join('.', 'extensions', 'qoe_extension')
 

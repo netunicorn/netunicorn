@@ -9,7 +9,6 @@ from .minions import Minion
 from .pipeline import Pipeline
 from .task import TaskDispatcher
 from .utils import SerializedPipelineType
-from .environment_definitions import EnvironmentDefinition, ShellExecution, DockerImage
 
 try:
     import cloudpickle  # it's needed only on client side, but this module is also imported on engine side

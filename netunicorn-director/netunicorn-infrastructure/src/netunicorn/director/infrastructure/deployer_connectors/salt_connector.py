@@ -11,7 +11,8 @@ from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.minions import MinionPool, Minion
 from netunicorn.base.utils import UnicornEncoder
-from ..resources import logger, GATEWAY_ENDPOINT, DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
+from netunicorn.director.base.resources import DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
+from ..resources import logger, GATEWAY_ENDPOINT
 
 from .base import Connector
 

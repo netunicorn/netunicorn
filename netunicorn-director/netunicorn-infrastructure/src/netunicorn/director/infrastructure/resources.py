@@ -1,6 +1,5 @@
 import os
-from netunicorn.director.base.resources import get_logger, \
-    DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
+from netunicorn.director.base.resources import get_logger
 
 # set logger
 logger = get_logger('netunicorn.director.infrastructure')

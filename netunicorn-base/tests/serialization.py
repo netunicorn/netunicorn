@@ -2,7 +2,6 @@ import platform
 import unittest
 import json
 from base64 import b64encode
-from returns.result import Success, Failure
 
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.base.minions import Minion, MinionPool
