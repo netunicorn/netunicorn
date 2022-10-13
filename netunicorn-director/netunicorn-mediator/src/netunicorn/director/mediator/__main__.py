@@ -12,7 +12,7 @@ from netunicorn.director.base.resources import get_logger
 
 from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status, \
     check_services_availability, credentials_check, open_db_connection, close_db_connection, \
-    cancel_experiment, cancel_executors
+    cancel_experiment, cancel_executors, experiment_precheck
 
 logger = get_logger('netunicorn.director.mediator')
 
@@ -75,6 +75,9 @@ async def prepare_experiment_handler(
         logger.exception(e)
         raise Exception(f"Couldn't parse experiment from the provided data: {e}")
 
+    result, error = experiment_precheck(experiment)
+    if not result:
+        raise Exception(f"Experiment precheck failed: {error}")
     background_tasks.add_task(prepare_experiment_task, experiment_name, experiment, username)
     return experiment_name
 
