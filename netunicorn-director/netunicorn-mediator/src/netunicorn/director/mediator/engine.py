@@ -103,8 +103,7 @@ def experiment_precheck(experiment: Experiment) -> Result[None, str]:
 
 async def prepare_experiment_task(experiment_name: str, experiment: Experiment, username: str) -> None:
     async def prepare_deployment(_username: str, _deployment: Deployment) -> None:
-        if not _deployment.executor_id:
-            _deployment.executor_id = str(uuid4())
+        _deployment.executor_id = str(uuid4())
         env_def = _deployment.environment_definition
 
         # insert minion name if it doesn't exist yet
