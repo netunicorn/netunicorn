@@ -85,6 +85,8 @@ async def get_minion_pool(username: str) -> list:
         )
         if current_lock is None or current_lock == username:
             result.append(minion)
+        else:
+            logger.debug(f"Minion {minion_name} is locked by {current_lock}")
     return result
 
 

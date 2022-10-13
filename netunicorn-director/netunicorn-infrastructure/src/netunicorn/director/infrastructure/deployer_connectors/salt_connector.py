@@ -45,6 +45,7 @@ class SaltConnector(Connector):
                 logger.warning(f"Unknown architecture {minion_architecture} for minion {instance.name}, {e}")
                 instance.architecture = Architecture.UNKNOWN
             minion_pool.append(instance)
+        logger.debug(f"Returned minion pool length: {len(minion_pool)}")
         return minion_pool
 
     async def start_deployment(self, experiment_id: str) -> None:
