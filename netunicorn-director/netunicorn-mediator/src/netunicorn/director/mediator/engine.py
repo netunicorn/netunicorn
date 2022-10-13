@@ -88,9 +88,20 @@ async def get_minion_pool(username: str) -> list:
     return result
 
 
+def experiment_precheck(experiment: Experiment) -> (bool, str):
+    executor_names = set()
+    for executor in experiment.deployment_map:
+        if executor.executor_id != "":
+            if executor.executor_id in executor_names:
+                return False, f"Experiment has non-unique non-empty executor id: {executor.executor_id}"
+            executor_names.add(executor.executor_id)
+    return True, ""
+
+
 async def prepare_experiment_task(experiment_name: str, experiment: Experiment, username: str) -> None:
     async def prepare_deployment(_username: str, _deployment: Deployment) -> None:
-        _deployment.executor_id = str(uuid4())
+        if not _deployment.executor_id:
+            _deployment.executor_id = str(uuid4())
         env_def = _deployment.environment_definition
 
         # insert minion name if it doesn't exist yet
