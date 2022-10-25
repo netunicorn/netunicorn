@@ -19,28 +19,28 @@ from .api_types import CompilationRequest
 logger = get_logger('netunicorn.director.compiler')
 
 app = FastAPI()
-db_connection: Optional[asyncpg.Connection] = None
+db_conn_pool: Optional[asyncpg.Pool] = None
 
 
 @app.get('/health')
 async def health_check() -> str:
-    await db_connection.fetchval('SELECT 1')
+    await db_conn_pool.fetchval('SELECT 1')
     return 'OK'
 
 
 @app.on_event("startup")
 async def startup():
-    global db_connection
-    db_connection = await asyncpg.connect(
+    global db_conn_pool
+    db_conn_pool = await asyncpg.create_pool(
         user=DATABASE_USER, password=DATABASE_PASSWORD,
         database=DATABASE_DB, host=DATABASE_ENDPOINT
     )
-    await db_connection.fetchval('SELECT 1')
+    await db_conn_pool.fetchval('SELECT 1')
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    await db_connection.close()
+    await db_conn_pool.close()
 
 
 @app.post("/compile/shell")
@@ -135,7 +135,7 @@ async def docker_compilation_task(
 
 
 async def record_compilation_result(experiment_id: str, compilation_id: str, success: bool, log: str) -> None:
-    await db_connection.execute(
+    await db_conn_pool.execute(
         "INSERT INTO compilations (experiment_id, compilation_id, status, result) VALUES ($1, $2, $3, $4) "
         "ON CONFLICT (experiment_id, compilation_id) DO UPDATE SET status = $3, result = $4",
         experiment_id, compilation_id, success, log

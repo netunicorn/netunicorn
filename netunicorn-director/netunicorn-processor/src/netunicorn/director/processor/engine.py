@@ -1,21 +1,20 @@
 import asyncio
-import json
 
 import asyncpg
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 
 from netunicorn.base.experiment import ExperimentStatus, Experiment, ExperimentExecutionResult
-from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger, \
     DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
+from netunicorn.director.base.utils import __init_connection
 
 logger = get_logger('netunicorn.director.processor')
-db_connection: Optional[asyncpg.Connection] = None
+db_conn_pool: Optional[asyncpg.Pool] = None
 
 
 async def collect_all_executor_results(experiment: Experiment, experiment_id: str) -> None:
-    if await db_connection.fetchval(
+    if await db_conn_pool.fetchval(
             "SELECT error FROM experiments WHERE experiment_id = $1",
             experiment_id
     ):
@@ -24,7 +23,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
 
     execution_results = []
     for deployment in experiment:
-        row = await db_connection.fetchrow(
+        row = await db_conn_pool.fetchrow(
             "SELECT result::bytea, error FROM executors WHERE experiment_id = $1 AND executor_id = $2",
             experiment_id, deployment.executor_id
         )
@@ -42,14 +41,14 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
                 error=error
             )
         )
-    await db_connection.execute(
+    await db_conn_pool.execute(
         "UPDATE experiments SET execution_results = $1::jsonb[] WHERE experiment_id = $2",
         execution_results, experiment_id
     )
 
 
 async def watch_experiment_task(experiment_id: str, lock: str) -> None:
-    experiment_data = await db_connection.fetchval(
+    experiment_data = await db_conn_pool.fetchval(
         "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
         experiment_id
     )
@@ -62,7 +61,7 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
     start_time = datetime.utcnow()
 
     try:
-        status = ExperimentStatus(await db_connection.fetchval(
+        status = ExperimentStatus(await db_conn_pool.fetchval(
             "SELECT status FROM experiments WHERE experiment_id = $1",
             experiment_id
         ))
@@ -74,14 +73,14 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
         # haven't started yet, waiting
         await asyncio.sleep(5)
         logger.debug(f"Experiment {experiment_id} is still not running, waiting")
-        status = ExperimentStatus(await db_connection.fetchval(
+        status = ExperimentStatus(await db_conn_pool.fetchval(
             "SELECT status FROM experiments WHERE experiment_id = $1",
             experiment_id
         ))
         if datetime.utcnow() > start_time + timedelta(minutes=timeout_minutes):
             exc = f"Experiment {experiment_id} timeout reached and still not started."
             logger.error(exc)
-            await db_connection.execute(
+            await db_conn_pool.execute(
                 "UPDATE experiments SET status = $1, error = $2 WHERE experiment_id = $3",
                 ExperimentStatus.FINISHED.value, exc, experiment_id
             )
@@ -98,7 +97,7 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
 
     while True:
         logger.debug(f"New cycle iteration for experiment {experiment_id}")
-        status = ExperimentStatus(await db_connection.fetchval(
+        status = ExperimentStatus(await db_conn_pool.fetchval(
             "SELECT status FROM experiments WHERE experiment_id = $1",
             experiment_id
         ))
@@ -108,7 +107,7 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
 
         if status != ExperimentStatus.RUNNING:
             exception = f"Experiment {experiment_id} is in unexpected status {status}. "
-            await db_connection.execute(
+            await db_conn_pool.execute(
                 "UPDATE experiments SET error = $1 WHERE experiment_id = $2",
                 ExperimentStatus.FINISHED.value, exception, experiment_id
             )
@@ -117,14 +116,14 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
         for executor_id, finished in executor_status.items():
             if finished:
                 continue
-            if await db_connection.fetchval(
-                "SELECT finished from executors WHERE experiment_id = $1 AND executor_id = $2",
-                experiment_id, executor_id
+            if await db_conn_pool.fetchval(
+                    "SELECT finished from executors WHERE experiment_id = $1 AND executor_id = $2",
+                    experiment_id, executor_id
             ):
                 executor_status[executor_id] = True
                 continue
 
-            last_time_contacted = await db_connection.fetchval(
+            last_time_contacted = await db_conn_pool.fetchval(
                 "SELECT keepalive FROM executors WHERE experiment_id = $1 AND executor_id = $2",
                 experiment_id, executor_id
             ) or start_time
@@ -137,7 +136,7 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
             if time_elapsed > timeout_minutes * 60:
                 executor_status[executor_id] = True
                 exception = f"Executor {executor_id} timeout reached."
-                await db_connection.execute(
+                await db_conn_pool.execute(
                     "UPDATE executors SET error = $1, finished = TRUE WHERE experiment_id = $2 AND executor_id = $3",
                     exception, experiment_id, executor_id
                 )
@@ -150,14 +149,14 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
 
     # again update final experiment result
     await collect_all_executor_results(experiment, experiment_id)
-    await db_connection.execute(
+    await db_conn_pool.execute(
         "UPDATE experiments SET status = $1 WHERE experiment_id = $2",
         ExperimentStatus.FINISHED.value, experiment_id
     )
 
     # remove all locks from minions
     minion_names = [x.minion.name for x in experiment]
-    await db_connection.execute(
+    await db_conn_pool.execute(
         "UPDATE locks SET username = NULL WHERE username = $1 AND minion_name = ANY($2)",
         lock, minion_names
     )
@@ -166,25 +165,20 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
 
 
 async def healthcheck() -> None:
-    await db_connection.fetchval("SELECT 1")
+    await db_conn_pool.fetchval("SELECT 1")
 
 
 async def on_startup() -> None:
-    global db_connection
-    db_connection = await asyncpg.connect(
+    global db_conn_pool
+    db_conn_pool = await asyncpg.create_pool(
         host=DATABASE_ENDPOINT,
         user=DATABASE_USER,
         password=DATABASE_PASSWORD,
-        database=DATABASE_DB
-    )
-    await db_connection.set_type_codec(
-        'jsonb',
-        encoder=lambda x: json.dumps(x, cls=UnicornEncoder),
-        decoder=json.loads,
-        schema='pg_catalog'
+        database=DATABASE_DB,
+        init=__init_connection,
     )
     await healthcheck()
 
 
 async def on_shutdown() -> None:
-    await db_connection.close()
+    await db_conn_pool.close()

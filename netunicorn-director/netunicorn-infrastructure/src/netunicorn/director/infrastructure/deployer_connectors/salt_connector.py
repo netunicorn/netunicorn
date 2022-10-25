@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import functools
-import json
 from typing import Optional, List
 
 import asyncpg
@@ -10,7 +9,7 @@ from netunicorn.base.architecture import Architecture
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.minions import MinionPool, Minion
-from netunicorn.base.utils import UnicornEncoder
+from netunicorn.director.base.utils import __init_connection
 from netunicorn.director.base.resources import DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 from ..resources import logger, GATEWAY_ENDPOINT
 
@@ -30,7 +29,7 @@ class SaltConnector(Connector):
         # self.local.cmd_async
         self.runner = salt.runner.RunnerClient(self.master_opts)
         # self.runner.cmd(fun, arg=None, pub_data=None, kwarg=None, print_event=True, full_return=False)
-        self.db_connection: Optional[asyncpg.Connection] = None
+        self.db_conn_pool: Optional[asyncpg.Pool] = None
 
     async def get_minion_pool(self) -> MinionPool:
         minions = self.local.cmd('*', 'grains.item', arg=self.PUBLIC_GRAINS)
@@ -51,7 +50,7 @@ class SaltConnector(Connector):
 
     async def start_deployment(self, experiment_id: str) -> None:
         loop = asyncio.get_event_loop()
-        experiment_data = await self.db_connection.fetchval(
+        experiment_data = await self.db_conn_pool.fetchval(
             "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
             experiment_id
         )
@@ -110,7 +109,7 @@ class SaltConnector(Connector):
                 exception = f'Failed to create environment, see exception arguments for the log: {results}'
                 logger.error(exception)
                 logger.debug(f"Deployment: {deployment}")
-                await self.db_connection.execute(
+                await self.db_conn_pool.execute(
                     "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
                     exception, experiment_id, deployment.executor_id
                 )
@@ -118,7 +117,7 @@ class SaltConnector(Connector):
             logger.debug(f"Deployment {deployment.minion} - {deployment.executor_id} successfully finished")
 
         logger.debug(f"Experiment {experiment_id} deployment successfully finished")
-        await self.db_connection.execute(
+        await self.db_conn_pool.execute(
             "UPDATE experiments SET status = $1 WHERE experiment_id = $2",
             ExperimentStatus.READY.value, experiment_id
         )
@@ -127,14 +126,14 @@ class SaltConnector(Connector):
         logger.debug(f"Starting execution of experiment {experiment_id}")
         loop = asyncio.get_event_loop()
 
-        # get experiment from redis
-        data = await self.db_connection.fetchval(
+        # get experiment from the db
+        data = await self.db_conn_pool.fetchval(
             "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
             experiment_id
         )
         if not data:
             error = Exception(f"Experiment {experiment_id} not found")
-            await self.db_connection.execute(
+            await self.db_conn_pool.execute(
                 "INSERT INTO experiments (experiment_id, status, error, experiment_name, creation_time, username) "
                 "VALUES ($1, $2, $3, 'Unknown', NOW(), 'Unknown')",
                 experiment_id, ExperimentStatus.FINISHED.value, error
@@ -149,13 +148,13 @@ class SaltConnector(Connector):
             if not deployment.prepared:
                 # You are not prepared!
                 logger.debug(f"Deployment with executor {deployment.executor_id} is not prepared, skipping")
-                await self.db_connection.execute(
+                await self.db_conn_pool.execute(
                     "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
                     "Deployment is not prepared", experiment_id, deployment.executor_id
                 )
                 continue
 
-            if await self.db_connection.fetchval(
+            if await self.db_conn_pool.fetchval(
                     "SELECT finished FROM executors WHERE experiment_id = $1 AND executor_id = $2",
                     experiment_id, deployment.executor_id
             ):
@@ -191,13 +190,13 @@ class SaltConnector(Connector):
                 else:
                     exception = f'Unknown environment definition: {deployment.environment_definition}'
                     logger.error(exception)
-                    await self.db_connection.execute(
+                    await self.db_conn_pool.execute(
                         "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
                         exception, experiment_id, deployment.executor_id
                     )
                     continue
             except Exception as e:
-                await self.db_connection.execute(
+                await self.db_conn_pool.execute(
                     "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
                     str(e), experiment_id, deployment.executor_id
                 )
@@ -206,35 +205,32 @@ class SaltConnector(Connector):
             logger.debug(f"Result of starting executor {executor_id} on minion {deployment.minion}: {result}")
 
         logger.debug(f"Experiment {experiment_id} execution successfully started")
-        await self.db_connection.execute(
+        await self.db_conn_pool.execute(
             "UPDATE experiments SET status = $1, start_time = $2 WHERE experiment_id = $3",
             ExperimentStatus.RUNNING.value, datetime.datetime.utcnow(), experiment_id
         )
 
     async def healthcheck(self):
-        await self.db_connection.fetchval("SELECT 1")
+        await self.db_conn_pool.fetchval("SELECT 1")
 
     async def on_startup(self):
-        self.db_connection = await asyncpg.connect(
-            host=DATABASE_ENDPOINT, user=DATABASE_USER, password=DATABASE_PASSWORD, database=DATABASE_DB
-        )
-        await self.db_connection.set_type_codec(
-            'jsonb',
-            encoder=lambda x: json.dumps(x, cls=UnicornEncoder),
-            decoder=json.loads,
-            schema='pg_catalog'
+        self.db_conn_pool = await asyncpg.create_pool(
+            host=DATABASE_ENDPOINT,
+            user=DATABASE_USER,
+            password=DATABASE_PASSWORD,
+            database=DATABASE_DB,
+            init=__init_connection,
         )
 
     async def on_shutdown(self):
-        await self.db_connection.close()
-        pass
+        await self.db_conn_pool.close()
 
     async def cancel_executors(self, executors: List[str]) -> None:
         if not executors:
             return
 
         loop = asyncio.get_event_loop()
-        minion_names = await self.db_connection.fetch(
+        minion_names = await self.db_conn_pool.fetch(
             "SELECT executor_id, minion_name FROM executors WHERE executor_id = ANY($1)",
             executors
         )
@@ -248,7 +244,7 @@ class SaltConnector(Connector):
                 [(f'docker stop {executor_id}',)],
             ))
 
-        await self.db_connection.executemany(
+        await self.db_conn_pool.executemany(
             "UPDATE executors SET finished = TRUE, error = $1 WHERE executor_id = $2",
             [(f'Executor was cancelled', executor_id) for executor_id in executors]
         )

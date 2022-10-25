@@ -12,7 +12,7 @@ from netunicorn.director.base.resources import get_logger, \
 logger = get_logger('netunicorn.director.authentication')
 
 app = FastAPI()
-db_conn: Optional[asyncpg.connection.Connection] = None
+db_conn_pool: Optional[asyncpg.Pool] = None
 
 
 class AuthenticationRequest(BaseModel):
@@ -22,14 +22,14 @@ class AuthenticationRequest(BaseModel):
 
 @app.get('/health')
 async def health_check() -> str:
-    await db_conn.fetchval('SELECT 1')
+    await db_conn_pool.fetchval('SELECT 1')
     return 'OK'
 
 
 @app.on_event("startup")
 async def startup():
-    global db_conn
-    db_conn = await asyncpg.connect(
+    global db_conn_pool
+    db_conn_pool = await asyncpg.create_pool(
         user=DATABASE_USER, password=DATABASE_PASSWORD,
         database=DATABASE_DB, host=DATABASE_ENDPOINT
     )
@@ -37,13 +37,13 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    await db_conn.close()
+    await db_conn_pool.close()
 
 
 @app.post("/auth", status_code=200)
 async def auth(data: AuthenticationRequest):
     sql_query = 'SELECT EXISTS(SELECT 1 FROM authentication WHERE username = $1 AND token = $2)'
-    if await db_conn.fetchval(sql_query, data.username, data.token):
+    if await db_conn_pool.fetchval(sql_query, data.username, data.token):
         return
 
     raise HTTPException(
