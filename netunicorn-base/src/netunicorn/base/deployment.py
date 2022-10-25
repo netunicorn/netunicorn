@@ -20,10 +20,10 @@ except ImportError:
 
 
 class Deployment:
-    def __init__(self, minion: Minion, pipeline: Pipeline, executor_id: str = ""):
+    def __init__(self, minion: Minion, pipeline: Pipeline):
         self.minion = minion
         self.prepared = False
-        self.executor_id = executor_id
+        self.executor_id = ""
         self.error: Optional[Exception] = None
         self.pipeline: SerializedPipelineType = b''
         self.environment_definition = pipeline.environment_definition
