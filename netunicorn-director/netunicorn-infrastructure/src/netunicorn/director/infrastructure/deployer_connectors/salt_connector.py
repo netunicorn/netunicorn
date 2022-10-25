@@ -9,7 +9,7 @@ from netunicorn.base.architecture import Architecture
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.minions import MinionPool, Minion
-from netunicorn.director.base.utils import __init_connection
+from netunicorn.director.base.utils import __init_connection as _init_connection
 from netunicorn.director.base.resources import DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 from ..resources import logger, GATEWAY_ENDPOINT
 
@@ -219,7 +219,7 @@ class SaltConnector(Connector):
             user=DATABASE_USER,
             password=DATABASE_PASSWORD,
             database=DATABASE_DB,
-            init=__init_connection,
+            init=_init_connection,
         )
 
     async def on_shutdown(self):
