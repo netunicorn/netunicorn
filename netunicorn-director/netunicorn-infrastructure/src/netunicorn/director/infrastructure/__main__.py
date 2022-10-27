@@ -1,21 +1,21 @@
+import json
 from typing import List
 
-from fastapi import FastAPI, BackgroundTasks
-from fastapi.responses import Response
 import uvicorn
-
-import json
+from fastapi import BackgroundTasks, FastAPI
+from fastapi.responses import Response
 from netunicorn.base.utils import UnicornEncoder
+
 from .deployer_connectors.salt_connector import SaltConnector
 
 app = FastAPI()
 connector = SaltConnector()
 
 
-@app.get('/health')
+@app.get("/health")
 async def health_check() -> str:
     await connector.healthcheck()
-    return 'OK'
+    return "OK"
 
 
 @app.on_event("startup")
@@ -30,7 +30,10 @@ async def shutdown():
 
 @app.get("/minions", status_code=200)
 async def get_minion_pool():
-    return Response(content=json.dumps(await connector.get_minion_pool(), cls=UnicornEncoder), media_type="application/json")
+    return Response(
+        content=json.dumps(await connector.get_minion_pool(), cls=UnicornEncoder),
+        media_type="application/json",
+    )
 
 
 @app.post("/start_deployment/{experiment_id}")

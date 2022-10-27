@@ -1,7 +1,7 @@
 import subprocess
+import time
 
 from netunicorn.base.task import Task
-import time
 
 
 class DummyTask(Task):

@@ -1,27 +1,22 @@
-import itertools
-import os
 import asyncio
+import itertools
 import logging
+import os
 import sys
-
 import time
+from base64 import b64decode, b64encode
+from copy import deepcopy
+from enum import Enum
+from typing import Collection, List, Optional
 
 import cloudpickle
 import requests as req
 import requests.exceptions
-
-from enum import Enum
-
-from base64 import b64encode, b64decode
-from copy import deepcopy
-
-from typing import List, Collection, Optional
-from returns.result import Result, Success, Failure
-from returns.pipeline import is_successful
-
+from netunicorn.base.pipeline import Pipeline, PipelineElementResult, PipelineResult
 from netunicorn.base.task import Task
-from netunicorn.base.pipeline import Pipeline, PipelineResult, PipelineElementResult
 from netunicorn.base.utils import NonStablePool as Pool
+from returns.pipeline import is_successful
+from returns.result import Failure, Result, Success
 
 
 class PipelineExecutorState(Enum):
@@ -34,18 +29,24 @@ class PipelineExecutorState(Enum):
 class PipelineExecutor:
     def __init__(self, executor_id: str = None, gateway_endpoint: str = None):
         # load up our own ID and the local communicator info
-        self.gateway_endpoint: str = gateway_endpoint or os.environ["NETUNICORN_GATEWAY_ENDPOINT"]
+        self.gateway_endpoint: str = (
+            gateway_endpoint or os.environ["NETUNICORN_GATEWAY_ENDPOINT"]
+        )
         if self.gateway_endpoint[-1] == "/":
             self.gateway_endpoint = self.gateway_endpoint[:-1]
 
-        self.executor_id: str = executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
+        self.executor_id: str = (
+            executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
+        )
 
-        self.logfile_name = f'executor_{executor_id}.log'
+        self.logfile_name = f"executor_{executor_id}.log"
         self.print_file = open(self.logfile_name, "at")
 
         logging.basicConfig()
         self.logger = self.create_logger()
-        self.logger.info(f"Parsed configuration: Gateway located on {self.gateway_endpoint}")
+        self.logger.info(
+            f"Parsed configuration: Gateway located on {self.gateway_endpoint}"
+        )
         self.logger.info(f"Current directory: {os.getcwd()}")
 
         # increasing timeout in msecs to wait between network requests
@@ -94,13 +95,15 @@ class PipelineExecutor:
         """
 
         if self.pipeline is not None:
-            self.logger.error("request_pipeline is called, but self.pipeline is already set, executing.")
+            self.logger.error(
+                "request_pipeline is called, but self.pipeline is already set, executing."
+            )
             self.state = PipelineExecutorState.EXECUTING
             return
 
         pipeline_filename = f"unicorn.pipeline"
         if os.path.exists(pipeline_filename):
-            with open(pipeline_filename, 'rb') as f:
+            with open(pipeline_filename, "rb") as f:
                 self.pipeline = cloudpickle.load(f)
                 self.logger.info("Pipeline loaded from local file, executing.")
                 self.state = PipelineExecutorState.EXECUTING
@@ -109,7 +112,7 @@ class PipelineExecutor:
         try:
             result = req.get(
                 f"{self.gateway_endpoint}/api/v1/executor/pipeline?executor_id={self.executor_id}",
-                timeout=30
+                timeout=30,
             )
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
             self.logger.info(f"Exception while requesting pipeline: {e} ")
@@ -123,7 +126,8 @@ class PipelineExecutor:
             self.logger.info("Successfully received pipeline.")
         else:
             self.logger.info(
-                f"Failed to receive pipeline. Status code: {result.status_code}, content: {result.content}")
+                f"Failed to receive pipeline. Status code: {result.status_code}, content: {result.content}"
+            )
 
     @staticmethod
     def execute_task(task: bytes) -> None:
@@ -158,7 +162,9 @@ class PipelineExecutor:
                     task.previous_steps = deepcopy(self.step_results)
 
                 element = [cloudpickle.dumps(task) for task in element]
-                results = p.map_async(PipelineExecutor.execute_task, element, chunksize=1)
+                results = p.map_async(
+                    PipelineExecutor.execute_task, element, chunksize=1
+                )
 
                 while not results.ready():
                     await asyncio.sleep(1.0)
@@ -169,9 +175,9 @@ class PipelineExecutor:
             results = results[0] if len(results) == 1 else results
             self.step_results.append(results)
 
-            if (
-                    (isinstance(results, Result) and not is_successful(results)) or
-                    (isinstance(results, Collection) and any(not is_successful(result) for result in results))
+            if (isinstance(results, Result) and not is_successful(results)) or (
+                isinstance(results, Collection)
+                and any(not is_successful(result) for result in results)
             ):
                 resulting_type = Failure
                 if self.pipeline.early_stopping:
@@ -191,7 +197,7 @@ class PipelineExecutor:
             self.state = PipelineExecutorState.FINISHED
             return
 
-        with open(self.logfile_name, 'rt') as f:
+        with open(self.logfile_name, "rt") as f:
             current_log = f.readlines()
 
         results = self.pipeline_results
@@ -205,7 +211,7 @@ class PipelineExecutor:
             result = req.post(
                 f"{self.gateway_endpoint}/api/v1/executor/result",
                 json={"executor_id": self.executor_id, "results": results},
-                timeout=30
+                timeout=30,
             )
             self.logger.info("Successfully reported results.")
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
@@ -217,10 +223,11 @@ class PipelineExecutor:
             self.state = PipelineExecutorState.FINISHED
         else:
             self.logger.warning(
-                f"Failed to report results. Status code: {result.status_code}, content: {result.content}")
+                f"Failed to report results. Status code: {result.status_code}, content: {result.content}"
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     PipelineExecutor().__call__()
 
 # TODO: add event system

@@ -1,8 +1,9 @@
 from __future__ import annotations
-import uuid
-from typing import Any, List, Union, Collection
 
-from returns.result import Result, Success, Failure
+import uuid
+from typing import Any, Collection, List, Union
+
+from returns.result import Failure, Result, Success
 
 from .minions import Minion
 from .utils import safe
@@ -55,7 +56,9 @@ class Task:
         This is a constructor for the task. Any variables (state) that `run` method should use should be provided here.
         """
         self.name = str(uuid.uuid4())  # Each task should have a name
-        self.run = safe(self.run)  # Each task should have its `run` method protected by `safe` decorator
+        self.run = safe(
+            self.run
+        )  # Each task should have its `run` method protected by `safe` decorator
 
     def run(self) -> Any:
         """
@@ -78,5 +81,6 @@ class TaskDispatcher:
     Dispatching is done by calling the dispatch method. This method should return the proper task for the minion
     given minion information (such as architecture, platform, etc).
     """
+
     def dispatch(self, minion: Minion) -> Task:
         raise NotImplementedError
