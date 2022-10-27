@@ -2,6 +2,7 @@ from typing import Optional
 
 import uvicorn
 import asyncpg
+import bcrypt
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -42,9 +43,11 @@ async def shutdown():
 
 @app.post("/auth", status_code=200)
 async def auth(data: AuthenticationRequest):
-    sql_query = 'SELECT EXISTS(SELECT 1 FROM authentication WHERE username = $1 AND token = $2)'
-    if await db_conn_pool.fetchval(sql_query, data.username, data.token):
-        return
+    sql_query = 'SELECT hash FROM authentication WHERE username = $1'
+    result = await db_conn_pool.fetchval(sql_query, data.username)
+    if result is not None:
+        if bcrypt.checkpw(data.token.encode(), result):
+            return
 
     raise HTTPException(
         status_code=401,
