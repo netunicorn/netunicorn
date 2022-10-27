@@ -6,6 +6,7 @@ import uvicorn
 from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, HTTPException
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from returns.pipeline import is_successful
+from returns.result import Result
 
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.utils import UnicornEncoder
@@ -19,6 +20,16 @@ logger = get_logger('netunicorn.director.mediator')
 
 app = FastAPI()
 security = HTTPBasic()
+
+
+def result_to_response(result: Result) -> Response:
+    status_code = 200 if is_successful(result) else 400
+    content = result.unwrap() if is_successful(result) else result.failure()
+    return Response(
+        content=json.dumps(content, cls=UnicornEncoder),
+        media_type="application/json",
+        status_code=status_code
+    )
 
 
 async def check_credentials(credentials: HTTPBasicCredentials = Depends(security)):
@@ -74,44 +85,40 @@ async def prepare_experiment_handler(
         experiment = Experiment.from_json(data)
     except Exception as e:
         logger.exception(e)
-        raise Exception(f"Couldn't parse experiment from the provided data: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Couldn't parse experiment from the provided data: {e}",
+        )
 
     result = experiment_precheck(experiment)
     if not is_successful(result):
-        return Response(status_code=400, content=f"Experiment precheck failed: {result.failure()}")
+        return result_to_response(result)
     background_tasks.add_task(prepare_experiment_task, experiment_name, experiment, username)
     return experiment_name
 
 
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
 async def start_experiment_handler(experiment_name: str, username: str = Depends(check_credentials)):
-    await start_experiment(experiment_name, username)
-    return experiment_name
+    result = await start_experiment(experiment_name, username)
+    return result_to_response(result)
 
 
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(experiment_name: str, username: str = Depends(check_credentials)):
     result = await get_experiment_status(experiment_name, username)
-    if is_successful(result):
-        return Response(
-            content=json.dumps(result.unwrap(), cls=UnicornEncoder),
-            media_type="application/json",
-        )
-    else:
-        return Response(
-            content=result.failure(),
-            status_code=400,
-        )
+    return result_to_response(result)
 
 
 @app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
 async def cancel_experiment_handler(experiment_name: str, username: str = Depends(check_credentials)):
-    return await cancel_experiment(experiment_name, username)
+    result = await cancel_experiment(experiment_name, username)
+    return result_to_response(result)
 
 
 @app.post("/api/v1/executors/cancel", status_code=200)
 async def cancel_executors_handler(executors: List[str], username: str = Depends(check_credentials)):
-    return await cancel_executors(executors, username)
+    result = await cancel_executors(executors, username)
+    return result_to_response(result)
 
 
 if __name__ == '__main__':

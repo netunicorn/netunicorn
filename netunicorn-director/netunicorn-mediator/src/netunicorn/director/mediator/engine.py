@@ -7,9 +7,10 @@ from uuid import uuid4
 from typing import Optional, Dict, Tuple, List
 from datetime import datetime
 from returns.result import Result, Success, Failure
+from returns.pipeline import is_successful
 
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.experiment import Experiment, ExperimentStatus, Deployment,ExperimentExecutionInformation
+from netunicorn.base.experiment import Experiment, ExperimentStatus, Deployment, ExperimentExecutionInformation
 from netunicorn.director.base.resources import DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 from netunicorn.director.base.utils import __init_connection
 
@@ -49,20 +50,20 @@ async def check_services_availability():
         req.get(f"{url}/health", timeout=30).raise_for_status()
 
 
-async def get_experiment_id_and_status(experiment_name: str, username: str) -> (str, ExperimentStatus):
+async def get_experiment_id_and_status(experiment_name: str, username: str) -> Result[(str, ExperimentStatus), str]:
     data = await db_conn_pool.fetchrow(
         "SELECT experiment_id, status FROM experiments WHERE username = $1 AND experiment_name = $2",
         username, experiment_name
     )
     if data is None:
-        raise Exception(f"Experiment {experiment_name} not found")
+        return Failure(f"Experiment {experiment_name} not found")
     experiment_id, status_data = data["experiment_id"], data["status"]
     try:
         status: ExperimentStatus = ExperimentStatus(status_data)
     except ValueError:
         logger.warn(f"Invalid experiment status: {status_data}")
         status = ExperimentStatus.UNKNOWN
-    return experiment_id, status
+    return Success((experiment_id, status))
 
 
 async def get_minion_pool(username: str) -> list:
@@ -283,7 +284,11 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
 
 
 async def get_experiment_status(experiment_name: str, username: str) -> Result[ExperimentExecutionInformation, str]:
-    experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
+    result = await get_experiment_id_and_status(experiment_name, username)
+    if not is_successful(result):
+        return result
+    experiment_id, status = result.unwrap()
+
     row = await db_conn_pool.fetchrow(
         "SELECT data::jsonb, error, execution_results::jsonb[] FROM experiments WHERE experiment_id = $1",
         experiment_id
@@ -294,20 +299,25 @@ async def get_experiment_status(experiment_name: str, username: str) -> Result[E
     if experiment is not None:
         experiment = Experiment.from_json(experiment)
     if error is not None:
-        return Success((status, experiment, error))
+        return Success(ExperimentExecutionInformation(status, experiment, error))
     return Success(ExperimentExecutionInformation(status, experiment, execution_results))
 
 
-async def start_experiment(experiment_name: str, username: str) -> None:
-    experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
+async def start_experiment(experiment_name: str, username: str) -> Result[str, str]:
+    result = await get_experiment_id_and_status(experiment_name, username)
+    if not is_successful(result):
+        return result
+    experiment_id, status = result.unwrap()
+
     if status != ExperimentStatus.READY:
-        raise Exception(f"Experiment {experiment_name} is not ready to start. Current status: {status}")
+        return Failure(f"Experiment {experiment_name} is not ready to start. Current status: {status}")
 
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/start_execution/{experiment_id}"
     req.post(url, timeout=30).raise_for_status()
 
     url = f"{NETUNICORN_PROCESSOR_ENDPOINT}/watch_experiment/{experiment_id}/{username}"
     req.post(url, timeout=30).raise_for_status()
+    return Success(experiment_name)
 
 
 async def credentials_check(username: str, token: str) -> bool:
@@ -324,24 +334,27 @@ async def credentials_check(username: str, token: str) -> bool:
         return False
 
 
-async def cancel_experiment(experiment_name: str, username: str) -> str:
-    experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
+async def cancel_experiment(experiment_name: str, username: str) -> Result[str, str]:
+    result = await get_experiment_id_and_status(experiment_name, username)
+    if not is_successful(result):
+        return result
+    experiment_id, status = result.unwrap()
     if status in {ExperimentStatus.UNKNOWN, ExperimentStatus.FINISHED}:
-        return f"Experiment {experiment_name} is in {status} state, nothing to cancel"
+        return Success(f"Experiment {experiment_name} is in {status} state, nothing to cancel")
 
     executors = await db_conn_pool.fetch(
         "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id
     )
     await cancel_executors_task([x['executor_id'] for x in executors])
-    return f"Experiment {experiment_name} cancellation started"
+    return Success(f"Experiment {experiment_name} cancellation started")
 
 
-async def cancel_executors(executors: List[str], username: str) -> str:
+async def cancel_executors(executors: List[str], username: str) -> Result[str, str]:
     # check data format
     for executor in executors:
         if not isinstance(executor, str):
-            raise Exception(f"Invalid executor name: {executor}, type: {type(executor)}")
+            return Failure(f"Invalid executor name: {executor}, type: {type(executor)}")
 
     # get all usernames of executors
     usernames = await db_conn_pool.fetch(
@@ -354,14 +367,14 @@ async def cancel_executors(executors: List[str], username: str) -> str:
     usernames = {x['executor_id']: x['username'] for x in usernames}
 
     if not usernames:
-        raise Exception(f"All executors already finished or no experiments found belonging to user {username} with given executors: {executors}")
+        return Failure(f"All executors already finished or no experiments found belonging to user {username} with given executors: {executors}")
 
     if set(usernames.values()) != {username}:
         other_executors = [x for x in executors if usernames[x] != username]
-        raise Exception(f"Some of executors do not belong to user {username}: \n {other_executors}")
+        return Failure(f"Some of executors do not belong to user {username}: \n {other_executors}")
 
     await cancel_executors_task(executors)
-    return "Executors cancellation started"
+    return Success("Executors cancellation started")
 
 
 async def cancel_executors_task(executors: List[str]) -> None:
