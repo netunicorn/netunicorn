@@ -1,11 +1,11 @@
+import json
 from typing import List
 
-from fastapi import FastAPI, BackgroundTasks
-from fastapi.responses import Response
 import uvicorn
-
-import json
+from fastapi import BackgroundTasks, FastAPI
+from fastapi.responses import Response
 from netunicorn.base.utils import UnicornEncoder
+
 from .deployer_connectors.salt_connector import SaltConnector
 
 app = FastAPI()

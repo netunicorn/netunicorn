@@ -1,14 +1,13 @@
 from typing import Optional
 
-import uvicorn
 import asyncpg
 import bcrypt
-
+import uvicorn
 from fastapi import FastAPI, HTTPException
+from netunicorn.director.base.resources import (DATABASE_DB, DATABASE_ENDPOINT,
+                                                DATABASE_PASSWORD,
+                                                DATABASE_USER, get_logger)
 from pydantic import BaseModel
-
-from netunicorn.director.base.resources import get_logger, \
-    DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 
 logger = get_logger('netunicorn.director.authentication')
 

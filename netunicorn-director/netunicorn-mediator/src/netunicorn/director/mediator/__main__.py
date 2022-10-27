@@ -3,18 +3,21 @@ import os
 from typing import List
 
 import uvicorn
-from fastapi import FastAPI, Response, BackgroundTasks, Depends, Request, HTTPException
-from fastapi.security import HTTPBasicCredentials, HTTPBasic
-from returns.pipeline import is_successful
-from returns.result import Result
-
+from fastapi import (BackgroundTasks, Depends, FastAPI, HTTPException, Request,
+                     Response)
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
+from returns.pipeline import is_successful
+from returns.result import Result
 
-from .engine import get_minion_pool, prepare_experiment_task, start_experiment, get_experiment_status, \
-    check_services_availability, credentials_check, open_db_connection, close_db_connection, \
-    cancel_experiment, cancel_executors, experiment_precheck
+from .engine import (cancel_executors, cancel_experiment,
+                     check_services_availability, close_db_connection,
+                     credentials_check, experiment_precheck,
+                     get_experiment_status, get_minion_pool,
+                     open_db_connection, prepare_experiment_task,
+                     start_experiment)
 
 logger = get_logger('netunicorn.director.mediator')
 

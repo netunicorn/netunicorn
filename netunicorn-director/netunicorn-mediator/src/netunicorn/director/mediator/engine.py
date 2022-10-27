@@ -1,23 +1,27 @@
 import asyncio
 import base64
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+from uuid import uuid4
 
 import asyncpg.connection
 import requests as req
-from uuid import uuid4
-from typing import Optional, Dict, Tuple, List
-from datetime import datetime
-from returns.result import Result, Success, Failure
-from returns.pipeline import is_successful
-
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.experiment import Experiment, ExperimentStatus, Deployment, ExperimentExecutionInformation
-from netunicorn.director.base.resources import DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
+from netunicorn.base.experiment import (Deployment, Experiment,
+                                        ExperimentExecutionInformation,
+                                        ExperimentStatus)
+from netunicorn.director.base.resources import (DATABASE_DB, DATABASE_ENDPOINT,
+                                                DATABASE_PASSWORD,
+                                                DATABASE_USER)
 from netunicorn.director.base.utils import __init_connection
+from returns.pipeline import is_successful
+from returns.result import Failure, Result, Success
 
 from .preprocessors import experiment_preprocessors
-from .resources import logger, \
-    NETUNICORN_COMPILATION_ENDPOINT, NETUNICORN_INFRASTRUCTURE_ENDPOINT, \
-    NETUNICORN_PROCESSOR_ENDPOINT, DOCKER_REGISTRY_URL, NETUNICORN_AUTH_ENDPOINT
+from .resources import (DOCKER_REGISTRY_URL, NETUNICORN_AUTH_ENDPOINT,
+                        NETUNICORN_COMPILATION_ENDPOINT,
+                        NETUNICORN_INFRASTRUCTURE_ENDPOINT,
+                        NETUNICORN_PROCESSOR_ENDPOINT, logger)
 
 db_conn_pool: Optional[asyncpg.Pool] = None
 current_tasks = set()

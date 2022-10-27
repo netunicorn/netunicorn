@@ -1,12 +1,13 @@
 import asyncio
+from datetime import datetime, timedelta
+from typing import Dict, Optional
 
 import asyncpg
-from typing import Dict, Optional
-from datetime import datetime, timedelta
-
-from netunicorn.base.experiment import ExperimentStatus, Experiment, DeploymentExecutionResult
-from netunicorn.director.base.resources import get_logger, \
-    DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
+from netunicorn.base.experiment import (DeploymentExecutionResult, Experiment,
+                                        ExperimentStatus)
+from netunicorn.director.base.resources import (DATABASE_DB, DATABASE_ENDPOINT,
+                                                DATABASE_PASSWORD,
+                                                DATABASE_USER, get_logger)
 from netunicorn.director.base.utils import __init_connection
 
 logger = get_logger('netunicorn.director.processor')

@@ -2,14 +2,14 @@
 Small fast Executor API that goes to state holder (PostgreSQL) and returns to executors pipelines, events, or stores results
 """
 import os
+from base64 import b64decode, b64encode
 from typing import Optional
-from base64 import b64encode, b64decode
 
 import asyncpg
 from fastapi import FastAPI, Response
-
-from netunicorn.director.base.resources import get_logger, \
-    DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
+from netunicorn.director.base.resources import (DATABASE_DB, DATABASE_ENDPOINT,
+                                                DATABASE_PASSWORD,
+                                                DATABASE_USER, get_logger)
 
 from .api_types import PipelineResult
 

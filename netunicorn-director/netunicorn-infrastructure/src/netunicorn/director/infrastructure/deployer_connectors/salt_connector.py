@@ -1,18 +1,20 @@
 import asyncio
 import datetime
 import functools
-from typing import Optional, List
+from typing import List, Optional
 
 import asyncpg
-
 from netunicorn.base.architecture import Architecture
-from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.minions import MinionPool, Minion
-from netunicorn.director.base.utils import __init_connection as _init_connection
-from netunicorn.director.base.resources import DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
-from ..resources import logger, GATEWAY_ENDPOINT
+from netunicorn.base.experiment import Experiment, ExperimentStatus
+from netunicorn.base.minions import Minion, MinionPool
+from netunicorn.director.base.resources import (DATABASE_DB, DATABASE_ENDPOINT,
+                                                DATABASE_PASSWORD,
+                                                DATABASE_USER)
+from netunicorn.director.base.utils import \
+    __init_connection as _init_connection
 
+from ..resources import GATEWAY_ENDPOINT, logger
 from .base import Connector
 
 

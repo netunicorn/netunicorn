@@ -1,10 +1,10 @@
 import os
-import uvicorn
-from fastapi import FastAPI, BackgroundTasks
 
+import uvicorn
+from fastapi import BackgroundTasks, FastAPI
 from netunicorn.director.base.resources import get_logger
 
-from .engine import watch_experiment_task, healthcheck, on_startup, on_shutdown
+from .engine import healthcheck, on_shutdown, on_startup, watch_experiment_task
 
 logger = get_logger('netunicorn.director.processor')
 

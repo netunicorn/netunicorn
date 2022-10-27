@@ -1,18 +1,16 @@
-import subprocess
 import re
+import subprocess
+from base64 import b64decode
+from collections.abc import Iterable
 from typing import Optional
 
-import uvicorn
 import asyncpg
-
-from collections.abc import Iterable
-from base64 import b64decode
-
-from fastapi import FastAPI, BackgroundTasks
-
 import netunicorn.base.environment_definitions as environment_definitions
-from netunicorn.director.base.resources import get_logger, \
-    DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
+import uvicorn
+from fastapi import BackgroundTasks, FastAPI
+from netunicorn.director.base.resources import (DATABASE_DB, DATABASE_ENDPOINT,
+                                                DATABASE_PASSWORD,
+                                                DATABASE_USER, get_logger)
 
 from .api_types import CompilationRequest
 
