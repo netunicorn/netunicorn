@@ -69,7 +69,7 @@ class Experiment:
         return len(self.deployment_map)
 
     def __str__(self) -> str:
-        return str([f"<{x}>; " for x in self.deployment_map])
+        return '; '.join([f"<{x}>" for x in self.deployment_map])
 
     def __repr__(self) -> str:
         return str(self)
