@@ -3,6 +3,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 import platform
 
+
 # TODO: make classes frozen to make hash stable
 
 
@@ -30,11 +31,41 @@ class ShellExecution(EnvironmentDefinition):
     """
     This class represents Environment Definition that's created by executing shell commands.
     """
+
     @classmethod
     def from_json(cls, data: dict) -> ShellExecution:
         instance = cls.__new__(cls)
         instance.commands = data["commands"]
         return instance
+
+
+@dataclass(frozen=True)
+class BuildContext:
+    """
+
+    """
+    python_version: str = field(default_factory=lambda: platform.python_version())
+    cloudpickle_version: Optional[str] = field(default_factory=lambda: BuildContext._get_cloudpickle_version())
+
+    @staticmethod
+    def _get_cloudpickle_version() -> Optional[str]:
+        try:
+            import cloudpickle
+            return cloudpickle.__version__
+        except ImportError:
+            return None
+
+    def __json__(self):
+        return {
+            "python_version": self.python_version,
+            "cloudpickle_version": self.cloudpickle_version,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict) -> BuildContext:
+        python_version = data["python_version"]
+        cloudpickle_version = data["cloudpickle_version"]
+        return cls(python_version=python_version, cloudpickle_version=cloudpickle_version)
 
 
 @dataclass
@@ -44,18 +75,18 @@ class DockerImage(EnvironmentDefinition):
     If image name is not provided, then it would be created automatically
     """
     image: Optional[str] = None
-    python_version: str = platform.python_version()
+    build_context: BuildContext = field(default_factory=BuildContext)
 
     def __hash__(self):
         if self.image:
             return hash(self.image)
 
-        return hash((self.python_version, tuple(self.commands)))
+        return hash((self.build_context.python_version, self.build_context.cloudpickle_version, tuple(self.commands)))
 
     def __json__(self):
         return {
             "image": self.image,
-            "python_version": self.python_version,
+            "build_context": self.build_context,
             "commands": self.commands,
         }
 
@@ -64,5 +95,5 @@ class DockerImage(EnvironmentDefinition):
         instance = cls.__new__(cls)
         instance.commands = data["commands"]
         instance.image = data["image"]
-        instance.python_version = data["python_version"]
+        instance.build_context = BuildContext.from_json(data["build_context"])
         return instance

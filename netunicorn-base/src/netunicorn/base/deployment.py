@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from base64 import b64decode
 from typing import Optional
-from dataclasses import asdict
 import netunicorn.base.environment_definitions
 
 from .minions import Minion
@@ -48,7 +47,7 @@ class Deployment:
             "executor_id": self.executor_id,
             "error": str(self.error) if self.error else None,
             "pipeline": self.pipeline,
-            "environment_definition": asdict(self.environment_definition),
+            "environment_definition": self.environment_definition.__json__(),
             "environment_definition_type": self.environment_definition.__class__.__name__,
         }
 
@@ -64,5 +63,5 @@ class Deployment:
         instance.environment_definition = getattr(
             netunicorn.base.environment_definitions,
             data["environment_definition_type"]
-        )(**data["environment_definition"])
+        ).from_json(data["environment_definition"])
         return instance

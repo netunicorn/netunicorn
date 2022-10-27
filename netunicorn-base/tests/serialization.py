@@ -10,6 +10,14 @@ from netunicorn.base.experiment import Experiment, ExperimentExecutionResult
 from netunicorn.base.pipeline import Pipeline
 from netunicorn.base.task import Task
 
+cloudpickle_version = None
+try:
+    import cloudpickle
+
+    cloudpickle_version = cloudpickle.__version__
+except ImportError:
+    pass
+
 
 class TestAllJSONSerialization(unittest.TestCase):
 
@@ -32,26 +40,29 @@ class TestAllJSONSerialization(unittest.TestCase):
         json_deployment = UnicornEncoder().encode(deployment)
 
         encoded_object = {
-                    "minion": {
-                        "name": "minion1",
-                        "properties": {
-                            "prop1": "value1",
-                            "prop2": "value2"
-                        },
-                        "additional_properties": {},
-                        "architecture": "unknown",
-                    },
-                    "prepared": False,
-                    "executor_id": "Unknown",
-                    "error": "test",
-                    "pipeline": b64encode(deployment.pipeline).decode("utf-8"),
-                    "environment_definition": {
-                        "commands": [],
-                        "image": None,
-                        "python_version": platform.python_version(),
-                    },
-                    "environment_definition_type": "DockerImage",
-                }
+            "minion": {
+                "name": "minion1",
+                "properties": {
+                    "prop1": "value1",
+                    "prop2": "value2"
+                },
+                "additional_properties": {},
+                "architecture": "unknown",
+            },
+            "prepared": False,
+            "executor_id": "",
+            "error": "test",
+            "pipeline": b64encode(deployment.pipeline).decode("utf-8"),
+            "environment_definition": {
+                "commands": [],
+                "image": None,
+                "build_context": {
+                    "python_version": platform.python_version(),
+                    "cloudpickle_version": cloudpickle_version,
+                },
+            },
+            "environment_definition_type": "DockerImage",
+        }
         self.assertEqual(json.loads(json_deployment), encoded_object)
 
         deserialized_deployment = Deployment.from_json(json.loads(json_deployment))

@@ -69,10 +69,12 @@ async def docker_compilation_task(
         await record_compilation_result(experiment_id, compilation_id, False, f"Unknown architecture for docker container: {architecture}")
         return
 
-    logger.debug(f"Received compilation request: {compilation_id=}, {architecture=}, {environment_definition=}, {environment_definition.python_version=}")
-    match_result = re.fullmatch(r'\d\.\d+\.\d+', environment_definition.python_version)
+    logger.debug(f"Received compilation request: {compilation_id=}, {architecture=}, "
+                 f"{environment_definition=}, {environment_definition.build_context.python_version=}, "
+                 f"{environment_definition.build_context.cloudpickle_version=}")
+    match_result = re.fullmatch(r'\d\.\d+\.\d+', environment_definition.build_context.python_version)
     if not match_result:
-        await record_compilation_result(experiment_id, compilation_id, False, f'Unknown Python version: {environment_definition.python_version}')
+        await record_compilation_result(experiment_id, compilation_id, False, f'Unknown Python version: {environment_definition.build_context.python_version}')
         return
     python_version = '.'.join(match_result[0].split('.')[:2])
 
@@ -100,9 +102,12 @@ async def docker_compilation_task(
         f'RUN pip install netunicorn-base/',
         f'COPY netunicorn-executor netunicorn-executor',
         f'RUN pip install netunicorn-executor/',
-
-        f'CMD ["python", "-m", "netunicorn.executor"]',
     ]
+
+    if environment_definition.build_context.cloudpickle_version is not None:
+        filelines.append(f'RUN pip install cloudpickle=={environment_definition.build_context.cloudpickle_version}')
+
+    filelines.append(f'CMD ["python", "-m", "netunicorn.executor"]')
 
     filelines = [x + '\n' for x in filelines]
 
