@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from base64 import b64decode
 from typing import Optional
+
 import netunicorn.base.environment_definitions
 
 from .minions import Minion

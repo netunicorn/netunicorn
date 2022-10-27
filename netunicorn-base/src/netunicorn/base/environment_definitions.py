@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import Optional
-from dataclasses import dataclass, field
-import platform
 
+import platform
+from dataclasses import dataclass, field
+from typing import Optional
 
 # TODO: make classes frozen to make hash stable
 

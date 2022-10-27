@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import base64
 import copy
-from enum import Enum
-from typing import Iterator, List, Tuple, Optional, Union
-from returns.result import Result
 from dataclasses import dataclass
+from enum import Enum
+from typing import Iterator, List, Optional, Tuple, Union
 
-from .minions import Minion, MinionPool
+from returns.result import Result
+
 from .deployment import Deployment
+from .minions import Minion, MinionPool
 from .pipeline import Pipeline, PipelineResult
 from .utils import LogType
 

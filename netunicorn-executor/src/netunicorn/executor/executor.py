@@ -1,27 +1,23 @@
-import itertools
-import os
 import asyncio
+import itertools
 import logging
+import os
 import sys
-
 import time
+from base64 import b64decode, b64encode
+from copy import deepcopy
+from enum import Enum
+from typing import Collection, List, Optional
 
 import cloudpickle
 import requests as req
 import requests.exceptions
-
-from enum import Enum
-
-from base64 import b64encode, b64decode
-from copy import deepcopy
-
-from typing import List, Collection, Optional
-from returns.result import Result, Success, Failure
-from returns.pipeline import is_successful
-
+from netunicorn.base.pipeline import (Pipeline, PipelineElementResult,
+                                      PipelineResult)
 from netunicorn.base.task import Task
-from netunicorn.base.pipeline import Pipeline, PipelineResult, PipelineElementResult
 from netunicorn.base.utils import NonStablePool as Pool
+from returns.pipeline import is_successful
+from returns.result import Failure, Result, Success
 
 
 class PipelineExecutorState(Enum):

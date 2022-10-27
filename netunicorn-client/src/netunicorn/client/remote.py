@@ -1,9 +1,9 @@
 import json
-
-import requests as req
 from typing import Iterable
 
-from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
+import requests as req
+from netunicorn.base.experiment import (Experiment,
+                                        ExperimentExecutionInformation)
 from netunicorn.base.minions import MinionPool
 from netunicorn.base.utils import UnicornEncoder
 

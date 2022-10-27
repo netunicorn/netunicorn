@@ -1,4 +1,4 @@
-from typing import List, Dict, Union, Set
+from typing import Dict, List, Set, Union
 
 from netunicorn.base.architecture import Architecture
 

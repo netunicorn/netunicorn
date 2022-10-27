@@ -1,14 +1,14 @@
+import json
 import platform
 import unittest
-import json
 from base64 import b64encode
 
-from netunicorn.base.utils import UnicornEncoder
-from netunicorn.base.minions import Minion, MinionPool
 from netunicorn.base.deployment import Deployment
-from netunicorn.base.experiment import Experiment, DeploymentExecutionResult
+from netunicorn.base.experiment import DeploymentExecutionResult, Experiment
+from netunicorn.base.minions import Minion, MinionPool
 from netunicorn.base.pipeline import Pipeline
 from netunicorn.base.task import Task
+from netunicorn.base.utils import UnicornEncoder
 
 cloudpickle_version = None
 try:

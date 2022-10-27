@@ -1,8 +1,9 @@
 from __future__ import annotations
-import uuid
-from typing import Any, List, Union, Collection
 
-from returns.result import Result, Success, Failure
+import uuid
+from typing import Any, Collection, List, Union
+
+from returns.result import Failure, Result, Success
 
 from .minions import Minion
 from .utils import safe
