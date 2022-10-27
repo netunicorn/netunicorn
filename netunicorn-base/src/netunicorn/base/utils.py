@@ -12,17 +12,18 @@ _ValueType = TypeVar("_ValueType", covariant=True)
 _FailureValueType = TypeVar("_FailureValueType", covariant=True)
 
 _FunctionType = Union[
-    Callable[..., _ValueType],
-    Callable[..., Result[_ValueType, _FailureValueType]]
+    Callable[..., _ValueType], Callable[..., Result[_ValueType, _FailureValueType]]
 ]
 
 SerializedPipelineType = bytes
 LogType = List[str]
 
 
-def safe(function: _FunctionType) -> Union[
+def safe(
+    function: _FunctionType,
+) -> Union[
     Callable[..., Result[_ValueType, Exception]],
-    Callable[..., Result[_ValueType, _FailureValueType]]
+    Callable[..., Result[_ValueType, _FailureValueType]],
 ]:
     """
     Decorator that wraps function in try/except block.
@@ -65,7 +66,7 @@ class NoDaemonContext(type(multiprocessing.get_context())):
 class NonStablePool(multiprocessing.pool.Pool):
     # noinspection PyArgumentList
     def __init__(self, *args, **kwargs):
-        kwargs['context'] = NoDaemonContext()
+        kwargs["context"] = NoDaemonContext()
         super().__init__(*args, **kwargs)
 
 
@@ -75,18 +76,15 @@ class UnicornEncoder(JSONEncoder):
             return obj.__reduce__()
         if dataclasses.is_dataclass(obj):
             return dataclasses.asdict(obj)
-        if hasattr(obj, '__json__'):
+        if hasattr(obj, "__json__"):
             return obj.__json__()
         if isinstance(obj, bytes):
-            return b64encode(obj).decode('utf-8')
+            return b64encode(obj).decode("utf-8")
         if isinstance(obj, Result):
-            return {
-                'result_type': obj.__class__.__name__,
-                'result': obj._inner_value
-            }
+            return {"result_type": obj.__class__.__name__, "result": obj._inner_value}
         if isinstance(obj, EnvironmentDefinition):
             return {
-                'environment_definition_type': obj.__class__.__name__,
-                'environment_definition': obj
+                "environment_definition_type": obj.__class__.__name__,
+                "environment_definition": obj,
             }
         return JSONEncoder.default(self, obj)

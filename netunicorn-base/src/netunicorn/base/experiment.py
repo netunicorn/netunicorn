@@ -56,7 +56,9 @@ class Experiment:
     @classmethod
     def from_json(cls, data: dict):
         instance = cls.__new__(cls)
-        instance.deployment_map = [Deployment.from_json(x) for x in data["deployment_map"]]
+        instance.deployment_map = [
+            Deployment.from_json(x) for x in data["deployment_map"]
+        ]
         instance.keep_alive_timeout_minutes = data["keep_alive_timeout_minutes"]
         return instance
 
@@ -70,7 +72,7 @@ class Experiment:
         return len(self.deployment_map)
 
     def __str__(self) -> str:
-        return '; '.join([f"<{x}>" for x in self.deployment_map])
+        return "; ".join([f"<{x}>" for x in self.deployment_map])
 
     def __repr__(self) -> str:
         return str(self)
@@ -82,7 +84,13 @@ class Experiment:
 
 
 class DeploymentExecutionResult:
-    def __init__(self, minion: Minion, serialized_pipeline: bytes, result: Optional[bytes], error: Optional[str] = None):
+    def __init__(
+        self,
+        minion: Minion,
+        serialized_pipeline: bytes,
+        result: Optional[bytes],
+        error: Optional[str] = None,
+    ):
         self.minion = minion
         self._pipeline = serialized_pipeline
         self._result = result
@@ -91,11 +99,15 @@ class DeploymentExecutionResult:
     @property
     def pipeline(self) -> Pipeline:
         import cloudpickle
+
         return cloudpickle.loads(self._pipeline)
 
     @property
-    def result(self) -> Optional[Tuple[Result[PipelineResult, PipelineResult], LogType]]:
+    def result(
+        self,
+    ) -> Optional[Tuple[Result[PipelineResult, PipelineResult], LogType]]:
         import cloudpickle
+
         return cloudpickle.loads(self._result) if self._result else None
 
     def __str__(self) -> str:
@@ -108,7 +120,9 @@ class DeploymentExecutionResult:
         return {
             "minion": self.minion.__json__(),
             "pipeline": base64.b64encode(self._pipeline).decode("utf-8"),
-            "result": base64.b64encode(self._result).decode("utf-8") if self._result else None,
+            "result": base64.b64encode(self._result).decode("utf-8")
+            if self._result
+            else None,
             "error": self.error,
         }
 
@@ -120,6 +134,7 @@ class DeploymentExecutionResult:
             base64.b64decode(data["result"]) if data["result"] else None,
             data["error"],
         )
+
 
 @dataclass(frozen=True)
 class ExperimentExecutionInformation:
@@ -143,11 +158,15 @@ class ExperimentExecutionInformation:
     @classmethod
     def from_json(cls, data: dict) -> ExperimentExecutionInformation:
         status = ExperimentStatus.from_json(data["status"])
-        experiment = Experiment.from_json(data["experiment"]) if data["experiment"] else None
+        experiment = (
+            Experiment.from_json(data["experiment"]) if data["experiment"] else None
+        )
         execution_result = data["execution_result"]
         if execution_result:
             if isinstance(execution_result, list):
-                execution_result = [DeploymentExecutionResult.from_json(x) for x in execution_result]
+                execution_result = [
+                    DeploymentExecutionResult.from_json(x) for x in execution_result
+                ]
             else:
                 execution_result = Exception(*execution_result)
         return cls(status, experiment, execution_result)

@@ -41,16 +41,18 @@ class ShellExecution(EnvironmentDefinition):
 
 @dataclass(frozen=True)
 class BuildContext:
-    """
+    """ """
 
-    """
     python_version: str = field(default_factory=lambda: platform.python_version())
-    cloudpickle_version: Optional[str] = field(default_factory=lambda: BuildContext._get_cloudpickle_version())
+    cloudpickle_version: Optional[str] = field(
+        default_factory=lambda: BuildContext._get_cloudpickle_version()
+    )
 
     @staticmethod
     def _get_cloudpickle_version() -> Optional[str]:
         try:
             import cloudpickle
+
             return cloudpickle.__version__
         except ImportError:
             return None
@@ -65,7 +67,9 @@ class BuildContext:
     def from_json(cls, data: dict) -> BuildContext:
         python_version = data["python_version"]
         cloudpickle_version = data["cloudpickle_version"]
-        return cls(python_version=python_version, cloudpickle_version=cloudpickle_version)
+        return cls(
+            python_version=python_version, cloudpickle_version=cloudpickle_version
+        )
 
 
 @dataclass
@@ -74,6 +78,7 @@ class DockerImage(EnvironmentDefinition):
     This class represents Environment Definition that is created by using a Docker image.
     If image name is not provided, then it would be created automatically
     """
+
     image: Optional[str] = None
     build_context: BuildContext = field(default_factory=BuildContext)
 
@@ -81,7 +86,13 @@ class DockerImage(EnvironmentDefinition):
         if self.image:
             return hash(self.image)
 
-        return hash((self.build_context.python_version, self.build_context.cloudpickle_version, tuple(self.commands)))
+        return hash(
+            (
+                self.build_context.python_version,
+                self.build_context.cloudpickle_version,
+                tuple(self.commands),
+            )
+        )
 
     def __json__(self):
         return {

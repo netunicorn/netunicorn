@@ -56,7 +56,9 @@ class Task:
         This is a constructor for the task. Any variables (state) that `run` method should use should be provided here.
         """
         self.name = str(uuid.uuid4())  # Each task should have a name
-        self.run = safe(self.run)  # Each task should have its `run` method protected by `safe` decorator
+        self.run = safe(
+            self.run
+        )  # Each task should have its `run` method protected by `safe` decorator
 
     def run(self) -> Any:
         """
@@ -79,5 +81,6 @@ class TaskDispatcher:
     Dispatching is done by calling the dispatch method. This method should return the proper task for the minion
     given minion information (such as architecture, platform, etc).
     """
+
     def dispatch(self, minion: Minion) -> Task:
         raise NotImplementedError

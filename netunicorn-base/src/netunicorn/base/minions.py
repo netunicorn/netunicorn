@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 from typing import Dict, List, Set, Union
 
 from netunicorn.base.architecture import Architecture
 
 
 class Minion:
-    def __init__(self, name: str, properties: Dict[str, Union[str, Set[str]]],
-                 architecture: Architecture = Architecture.UNKNOWN):
+    def __init__(
+        self,
+        name: str,
+        properties: Dict[str, Union[str, Set[str]]],
+        architecture: Architecture = Architecture.UNKNOWN,
+    ):
         self.name = name
         self.properties = properties
         self.additional_properties = {}
@@ -38,13 +44,13 @@ class Minion:
 
     def __eq__(self, other):
         return (
-                self.name == other.name and
-                self.properties == other.properties and
-                self.additional_properties == other.additional_properties and
-                self.architecture == other.architecture
+            self.name == other.name
+            and self.properties == other.properties
+            and self.additional_properties == other.additional_properties
+            and self.architecture == other.architecture
         )
 
-    def __json__(self):
+    def __json__(self) -> dict:
         return {
             "name": self.name,
             "properties": self.properties,
@@ -53,8 +59,10 @@ class Minion:
         }
 
     @classmethod
-    def from_json(cls, data: dict):
-        instance = cls(data["name"], data["properties"], Architecture(data["architecture"]))
+    def from_json(cls, data: dict) -> Minion:
+        instance = cls(
+            data["name"], data["properties"], Architecture(data["architecture"])
+        )
         instance.additional_properties = data["additional_properties"]
         return instance
 
@@ -96,11 +104,13 @@ class MinionPool:
     def __repr__(self):
         return str(self.minions)
 
-    def filter(self, key: str, value: str) -> 'MinionPool':
+    def filter(self, key: str, value: str) -> MinionPool:
         return MinionPool([x for x in self.minions if x.check_property(key, value)])
 
-    def take(self, count: int) -> 'MinionPool':
+    def take(self, count: int) -> MinionPool:
         if count > len(self.minions):
-            print(f'Warning: asked for {count} minions, but only {len(self.minions)} available')
+            print(
+                f"Warning: asked for {count} minions, but only {len(self.minions)} available"
+            )
             return self
         return MinionPool(self.minions[:count])

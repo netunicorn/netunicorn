@@ -25,11 +25,14 @@ class Deployment:
         self.prepared = False
         self.executor_id = ""
         self.error: Optional[Exception] = None
-        self.pipeline: SerializedPipelineType = b''
+        self.pipeline: SerializedPipelineType = b""
         self.environment_definition = pipeline.environment_definition
 
         for i, element in enumerate(pipeline.tasks):
-            pipeline.tasks[i] = [x.dispatch(minion) if isinstance(x, TaskDispatcher) else x for x in element]
+            pipeline.tasks[i] = [
+                x.dispatch(minion) if isinstance(x, TaskDispatcher) else x
+                for x in element
+            ]
             for x in pipeline.tasks[i]:
                 self.environment_definition.commands.extend(x.requirements)
 
@@ -59,10 +62,9 @@ class Deployment:
         instance.minion = Minion.from_json(data["minion"])
         instance.prepared = data["prepared"]
         instance.executor_id = data["executor_id"]
-        instance.error = Exception(data["error"]) if data['error'] else None
+        instance.error = Exception(data["error"]) if data["error"] else None
         instance.pipeline = b64decode(data["pipeline"])
         instance.environment_definition = getattr(
-            netunicorn.base.environment_definitions,
-            data["environment_definition_type"]
+            netunicorn.base.environment_definitions, data["environment_definition_type"]
         ).from_json(data["environment_definition"])
         return instance

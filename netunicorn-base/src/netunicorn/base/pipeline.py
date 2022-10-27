@@ -31,11 +31,11 @@ class Pipeline:
     """
 
     def __init__(
-            self,
-            tasks: Collection[PipelineElement] = (),
-            early_stopping: bool = True,
-            report_results: bool = True,
-            environment_definition: EnvironmentDefinition = None,
+        self,
+        tasks: Collection[PipelineElement] = (),
+        early_stopping: bool = True,
+        report_results: bool = True,
+        environment_definition: EnvironmentDefinition = None,
     ):
         """
         Initialize Pipeline with a tuple of Tasks or TaskDispatchers and early_stopping flag.
