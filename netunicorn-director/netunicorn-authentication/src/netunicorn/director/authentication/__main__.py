@@ -44,9 +44,9 @@ async def shutdown():
 @app.post("/auth", status_code=200)
 async def auth(data: AuthenticationRequest):
     sql_query = 'SELECT hash FROM authentication WHERE username = $1'
-    result = await db_conn_pool.fetchval(sql_query, data.username)
+    result: Optional[str] = await db_conn_pool.fetchval(sql_query, data.username)
     if result is not None:
-        if bcrypt.checkpw(data.token.encode(), result):
+        if bcrypt.checkpw(data.token.encode(), result.encode()):
             return
 
     raise HTTPException(
