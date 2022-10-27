@@ -66,7 +66,7 @@ async def check_services_availability():
 
 async def get_experiment_id_and_status(
     experiment_name: str, username: str
-) -> Result[(str, ExperimentStatus), str]:
+) -> Result[Tuple[str, ExperimentStatus], str]:
     data = await db_conn_pool.fetchrow(
         "SELECT experiment_id, status FROM experiments WHERE username = $1 AND experiment_name = $2",
         username,
@@ -362,7 +362,7 @@ async def get_experiment_status(
 ) -> Result[ExperimentExecutionInformation, str]:
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
-        return result
+        return Failure(result.failure())
     experiment_id, status = result.unwrap()
 
     row = await db_conn_pool.fetchrow(
@@ -388,7 +388,7 @@ async def get_experiment_status(
 async def start_experiment(experiment_name: str, username: str) -> Result[str, str]:
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
-        return result
+        return Failure(result.failure())
     experiment_id, status = result.unwrap()
 
     if status != ExperimentStatus.READY:
@@ -421,7 +421,7 @@ async def credentials_check(username: str, token: str) -> bool:
 async def cancel_experiment(experiment_name: str, username: str) -> Result[str, str]:
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
-        return result
+        return Failure(result.failure())
     experiment_id, status = result.unwrap()
     if status in {ExperimentStatus.UNKNOWN, ExperimentStatus.FINISHED}:
         return Success(
