@@ -1,9 +1,9 @@
 import time
 
-from unicorn.library.basic import SleepTask
+from unicorn.base.experiment import Experiment, ExperimentStatus
 from unicorn.base.pipeline import Pipeline
 from unicorn.client.local import LocalClient
-from unicorn.base.experiment import ExperimentStatus, Experiment
+from unicorn.library.basic import SleepTask
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
     # let's create unique ID for deployment preparation
     # this make this method failure-safe: if you call this method twice with the same ID,
     # it will not create a new environment twice
-    deployment_id = 'local_example_deployment'
+    deployment_id = "local_example_deployment"
 
     # ask engine to prepare deployment
     deployment_id = client.prepare_experiment(deployment_map, deployment_id)
@@ -46,7 +46,7 @@ def main():
     print(results)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Unfortunately, as we use multiprocessing for LocalClient, you have to guard your main file with __main__ statement
     # It's a restriction of Python's multiprocessing module
     # You can safely use interactive mode for RemoteClient with real NETUNICORN installation

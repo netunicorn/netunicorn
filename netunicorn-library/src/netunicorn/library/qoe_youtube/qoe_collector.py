@@ -13,7 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DUMP_FOLDER = os.environ.get('QOE_DATA_FOLDER', '.')
+DUMP_FOLDER = os.environ.get("QOE_DATA_FOLDER", ".")
 file_descriptors = {}
 
 
@@ -25,13 +25,13 @@ def create_file_ds(view_id: str) -> TextIO:
 
 
 def parse_descriptor(text: str) -> str:
-    return text.replace(r' / ', '_').replace(" ", "_")
+    return text.replace(r" / ", "_").replace(" ", "_")
 
 
 def save_record(obj: dict, code="report") -> None:
     global file_descriptors
-    if 'video_id_and_cpn' in obj:
-        parsed_desc = parse_descriptor(obj['video_id_and_cpn'])
+    if "video_id_and_cpn" in obj:
+        parsed_desc = parse_descriptor(obj["video_id_and_cpn"])
         name = f"{code}_{parsed_desc}"
         event_file = file_descriptors.get(name, create_file_ds(name))
         print(obj, file=event_file, flush=True)
@@ -75,5 +75,5 @@ def run(dump_folder: str = ".", host: str = "0.0.0.0", port: int = 34543):
         raise
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()

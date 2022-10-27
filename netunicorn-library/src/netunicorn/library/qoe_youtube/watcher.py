@@ -2,9 +2,9 @@
 Module responsible for starting and ending selenium based chrome and viewing the video
 """
 import os
+import random
 import subprocess
 import time
-import random
 from typing import List, Optional
 
 from returns.result import Result, Success
@@ -28,7 +28,7 @@ def extract_qualities(text: str) -> List[int]:
     # Because of how youtube quality menu created
     lines = text.split("\n")[1:-1]
 
-    nums = [int(s[:s.find("p")]) for s in lines]
+    nums = [int(s[: s.find("p")]) for s in lines]
     return nums
 
 
@@ -53,20 +53,24 @@ def find_closest(options: List[int], goal: int) -> int:
 
 
 def select_quality(driver: webdriver.Chrome, quality: int) -> None:
-    settings = driver.find_element(By.CLASS_NAME,
-                                   "ytp-settings-button")  # .find_elements_by_class_name("ytp-settings-button")
+    settings = driver.find_element(
+        By.CLASS_NAME, "ytp-settings-button"
+    )  # .find_elements_by_class_name("ytp-settings-button")
     settings.click()
-    menu = driver.find_elements(By.CLASS_NAME, 'ytp-menuitem')
+    menu = driver.find_elements(By.CLASS_NAME, "ytp-menuitem")
     menu[3].click()
-    quality_menu = driver.find_element(By.CLASS_NAME, 'ytp-quality-menu')
+    quality_menu = driver.find_element(By.CLASS_NAME, "ytp-quality-menu")
     options = extract_qualities(quality_menu.text)
-    index_to_select = find_closest(options, quality) + 1  # Because we cutted first "go back to menu" option
-    menu = driver.find_elements(By.CLASS_NAME, 'ytp-menuitem')
+    index_to_select = (
+        find_closest(options, quality) + 1
+    )  # Because we cutted first "go back to menu" option
+    menu = driver.find_elements(By.CLASS_NAME, "ytp-menuitem")
     menu[index_to_select].click()
 
 
-def watch(url: str, duration: Optional[int] = 100,
-          quality: Optional[int] = None) -> Result[str, str]:
+def watch(
+    url: str, duration: Optional[int] = 100, quality: Optional[int] = None
+) -> Result[str, str]:
     """
     Function that completes the task of:
     1. Starting the chrome from selenium
@@ -94,11 +98,13 @@ def watch(url: str, duration: Optional[int] = 100,
     """
     # Display size is random popular screen size
     display_number = random.randint(100, 500)
-    xvfb_process = subprocess.Popen(['Xvfb', f':{display_number}', '-screen', '0', '1920x1080x24'])
+    xvfb_process = subprocess.Popen(
+        ["Xvfb", f":{display_number}", "-screen", "0", "1920x1080x24"]
+    )
     os.environ["DISPLAY"] = f":{display_number}"
 
     options = Options()
-    options.add_argument('--no-sandbox')
+    options.add_argument("--no-sandbox")
 
     if ADBLOCK_PATH[-4:] == ".crx":
         # For unpacked extension (statsfornerds always unpacked to change it)
@@ -135,13 +141,13 @@ def watch(url: str, duration: Optional[int] = 100,
     for s in range(5):
         try:
             driver.switch_to.window(pages[i])
-            video = driver.find_element(By.ID, 'movie_player')
+            video = driver.find_element(By.ID, "movie_player")
             break
         except NoSuchElementException:
             time.sleep(1)
     else:
         driver.switch_to.window(pages[i])
-        video = driver.find_element(By.ID, 'movie_player')
+        video = driver.find_element(By.ID, "movie_player")
 
     if not (quality is None):
         select_quality(driver, quality)
@@ -152,7 +158,9 @@ def watch(url: str, duration: Optional[int] = 100,
         player_status = 1  # Suppose video playing now
         while player_status != 0:  # While not stopped - see docs
             time.sleep(2)  # Random 2s constant not to check to freq
-            player_status = driver.execute_script("return document.getElementById('movie_player').getPlayerState()")
+            player_status = driver.execute_script(
+                "return document.getElementById('movie_player').getPlayerState()"
+            )
         how = "End of video"
     else:
         time.sleep(duration)
@@ -165,5 +173,5 @@ def watch(url: str, duration: Optional[int] = 100,
     return Success(how)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(watch("https://www.youtube.com/watch?v=ZzwWWut_ibU", 100, None))

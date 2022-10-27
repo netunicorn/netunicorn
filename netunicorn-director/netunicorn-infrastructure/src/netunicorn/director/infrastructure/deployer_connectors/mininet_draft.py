@@ -4,11 +4,11 @@ import uuid
 from typing import Dict
 
 from cloudpickle import dumps
-
-from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.minions import MinionPool, Minion
-from ..resources import logger, redis_connection, GATEWAY_ENDPOINT
+from netunicorn.base.experiment import Experiment, ExperimentStatus
+from netunicorn.base.minions import Minion, MinionPool
+
+from ..resources import GATEWAY_ENDPOINT, logger, redis_connection
 
 
 class MininetConnector:
@@ -26,28 +26,37 @@ class MininetConnector:
         self.net.addNAT().configDefault()
         self.net.start()
         for host in self.net.hosts:
-            host.cmd('dhclient &')
+            host.cmd("dhclient &")
         logger.info("MininetConnector started")
         # h1, h4 = net.hosts[0], net.hosts[3]
         # h1.cmd('ping -c1 %s' % h4.IP())
         # net.stop()
 
     async def get_minion_pool(self) -> MinionPool:
-        return MinionPool([Minion(name=x.name, properties={'IP': x.IP(), 'MAC': x.MAC()}) for x in self.net.hosts])
+        return MinionPool(
+            [
+                Minion(name=x.name, properties={"IP": x.IP(), "MAC": x.MAC()})
+                for x in self.net.hosts
+            ]
+        )
 
     async def prepare_deployment(
-            self, credentials: (str, str), deployment_map: Experiment, deployment_id: str
+        self, credentials: (str, str), deployment_map: Experiment, deployment_id: str
     ) -> None:
-        
+
         for deployment in deployment_map:
             if not deployment.prepared:
                 continue
 
             executor_id = str(uuid.uuid4())
             deployment.executor_id = executor_id
-            await redis_connection.set(f"executor:{executor_id}:pipeline", dumps(deployment.pipeline))
+            await redis_connection.set(
+                f"executor:{executor_id}:pipeline", dumps(deployment.pipeline)
+            )
 
-    async def start_execution(self, login: str, experiment: Experiment, experiment_id: str) -> Dict[str, Minion]:
+    async def start_execution(
+        self, login: str, experiment: Experiment, experiment_id: str
+    ) -> Dict[str, Minion]:
         loop = asyncio.get_event_loop()
 
         for deployment in experiment:
@@ -56,18 +65,30 @@ class MininetConnector:
 
             executor_id = deployment.executor_id
             if isinstance(deployment.environment_definition, ShellExecution):
-                host = [x for x in self.net.hosts if x.name == deployment.minion.name][0]
+                host = [x for x in self.net.hosts if x.name == deployment.minion.name][
+                    0
+                ]
                 host.waiting = False
-                await loop.run_in_executor(None, functools.partial(
-                    host.sendCmd,
-                    f'NETUNICORN_EXECUTOR_ID={executor_id} '
-                    f'NETUNICORN_GATEWAY_ENDPOINT={GATEWAY_ENDPOINT} '
-                    f'python3 -m netunicorn.executor'
-                ))
+                await loop.run_in_executor(
+                    None,
+                    functools.partial(
+                        host.sendCmd,
+                        f"NETUNICORN_EXECUTOR_ID={executor_id} "
+                        f"NETUNICORN_GATEWAY_ENDPOINT={GATEWAY_ENDPOINT} "
+                        f"python3 -m netunicorn.executor",
+                    ),
+                )
             else:
-                logger.error(f'Unknown environment definition: {deployment.environment_definition}')
+                logger.error(
+                    f"Unknown environment definition: {deployment.environment_definition}"
+                )
                 continue
 
-        exec_ids = {deployment.executor_id: (deployment.minion, deployment.pipeline) for deployment in experiment}
-        await redis_connection.set(f"experiment:{experiment_id}:status", pickledumps(ExperimentStatus.RUNNING))
+        exec_ids = {
+            deployment.executor_id: (deployment.minion, deployment.pipeline)
+            for deployment in experiment
+        }
+        await redis_connection.set(
+            f"experiment:{experiment_id}:status", pickledumps(ExperimentStatus.RUNNING)
+        )
         return exec_ids

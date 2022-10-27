@@ -1,12 +1,10 @@
 from typing import Iterable
 
-from netunicorn.base.experiment import (Experiment,
-                                        ExperimentExecutionInformation)
+from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
 from netunicorn.base.minions import MinionPool
 
 
 class BaseClient:
-
     def get_minion_pool(self) -> MinionPool:
         """
         This method returns description of available minions in the system.
@@ -42,7 +40,9 @@ class BaseClient:
         """
         raise NotImplementedError()
 
-    def get_experiment_status(self, experiment_id: str) -> ExperimentExecutionInformation:
+    def get_experiment_status(
+        self, experiment_id: str
+    ) -> ExperimentExecutionInformation:
         """
         Returns status and results of experiment.
         If experiment preparation succeed, you can explore map to see what minions are prepared for deployment.

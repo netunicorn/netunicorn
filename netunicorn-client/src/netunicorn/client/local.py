@@ -1,23 +1,24 @@
 import asyncio
 import copy
+import logging
+import subprocess
 from typing import Dict, Tuple, Union
+from uuid import uuid4
 
 import cloudpickle
-import subprocess
-from uuid import uuid4
-import logging
-
-from returns.result import Result
-
-from .base import BaseClient
-
-
-from netunicorn.base.minions import Minion, MinionPool
-from netunicorn.base.experiment import Experiment, ExperimentStatus, DeploymentExecutionResult
 from netunicorn.base.environment_definitions import ShellExecution
+from netunicorn.base.experiment import (
+    DeploymentExecutionResult,
+    Experiment,
+    ExperimentStatus,
+)
+from netunicorn.base.minions import Minion, MinionPool
 from netunicorn.base.pipeline import Pipeline, PipelineResult
 from netunicorn.base.utils import NonStablePool as Pool
 from netunicorn.executor.executor import PipelineExecutor, PipelineExecutorState
+from returns.result import Result
+
+from .base import BaseClient
 
 
 class LocalClient(BaseClient):
@@ -36,8 +37,10 @@ class LocalClient(BaseClient):
         return self._minion_pool
 
     @staticmethod
-    def _execute_pipeline(executor_id: str, pipeline: bytes) -> (str, Result[PipelineResult, PipelineResult]):
-        executor = PipelineExecutor(executor_id=executor_id, gateway_ip='localhost')
+    def _execute_pipeline(
+        executor_id: str, pipeline: bytes
+    ) -> (str, Result[PipelineResult, PipelineResult]):
+        executor = PipelineExecutor(executor_id=executor_id, gateway_ip="localhost")
         executor.pipeline = cloudpickle.loads(pipeline)
         executor.state = PipelineExecutorState.EXECUTING
         asyncio.run(executor.execute())
@@ -45,12 +48,20 @@ class LocalClient(BaseClient):
 
     def _install_pipeline(self, pipeline: Pipeline) -> None:
         if not self.enforce_environment:
-            self.logger.info(f"Installation of environment for pipeline {pipeline.name}: doing nothing")
+            self.logger.info(
+                f"Installation of environment for pipeline {pipeline.name}: doing nothing"
+            )
         else:
-            self.logger.info(f"Flag enforce_environment is set to True, installing prerequisites for the pipeline")
-            self.logger.info(f"In the real cluster this installation would be too during deployment.")
+            self.logger.info(
+                f"Flag enforce_environment is set to True, installing prerequisites for the pipeline"
+            )
+            self.logger.info(
+                f"In the real cluster this installation would be too during deployment."
+            )
             if not isinstance(pipeline.environment_definition, ShellExecution):
-                raise ValueError(f"Local client supports only ShellExecution environment definition")
+                raise ValueError(
+                    f"Local client supports only ShellExecution environment definition"
+                )
 
             for command in pipeline.environment_definition.commands:
                 self.logger.info(f"Executing command: {command}")
@@ -58,9 +69,13 @@ class LocalClient(BaseClient):
                 self.logger.info(result.stdout.decode())
                 self.logger.info(result.stderr.decode())
                 if result.returncode != 0:
-                    raise RuntimeError(f"Command {command} failed with code {result.returncode}")
+                    raise RuntimeError(
+                        f"Command {command} failed with code {result.returncode}"
+                    )
 
-            self.logger.info(f"Preparation of environment for pipeline {pipeline.name} finished")
+            self.logger.info(
+                f"Preparation of environment for pipeline {pipeline.name} finished"
+            )
 
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
         self.logger.info(f"Starting deployment preparation for {experiment_id}")
@@ -71,14 +86,18 @@ class LocalClient(BaseClient):
 
         for deployment in experiment:
             if not isinstance(deployment.environment_definition, ShellExecution):
-                raise ValueError(f"Local client supports only ShellExecution environment definition")
-            if deployment.minion.name != 'localhost':
+                raise ValueError(
+                    f"Local client supports only ShellExecution environment definition"
+                )
+            if deployment.minion.name != "localhost":
                 raise ValueError(f"Local client supports only local minion")
 
         self.storage[internal_deployment_id + "_status"] = ExperimentStatus.PREPARING
         for item in experiment:
-            item.minion = copy.deepcopy(item.minion)  # bunch of hacks because local execution
-            item.minion.additional_properties['executor_id'] = str(uuid4())
+            item.minion = copy.deepcopy(
+                item.minion
+            )  # bunch of hacks because local execution
+            item.minion.additional_properties["executor_id"] = str(uuid4())
             self._install_pipeline(item.pipeline)
 
         self.storage[internal_deployment_id] = experiment
@@ -88,7 +107,9 @@ class LocalClient(BaseClient):
     def start_execution(self, experiment_id: str) -> str:
         self.logger.info(f"Starting deployment for {experiment_id}")
         internal_deployment_id = f"depl_{experiment_id}"
-        status = self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
+        status = self.storage.get(
+            internal_deployment_id + "_status", ExperimentStatus.UNKNOWN
+        )
         if status != ExperimentStatus.READY:
             raise ValueError(f"Deployment is in incorrect status: {status}")
 
@@ -99,34 +120,52 @@ class LocalClient(BaseClient):
 
         result = process_map.starmap_async(
             LocalClient._execute_pipeline,
-            ((x.minion.additional_properties['executor_id'], cloudpickle.dumps(x.pipeline)) for x in deployment_map)
+            (
+                (
+                    x.minion.additional_properties["executor_id"],
+                    cloudpickle.dumps(x.pipeline),
+                )
+                for x in deployment_map
+            ),
         )
         self.storage[internal_deployment_id + "_data"] = (
             process_map,
             result,
-            {x.minion.additional_properties['executor_id']: x.minion for x in deployment_map}
+            {
+                x.minion.additional_properties["executor_id"]: x.minion
+                for x in deployment_map
+            },
         )
-        self.logger.info(f"Spawned and started {len(deployment_map)} executor(s) for deployment {experiment_id}")
+        self.logger.info(
+            f"Spawned and started {len(deployment_map)} executor(s) for deployment {experiment_id}"
+        )
         return experiment_id
 
     def get_experiment_status(self, experiment_id: str) -> ExperimentStatus:
         internal_deployment_id = f"depl_{experiment_id}"
         if not internal_deployment_id + "_data" in self.storage:
-            return self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
+            return self.storage.get(
+                internal_deployment_id + "_status", ExperimentStatus.UNKNOWN
+            )
 
         if self.storage[internal_deployment_id + "_data"][1].ready():
             self.storage[internal_deployment_id + "_data"][0].close()
             self.storage[internal_deployment_id + "_status"] = ExperimentStatus.FINISHED
             return ExperimentStatus.FINISHED
-        return self.storage.get(internal_deployment_id + "_status", ExperimentStatus.UNKNOWN)
+        return self.storage.get(
+            internal_deployment_id + "_status", ExperimentStatus.UNKNOWN
+        )
 
-    def get_experiment_result(self, experiment_id: str) -> Tuple[
-        ExperimentStatus,
-        Union[Dict[str, DeploymentExecutionResult], Exception]
+    def get_experiment_result(
+        self, experiment_id: str
+    ) -> Tuple[
+        ExperimentStatus, Union[Dict[str, DeploymentExecutionResult], Exception]
     ]:
         internal_deployment_id = f"depl_{experiment_id}"
         if not self.storage[internal_deployment_id + "_data"][1].ready():
-            self.logger.info("Pipelines are running. Use 'get_deployment_status' function to check status")
+            self.logger.info(
+                "Pipelines are running. Use 'get_deployment_status' function to check status"
+            )
             return ExperimentStatus.RUNNING, {}
 
         self.storage[internal_deployment_id + "_data"][0].close()
@@ -138,6 +177,7 @@ class LocalClient(BaseClient):
             result[0]: DeploymentExecutionResult(
                 minion=self.storage[internal_deployment_id + "_data"][2][result[0]],
                 result=cloudpickle.loads(result[2]),
-                pipeline=cloudpickle.loads(result[1])
-            ) for result in results
+                pipeline=cloudpickle.loads(result[1]),
+            )
+            for result in results
         }

@@ -1,9 +1,9 @@
-import time
 import subprocess
-from typing import Optional, List
+import time
+from typing import List, Optional
 
 from netunicorn.base.minions import Minion
-from netunicorn.base.task import Task, TaskDispatcher, Failure
+from netunicorn.base.task import Failure, Task, TaskDispatcher
 
 
 class StartCapture(TaskDispatcher):
@@ -13,14 +13,16 @@ class StartCapture(TaskDispatcher):
         super().__init__()
 
     def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get('os_family', '').lower() == 'linux':
+        if minion.properties.get("os_family", "").lower() == "linux":
             return StartCaptureLinuxImplementation(self.filepath, self.arguments)
 
-        raise NotImplementedError(f'StartCapture is not implemented for {minion.properties.get("os_family", "")}')
+        raise NotImplementedError(
+            f'StartCapture is not implemented for {minion.properties.get("os_family", "")}'
+        )
 
 
 class StartCaptureLinuxImplementation(Task):
-    requirements = ['sudo apt-get update', 'sudo apt-get install -y tcpdump']
+    requirements = ["sudo apt-get update", "sudo apt-get install -y tcpdump"]
 
     def __init__(self, filepath: str, arguments: Optional[List[str]] = None):
         self.arguments = arguments or []
@@ -28,27 +30,35 @@ class StartCaptureLinuxImplementation(Task):
         super().__init__()
 
     def run(self):
-        proc = subprocess.Popen(["tcpdump"] + self.arguments + ["-U", "-w", self.filepath])
+        proc = subprocess.Popen(
+            ["tcpdump"] + self.arguments + ["-U", "-w", self.filepath]
+        )
         time.sleep(2)
         if (exit_code := proc.poll()) is None:
-            return f"Successfully started tcpdump with filepath={self.filepath}, " \
-                   f"additional arguments: {self.arguments}, " \
-                   f"process ID: {proc.pid}"
+            return (
+                f"Successfully started tcpdump with filepath={self.filepath}, "
+                f"additional arguments: {self.arguments}, "
+                f"process ID: {proc.pid}"
+            )
 
         return Failure(f"Tcpdump terminated with return code {exit_code}")
 
 
 class StopAllTCPDumps(TaskDispatcher):
     def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get('os_family', '').lower() == 'linux':
+        if minion.properties.get("os_family", "").lower() == "linux":
             return StopAllTCPDumpsLinuxImplementation()
 
-        raise NotImplementedError(f'StopAllTCPDumps is not implemented for {minion.properties.get("os_family", "")}')
+        raise NotImplementedError(
+            f'StopAllTCPDumps is not implemented for {minion.properties.get("os_family", "")}'
+        )
 
 
 class StopAllTCPDumpsLinuxImplementation(Task):
     def run(self):
-        proc = subprocess.Popen(['killall', '-w', 'tcpdump'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            ["killall", "-w", "tcpdump"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         out, err = proc.communicate()
 
         time.sleep(5)  # for tcpdump to finish file
