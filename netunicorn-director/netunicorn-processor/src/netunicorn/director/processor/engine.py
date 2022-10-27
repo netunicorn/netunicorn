@@ -4,7 +4,7 @@ import asyncpg
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 
-from netunicorn.base.experiment import ExperimentStatus, Experiment, ExperimentExecutionResult
+from netunicorn.base.experiment import ExperimentStatus, Experiment, DeploymentExecutionResult
 from netunicorn.director.base.resources import get_logger, \
     DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 from netunicorn.director.base.utils import __init_connection
@@ -34,7 +34,7 @@ async def collect_all_executor_results(experiment: Experiment, experiment_id: st
             executor_result, error = None, None
 
         execution_results.append(
-            ExperimentExecutionResult(
+            DeploymentExecutionResult(
                 minion=deployment.minion,
                 serialized_pipeline=deployment.pipeline,
                 result=executor_result,

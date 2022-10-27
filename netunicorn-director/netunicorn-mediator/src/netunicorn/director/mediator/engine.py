@@ -4,12 +4,12 @@ import base64
 import asyncpg.connection
 import requests as req
 from uuid import uuid4
-from typing import Union, Optional, Dict, Tuple, List
+from typing import Optional, Dict, Tuple, List
 from datetime import datetime
 from returns.result import Result, Success, Failure
 
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.experiment import Experiment, ExperimentStatus, Deployment, SerializedExperimentExecutionResult
+from netunicorn.base.experiment import Experiment, ExperimentStatus, Deployment,ExperimentExecutionInformation
 from netunicorn.director.base.resources import DATABASE_ENDPOINT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DB
 from netunicorn.director.base.utils import __init_connection
 
@@ -282,19 +282,7 @@ async def prepare_experiment_task(experiment_name: str, experiment: Experiment, 
         )
 
 
-async def get_experiment_status(experiment_name: str, username: str) -> Result[
-    Tuple[
-        ExperimentStatus,
-        Optional[Experiment],
-        Union[
-            None,
-            Exception,
-            List[
-                SerializedExperimentExecutionResult],
-        ]
-    ],
-    str
-]:
+async def get_experiment_status(experiment_name: str, username: str) -> Result[ExperimentExecutionInformation, str]:
     experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
     row = await db_conn_pool.fetchrow(
         "SELECT data::jsonb, error, execution_results::jsonb[] FROM experiments WHERE experiment_id = $1",
@@ -307,7 +295,7 @@ async def get_experiment_status(experiment_name: str, username: str) -> Result[
         experiment = Experiment.from_json(experiment)
     if error is not None:
         return Success((status, experiment, error))
-    return Success((status, experiment, execution_results))
+    return Success(ExperimentExecutionInformation(status, experiment, execution_results))
 
 
 async def start_experiment(experiment_name: str, username: str) -> None:

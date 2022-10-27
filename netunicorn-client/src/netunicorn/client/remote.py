@@ -1,9 +1,9 @@
 import json
 
 import requests as req
-from typing import Union, Tuple, Optional, List, Iterable
+from typing import Iterable
 
-from netunicorn.base.experiment import Experiment, ExperimentExecutionResult, ExperimentStatus
+from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
 from netunicorn.base.minions import MinionPool
 from netunicorn.base.utils import UnicornEncoder
 
@@ -67,42 +67,18 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content}"
         )
 
-    def get_experiment_status(self, experiment_id: str) -> Tuple[
-        ExperimentStatus,
-        Optional[Experiment],
-        Union[
-            None,
-            Exception,
-            List[ExperimentExecutionResult]
-        ]
-    ]:
+    def get_experiment_status(self, experiment_id: str) -> ExperimentExecutionInformation:
         result_data = req.get(f"{self.endpoint}/api/v1/experiment/{experiment_id}", auth=(self.login, self.password))
-        if result_data.status_code == 200:
-            result = result_data.json()
-            if not (isinstance(result, list) and len(result) == 3):
-                raise RemoteClientException(f"Invalid response from the server. Result: {result}")
+        if result_data.status_code != 200:
+            raise RemoteClientException(
+                "Failed to get experiment status. "
+                f"Status code: {result_data.status_code}, content: {result_data.content}"
+            )
 
-            # decode experiment
-            result[0] = ExperimentStatus.from_json(result[0])
+        result = result_data.json()
+        return ExperimentExecutionInformation.from_json(result)
 
-            if result[1] is not None:
-                result[1] = Experiment.from_json(result[1])
-
-            # decode execution results
-            if isinstance(result[2], str):
-                result[2] = Exception(result[2])
-
-            if isinstance(result[2], list):
-                result[2] = [ExperimentExecutionResult.from_json(r) for r in result[2]]
-
-            return tuple(result)
-
-        raise RemoteClientException(
-            "Failed to get experiment status. "
-            f"Status code: {result_data.status_code}, content: {result_data.content}"
-        )
-
-    def cancel_experiment(self, experiment_id: str) -> None:
+    def cancel_experiment(self, experiment_id: str) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/cancel",
             auth=(self.login, self.password)
@@ -115,7 +91,7 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content}"
         )
 
-    def cancel_executors(self, executors: Iterable[str]) -> None:
+    def cancel_executors(self, executors: Iterable[str]) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/executors/cancel",
             auth=(self.login, self.password),

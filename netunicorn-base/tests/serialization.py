@@ -6,7 +6,7 @@ from base64 import b64encode
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.base.minions import Minion, MinionPool
 from netunicorn.base.deployment import Deployment
-from netunicorn.base.experiment import Experiment, ExperimentExecutionResult
+from netunicorn.base.experiment import Experiment, DeploymentExecutionResult
 from netunicorn.base.pipeline import Pipeline
 from netunicorn.base.task import Task
 
@@ -89,8 +89,8 @@ class TestAllJSONSerialization(unittest.TestCase):
         pipeline = b'dsa'
         results = b'asd'
 
-        execution_result = ExperimentExecutionResult(minion, pipeline, results)
+        execution_result = DeploymentExecutionResult(minion, pipeline, results)
         json_execution_result = UnicornEncoder().encode(execution_result)
-        deserialized_execution_result = ExperimentExecutionResult.from_json(json.loads(json_execution_result))
+        deserialized_execution_result = DeploymentExecutionResult.from_json(json.loads(json_execution_result))
 
         self.assertEqual(execution_result.minion, deserialized_execution_result.minion)

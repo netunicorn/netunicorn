@@ -13,7 +13,7 @@ from .base import BaseClient
 
 
 from netunicorn.base.minions import Minion, MinionPool
-from netunicorn.base.experiment import Experiment, ExperimentStatus, ExperimentExecutionResult
+from netunicorn.base.experiment import Experiment, ExperimentStatus, DeploymentExecutionResult
 from netunicorn.base.environment_definitions import ShellExecution
 from netunicorn.base.pipeline import Pipeline, PipelineResult
 from netunicorn.base.utils import NonStablePool as Pool
@@ -122,7 +122,7 @@ class LocalClient(BaseClient):
 
     def get_experiment_result(self, experiment_id: str) -> Tuple[
         ExperimentStatus,
-        Union[Dict[str, ExperimentExecutionResult], Exception]
+        Union[Dict[str, DeploymentExecutionResult], Exception]
     ]:
         internal_deployment_id = f"depl_{experiment_id}"
         if not self.storage[internal_deployment_id + "_data"][1].ready():
@@ -135,7 +135,7 @@ class LocalClient(BaseClient):
         self.logger.info(f"Collected results for deployment {experiment_id}")
 
         return ExperimentStatus.FINISHED, {
-            result[0]: ExperimentExecutionResult(
+            result[0]: DeploymentExecutionResult(
                 minion=self.storage[internal_deployment_id + "_data"][2][result[0]],
                 result=cloudpickle.loads(result[2]),
                 pipeline=cloudpickle.loads(result[1])

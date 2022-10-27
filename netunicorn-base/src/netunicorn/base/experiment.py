@@ -3,8 +3,9 @@ from __future__ import annotations
 import base64
 import copy
 from enum import Enum
-from typing import Iterator, List, Tuple, Optional
+from typing import Iterator, List, Tuple, Optional, Union
 from returns.result import Result
+from dataclasses import dataclass
 
 from .minions import Minion, MinionPool
 from .deployment import Deployment
@@ -79,7 +80,7 @@ class Experiment:
         return new_map
 
 
-class ExperimentExecutionResult:
+class DeploymentExecutionResult:
     def __init__(self, minion: Minion, serialized_pipeline: bytes, result: Optional[bytes], error: Optional[str] = None):
         self.minion = minion
         self._pipeline = serialized_pipeline
@@ -97,7 +98,7 @@ class ExperimentExecutionResult:
         return cloudpickle.loads(self._result) if self._result else None
 
     def __str__(self) -> str:
-        return f"ExperimentExecutionResult(minion={self.minion}, result={self.result}, error={self.error})"
+        return f"DeploymentExecutionResult(minion={self.minion}, result={self.result}, error={self.error})"
 
     def __repr__(self):
         return self.__str__()
@@ -119,5 +120,33 @@ class ExperimentExecutionResult:
             data["error"],
         )
 
+@dataclass(frozen=True)
+class ExperimentExecutionInformation:
+    status: ExperimentStatus
+    experiment: Optional[Experiment]
+    execution_result: Union[None, Exception, List[DeploymentExecutionResult]]
 
-SerializedExperimentExecutionResult = bytes
+    def __json__(self) -> dict:
+        if isinstance(self.execution_result, list):
+            execution_result = [x.__json__() for x in self.execution_result]
+        elif isinstance(self.execution_result, Exception):
+            execution_result = self.execution_result.__reduce__()
+        else:
+            execution_result = None
+        return {
+            "status": self.status.__json__(),
+            "experiment": self.experiment.__json__() if self.experiment else None,
+            "execution_result": execution_result,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict) -> ExperimentExecutionInformation:
+        status = ExperimentStatus.from_json(data["status"])
+        experiment = Experiment.from_json(data["experiment"]) if data["experiment"] else None
+        execution_result = data["execution_result"]
+        if execution_result:
+            if isinstance(execution_result, list):
+                execution_result = [DeploymentExecutionResult.from_json(x) for x in execution_result]
+            else:
+                execution_result = Exception(*execution_result)
+        return cls(status, experiment, execution_result)
