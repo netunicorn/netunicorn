@@ -50,7 +50,7 @@ async def shell_compilation(request: CompilationRequest):
 
 @app.post("/compile/docker")
 async def docker_compilation(request: CompilationRequest, background_tasks: BackgroundTasks):
-    environment_definition = environment_definitions.DockerImage(**request.environment_definition)
+    environment_definition = environment_definitions.DockerImage.from_json(request.environment_definition)
     background_tasks.add_task(docker_compilation_task, request.experiment_id, request.compilation_id, request.architecture, environment_definition,
                               b64decode(request.pipeline))
     return {"result": "success"}
@@ -70,8 +70,7 @@ async def docker_compilation_task(
         return
 
     logger.debug(f"Received compilation request: {compilation_id=}, {architecture=}, "
-                 f"{environment_definition=}, {environment_definition.build_context.python_version=}, "
-                 f"{environment_definition.build_context.cloudpickle_version=}")
+                 f"{environment_definition=}, {environment_definition.build_context=}")
     match_result = re.fullmatch(r'\d\.\d+\.\d+', environment_definition.build_context.python_version)
     if not match_result:
         await record_compilation_result(experiment_id, compilation_id, False, f'Unknown Python version: {environment_definition.build_context.python_version}')
