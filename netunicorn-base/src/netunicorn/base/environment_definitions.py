@@ -86,7 +86,7 @@ class DockerImage(EnvironmentDefinition):
     def __json__(self):
         return {
             "image": self.image,
-            "build_context": self.build_context,
+            "build_context": self.build_context.__json__(),
             "commands": self.commands,
         }
 
