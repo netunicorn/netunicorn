@@ -95,12 +95,8 @@ async def docker_compilation_task(
         "RUN apt update",
         *['RUN ' + str(x).removeprefix('sudo ') for x in commands],
         f'COPY {compilation_id}.pipeline unicorn.pipeline',
-
-        # TODO: change for milestone 0.2 to PYPI
-        f'COPY netunicorn-base netunicorn-base',
-        f'RUN pip install netunicorn-base/',
-        f'COPY netunicorn-executor netunicorn-executor',
-        f'RUN pip install netunicorn-executor/',
+        f'RUN pip install netunicorn-base',
+        f'RUN pip install netunicorn-executor',
     ]
 
     if environment_definition.build_context.cloudpickle_version is not None:
