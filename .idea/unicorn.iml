@@ -17,7 +17,7 @@
       <excludeFolder url="file://$MODULE_DIR$/netunicorn-director/netunicorn-compilation/src/netunicorn_director_compilation.egg-info" />
       <excludeFolder url="file://$MODULE_DIR$/netunicorn-director/netunicorn-compilation/build" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.8 (unicorn)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.9 (netunicorn)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">
