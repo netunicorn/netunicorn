@@ -207,39 +207,60 @@ class SaltConnector(Connector):
             executor_id = deployment.executor_id
 
             try:
+                deployment.environment_definition.runtime_context.environment_variables[
+                    "NETUNICORN_EXECUTOR_ID"
+                ] = executor_id
+                deployment.environment_definition.runtime_context.environment_variables[
+                    "NETUNICORN_GATEWAY_ENDPOINT"
+                ] = GATEWAY_ENDPOINT
+
                 if isinstance(deployment.environment_definition, DockerImage):
+                    ports = ""
+                    env_vars = " ".join(
+                        f"-e {k}={v}"
+                        for k, v in deployment.environment_definition.runtime_context.environment_variables.items()
+                    )
+
+                    if deployment.environment_definition.runtime_context.ports_mapping:
+                        ports = " ".join(
+                            f"-p {k}:{v}"
+                            for k, v in deployment.environment_definition.runtime_context.ports_mapping.items()
+                        )
+
+                    runcommand = (
+                        f"docker run -d "
+                        f"" + env_vars + " " + ports + " "
+                        f"--name {deployment.executor_id} "
+                        f"{deployment.environment_definition.image}"
+                    )
+                    logger.debug("Starting executor with command: " + runcommand)
+
                     result = await loop.run_in_executor(
                         None,
                         functools.partial(
                             self.local.cmd,
                             deployment.minion.name,
                             "cmd.run",
-                            [
-                                (
-                                    f"docker run -d "
-                                    f"-e NETUNICORN_EXECUTOR_ID={executor_id} "
-                                    f"-e NETUNICORN_GATEWAY_ENDPOINT={GATEWAY_ENDPOINT} "
-                                    f"--name {deployment.executor_id} "
-                                    f"{deployment.environment_definition.image}",
-                                )
-                            ],
+                            [(runcommand,)],
                             full_return=True,
                         ),
                     )
                 elif isinstance(deployment.environment_definition, ShellExecution):
+                    env_vars = " ".join(
+                        f"{k}={v}"
+                        for k, v in deployment.environment_definition.runtime_context.environment_variables.items()
+                    )
+
+                    runcommand = f"{env_vars} python3 -m netunicorn.executor"
+                    logger.debug("Starting executor with command: " + runcommand)
+
                     result = await loop.run_in_executor(
                         None,
                         functools.partial(
                             self.local.cmd_async,
                             deployment.minion.name,
                             "cmd.run",
-                            [
-                                (
-                                    f"NETUNICORN_EXECUTOR_ID={executor_id} "
-                                    f"NETUNICORN_GATEWAY_ENDPOINT={GATEWAY_ENDPOINT} "
-                                    f"python3 -m netunicorn.executor",
-                                )
-                            ],
+                            [(runcommand,)],
                             full_return=True,
                         ),
                     )
