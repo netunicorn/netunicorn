@@ -231,8 +231,9 @@ class SaltConnector(Connector):
                         f"docker run -d "
                         f"" + env_vars + " " + ports + " "
                         f"--name {deployment.executor_id} "
-                        f"{deployment.environment_definition.image}",
+                        f"{deployment.environment_definition.image}"
                     )
+                    logger.debug("Starting executor with command: " + runcommand)
 
                     result = await loop.run_in_executor(
                         None,
@@ -251,6 +252,7 @@ class SaltConnector(Connector):
                     )
 
                     runcommand = f"{env_vars} python3 -m netunicorn.executor"
+                    logger.debug("Starting executor with command: " + runcommand)
 
                     result = await loop.run_in_executor(
                         None,
