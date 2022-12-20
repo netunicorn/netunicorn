@@ -12,19 +12,24 @@ from typing import Optional
 class RuntimeContext:
     ports_mapping: dict[int, int] = field(default_factory=dict)
     environment_variables: dict[str, str] = field(default_factory=dict)
+    additional_arguments: list[str] = field(default_factory=list)
 
     def __json__(self):
         return {
             "ports_mapping": self.ports_mapping,
             "environment_variables": self.environment_variables,
+            "additional_arguments": self.additional_arguments,
         }
 
     @classmethod
     def from_json(cls, data: dict) -> RuntimeContext:
         ports_mapping = data["ports_mapping"]
         environment_variables = data["environment_variables"]
+        additional_arguments = data["additional_arguments"]
         return cls(
-            ports_mapping=ports_mapping, environment_variables=environment_variables
+            ports_mapping=ports_mapping,
+            environment_variables=environment_variables,
+            additional_arguments=additional_arguments,
         )
 
 

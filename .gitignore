@@ -3,3 +3,6 @@
 */**/temp.md
 *.egg-info/
 build/
+*/**/build/
+*/**/dist/
+*/**/*.egg-info

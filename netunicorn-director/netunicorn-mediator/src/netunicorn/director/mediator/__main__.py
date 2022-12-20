@@ -23,6 +23,8 @@ from .engine import (
     open_db_connection,
     prepare_experiment_task,
     start_experiment,
+    check_sudo_access,
+    check_runtime_context,
 )
 
 logger = get_logger("netunicorn.director.mediator")
@@ -99,9 +101,15 @@ async def prepare_experiment_handler(
             detail=f"Couldn't parse experiment from the provided data: {e}",
         )
 
-    result = experiment_precheck(experiment)
-    if not is_successful(result):
-        return result_to_response(result)
+    prechecks = [
+        experiment_precheck(experiment),
+        check_sudo_access(experiment, username),
+        check_runtime_context(experiment),
+    ]
+    for result in prechecks:
+        if not is_successful(result):
+            return result_to_response(result)
+
     background_tasks.add_task(
         prepare_experiment_task, experiment_name, experiment, username
     )
