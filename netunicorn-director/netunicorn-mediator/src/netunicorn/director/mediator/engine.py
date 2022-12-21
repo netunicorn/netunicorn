@@ -110,14 +110,13 @@ async def check_sudo_access(experiment: Experiment, username: str) -> Result[Non
     )
     if not sudo_user:
         for executor in experiment.deployment_map:
-            for env_def in executor.environment_definition:
-                if isinstance(env_def, DockerImage) or isinstance(
-                    env_def, ShellExecution
-                ):
-                    if env_def.runtime_context.additional_arguments:
-                        return Failure(
-                            f"This user is not allowed to use additional arguments in runtime context"
-                        )
+            if isinstance(executor.environment_definition, DockerImage) or isinstance(
+                executor.environment_definition, ShellExecution
+            ):
+                if executor.environment_definition.runtime_context.additional_arguments:
+                    return Failure(
+                        f"This user is not allowed to use additional arguments in runtime context"
+                    )
     return Success(None)
 
 
@@ -135,21 +134,26 @@ async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
         return True
 
     for executor in experiment.deployment_map:
-        for env_def in executor.environment_definition:
-            if isinstance(env_def, DockerImage):
-                if not check_ports_types(env_def.runtime_context.ports_mapping):
-                    return Failure(
-                        f"Ports mapping in runtime context must be a dict of int to int"
-                    )
-                if not check_env_values(env_def.runtime_context.environment_variables):
-                    return Failure(
-                        f"Environment variables in runtime context must not contain spaces"
-                    )
-            elif isinstance(env_def, ShellExecution):
-                if not check_env_values(env_def.runtime_context.environment_variables):
-                    return Failure(
-                        f"Environment variables in runtime context must not contain spaces"
-                    )
+        if isinstance(executor.environment_definition, DockerImage):
+            if not check_ports_types(
+                executor.environment_definition.runtime_context.ports_mapping
+            ):
+                return Failure(
+                    f"Ports mapping in runtime context must be a dict of int to int"
+                )
+            if not check_env_values(
+                executor.environment_definition.runtime_context.environment_variables
+            ):
+                return Failure(
+                    f"Environment variables in runtime context must not contain spaces"
+                )
+        elif isinstance(executor.environment_definition, ShellExecution):
+            if not check_env_values(
+                executor.environment_definition.runtime_context.environment_variables
+            ):
+                return Failure(
+                    f"Environment variables in runtime context must not contain spaces"
+                )
     return Success(None)
 
 
