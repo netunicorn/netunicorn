@@ -101,7 +101,7 @@ async def get_minion_pool(username: str) -> list:
     return result
 
 
-def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
+async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
     """
     checking additional_arguments in runtime_context of environment definitions and whether user us allowed to use them
     """
@@ -121,7 +121,7 @@ def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str
     return Success(None)
 
 
-def check_runtime_context(experiment: Experiment) -> Result[None, str]:
+async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
     def check_ports_types(ports_mapping: dict) -> bool:
         for k, v in ports_mapping.items():
             if not isinstance(k, int) or not isinstance(v, int):
@@ -153,7 +153,7 @@ def check_runtime_context(experiment: Experiment) -> Result[None, str]:
     return Success(None)
 
 
-def experiment_precheck(experiment: Experiment) -> Result[None, str]:
+async def experiment_precheck(experiment: Experiment) -> Result[None, str]:
     # checking executor names
     executor_names = set()
     for executor in experiment.deployment_map:

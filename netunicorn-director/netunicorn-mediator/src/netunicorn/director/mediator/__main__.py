@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from typing import List
@@ -101,11 +102,11 @@ async def prepare_experiment_handler(
             detail=f"Couldn't parse experiment from the provided data: {e}",
         )
 
-    prechecks = [
+    prechecks = asyncio.gather(
         experiment_precheck(experiment),
         check_sudo_access(experiment, username),
         check_runtime_context(experiment),
-    ]
+    )
     for result in prechecks:
         if not is_successful(result):
             return result_to_response(result)
