@@ -102,7 +102,7 @@ async def prepare_experiment_handler(
             detail=f"Couldn't parse experiment from the provided data: {e}",
         )
 
-    prechecks = asyncio.gather(
+    prechecks = await asyncio.gather(
         experiment_precheck(experiment),
         check_sudo_access(experiment, username),
         check_runtime_context(experiment),
