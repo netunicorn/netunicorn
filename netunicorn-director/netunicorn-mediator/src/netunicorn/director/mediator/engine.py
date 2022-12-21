@@ -123,7 +123,9 @@ async def check_sudo_access(experiment: Experiment, username: str) -> Result[Non
 async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
     def check_ports_types(ports_mapping: dict) -> bool:
         for k, v in ports_mapping.items():
-            if not isinstance(k, int) or not isinstance(v, int):
+            try:
+                int(k), int(v)
+            except ValueError:
                 return False
         return True
 

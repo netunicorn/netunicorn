@@ -226,7 +226,7 @@ class SaltConnector(Connector):
                     ports = ""
                     if deployment.environment_definition.runtime_context.ports_mapping:
                         ports = " ".join(
-                            f"-p {k}:{v}"
+                            f"-p {int(k)}:{int(v)}"
                             for k, v in deployment.environment_definition.runtime_context.ports_mapping.items()
                         )
 
