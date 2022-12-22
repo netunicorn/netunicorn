@@ -101,7 +101,66 @@ async def get_minion_pool(username: str) -> list:
     return result
 
 
-def experiment_precheck(experiment: Experiment) -> Result[None, str]:
+async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
+    """
+    checking additional_arguments in runtime_context of environment definitions and whether user us allowed to use them
+    """
+    sudo_user = await db_conn_pool.fetchval(
+        "SELECT sudo FROM authentication WHERE username = $1", username
+    )
+    if not sudo_user:
+        for executor in experiment.deployment_map:
+            if isinstance(executor.environment_definition, DockerImage) or isinstance(
+                executor.environment_definition, ShellExecution
+            ):
+                if executor.environment_definition.runtime_context.additional_arguments:
+                    return Failure(
+                        f"This user is not allowed to use additional arguments in runtime context"
+                    )
+    return Success(None)
+
+
+async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
+    def check_ports_types(ports_mapping: dict) -> bool:
+        for k, v in ports_mapping.items():
+            try:
+                int(k), int(v)
+            except ValueError:
+                return False
+        return True
+
+    def check_env_values(env_mapping: dict) -> bool:
+        for k, v in env_mapping.items():
+            if " " in k or " " in v:
+                return False
+        return True
+
+    for executor in experiment.deployment_map:
+        if isinstance(executor.environment_definition, DockerImage):
+            if not check_ports_types(
+                executor.environment_definition.runtime_context.ports_mapping
+            ):
+                return Failure(
+                    f"Ports mapping in runtime context must be a dict of int to int"
+                )
+            if not check_env_values(
+                executor.environment_definition.runtime_context.environment_variables
+            ):
+                return Failure(
+                    f"Environment variables in runtime context must not contain spaces"
+                )
+        elif isinstance(executor.environment_definition, ShellExecution):
+            if not check_env_values(
+                executor.environment_definition.runtime_context.environment_variables
+            ):
+                return Failure(
+                    f"Environment variables in runtime context must not contain spaces"
+                )
+    return Success(None)
+
+
+async def experiment_precheck(experiment: Experiment) -> Result[None, str]:
+    # checking executor names
     executor_names = set()
     for executor in experiment.deployment_map:
         if executor.executor_id != "":

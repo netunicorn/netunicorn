@@ -215,15 +215,18 @@ class SaltConnector(Connector):
                 ] = GATEWAY_ENDPOINT
 
                 if isinstance(deployment.environment_definition, DockerImage):
-                    ports = ""
                     env_vars = " ".join(
                         f"-e {k}={v}"
                         for k, v in deployment.environment_definition.runtime_context.environment_variables.items()
                     )
+                    additional_arguments = " ".join(
+                        deployment.environment_definition.runtime_context.additional_arguments
+                    )
 
+                    ports = ""
                     if deployment.environment_definition.runtime_context.ports_mapping:
                         ports = " ".join(
-                            f"-p {k}:{v}"
+                            f"-p {int(k)}:{int(v)}"
                             for k, v in deployment.environment_definition.runtime_context.ports_mapping.items()
                         )
 
@@ -231,6 +234,7 @@ class SaltConnector(Connector):
                         f"docker run -d "
                         f"" + env_vars + " " + ports + " "
                         f"--name {deployment.executor_id} "
+                        f"{additional_arguments} "
                         f"{deployment.environment_definition.image}"
                     )
                     logger.debug("Starting executor with command: " + runcommand)
