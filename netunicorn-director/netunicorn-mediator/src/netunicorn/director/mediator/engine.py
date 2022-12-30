@@ -482,10 +482,6 @@ async def cancel_experiment(experiment_name: str, username: str) -> Result[str, 
     if not is_successful(result):
         return Failure(result.failure())
     experiment_id, status = result.unwrap()
-    if status in {ExperimentStatus.UNKNOWN, ExperimentStatus.FINISHED}:
-        return Success(
-            f"Experiment {experiment_name} is in {status} state, nothing to cancel"
-        )
 
     executors = await db_conn_pool.fetch(
         "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",
