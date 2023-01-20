@@ -66,9 +66,9 @@ class AzureContainerConnector(Connector):
         Theoretically, Azure Container Instances wouldn't charge for the container groups that are not running,
         but just in case.
         """
+        logger.debug("Starting Azure Container Instances cleaner")
         while True:
-            await asyncio.sleep(300)
-            # get current container groups
+            logger.debug("Starting Azure Container Instances cleaner iteration")
             try:
                 container_groups = self.client.container_groups.list_by_resource_group(
                     self.resource_group_name
@@ -87,11 +87,15 @@ class AzureContainerConnector(Connector):
                         experiment_status == ExperimentStatus.FINISHED
                         or experiment_status == ExperimentStatus.UNKNOWN
                     ):
+                        logger.debug(
+                            f"Removing container group {experiment_name} from Azure Container Instances"
+                        )
                         await self.finalize_experiment(experiment_name)
 
             except Exception as e:
                 logger.error(f"Error while getting container groups: {e}")
                 continue
+            await asyncio.sleep(300)
 
     async def start_deployment(self, experiment_id: str) -> None:
         """
