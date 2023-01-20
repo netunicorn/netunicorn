@@ -212,7 +212,7 @@ class AzureContainerConnector(Connector):
             ] = GATEWAY_ENDPOINT
             environment_variables = [
                 {"name": x, "value": y}
-                for x, y in deployment.environment_definition.environment_variables.items()
+                for x, y in deployment.environment_definition.runtime_context.environment_variables.items()
             ]
 
             # TODO: DNS names, ports mapping
