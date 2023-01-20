@@ -340,3 +340,7 @@ class SaltConnector(Connector):
             "UPDATE executors SET finished = TRUE, error = $1 WHERE executor_id = $2",
             [(f"Executor was cancelled", executor_id) for executor_id in executors],
         )
+
+    async def finalize_experiment(self, experiment_id: str) -> None:
+        # TODO: implement stopping containers, deleting images, etc
+        pass
