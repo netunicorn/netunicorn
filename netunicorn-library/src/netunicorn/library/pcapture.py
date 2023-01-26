@@ -1,5 +1,6 @@
 import subprocess
 import time
+import signal
 from typing import List, Optional
 
 from netunicorn.base.minions import Minion
@@ -30,6 +31,8 @@ class StartCaptureLinuxImplementation(Task):
         super().__init__()
 
     def run(self):
+        signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
         proc = subprocess.Popen(
             ["tcpdump"] + self.arguments + ["-U", "-w", self.filepath]
         )
@@ -56,17 +59,8 @@ class StopAllTCPDumps(TaskDispatcher):
 
 class StopAllTCPDumpsLinuxImplementation(Task):
     def run(self):
-        proc = subprocess.Popen(
+        signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+        subprocess.Popen(
             ["killall", "-w", "tcpdump"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        out, err = proc.communicate()
-
-        time.sleep(5)  # for tcpdump to finish file
-        if out != b"" or err != b"":
-            return Failure(
-                f"Killall finished with errors.\n"
-                f"Stdout: {out},\n"
-                f"Stderr: {err}\n"
-            )
-
         return "Successfully killed all tcpdump processes"
