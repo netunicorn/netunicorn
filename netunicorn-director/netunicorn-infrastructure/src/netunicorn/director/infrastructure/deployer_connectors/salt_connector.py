@@ -272,6 +272,13 @@ class SaltConnector(Connector):
             )
             return
 
+        deployment.environment_definition.runtime_context.environment_variables[
+            "NETUNICORN_EXECUTOR_ID"
+        ] = deployment.executor_id
+        deployment.environment_definition.runtime_context.environment_variables[
+            "NETUNICORN_GATEWAY_ENDPOINT"
+        ] = GATEWAY_ENDPOINT
+
         if isinstance(deployment.environment_definition, DockerImage):
             runcommand = self.__docker_runcommand(deployment)
         elif isinstance(deployment.environment_definition, ShellExecution):
@@ -288,13 +295,6 @@ class SaltConnector(Connector):
                 deployment.executor_id,
             )
             return
-
-        deployment.environment_definition.runtime_context.environment_variables[
-            "NETUNICORN_EXECUTOR_ID"
-        ] = deployment.executor_id
-        deployment.environment_definition.runtime_context.environment_variables[
-            "NETUNICORN_GATEWAY_ENDPOINT"
-        ] = GATEWAY_ENDPOINT
 
         error = None
         result = ""
