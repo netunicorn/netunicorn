@@ -375,13 +375,13 @@ class SaltConnector(Connector):
             )
             logger.error(error)
             return
-        experiment = Experiment.from_json(data)
+        experiment: Experiment = Experiment.from_json(data)
 
         # Start all deployments
         await asyncio.gather(
             *[
                 self.start_single_execution(experiment_id, deployment)
-                for deployment in experiment.deployments
+                for deployment in experiment
             ]
         )
 
