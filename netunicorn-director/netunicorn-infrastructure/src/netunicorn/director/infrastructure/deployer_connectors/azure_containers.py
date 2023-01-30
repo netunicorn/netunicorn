@@ -173,15 +173,8 @@ class AzureContainerConnector(Connector):
             return
         experiment: Experiment = Experiment.from_json(experiment_data)
 
-        container_group = {
-            "location": self.container_location,
-            "restart_policy": "Never",
-            "os_type": "Linux",
-            "containers": [],
-        }
-
+        deployments_to_start = []
         for deployment in experiment:
-
             # If not prepared - skip
             if not deployment.prepared:
                 logger.debug(
@@ -207,6 +200,21 @@ class AzureContainerConnector(Connector):
                 )
                 continue
 
+            deployments_to_start.append(deployment)
+
+        if not deployments_to_start:
+            logger.warning(
+                f"No valid executors to deploy for experiment {experiment_id}"
+            )
+            await self.db_conn_pool.execute(
+                "UPDATE experiments SET status = $1, start_time = $2 WHERE experiment_id = $3",
+                ExperimentStatus.FINISHED.value,
+                datetime.datetime.utcnow(),
+                experiment_id,
+            )
+            return
+
+        for deployment in deployments_to_start:
             # Set required environment variables
             deployment.environment_definition.runtime_context.environment_variables[
                 "NETUNICORN_EXECUTOR_ID"
@@ -220,44 +228,37 @@ class AzureContainerConnector(Connector):
             ]
 
             # TODO: DNS names, ports mapping
-            container_group["containers"].append(
-                {
-                    "name": deployment.executor_id,
-                    "image": deployment.environment_definition.image,
-                    "environment_variables": environment_variables,
-                    "resources": {"requests": {"memory_in_gb": 1, "cpu": 1}},
-                }
-            )
+            container_group = {
+                "location": self.container_location,
+                "restart_policy": "Never",
+                "os_type": "Linux",
+                "containers": [
+                    {
+                        "name": deployment.executor_id,
+                        "image": deployment.environment_definition.image,
+                        "environment_variables": environment_variables,
+                        "resources": {"requests": {"memory_in_gb": 1, "cpu": 1}},
+                    }
+                ],
+            }
 
-        if not container_group["containers"]:
-            logger.warning(
-                f"No valid executors to deploy for experiment {experiment_id}"
-            )
-            await self.db_conn_pool.execute(
-                "UPDATE experiments SET status = $1, start_time = $2 WHERE experiment_id = $3",
-                ExperimentStatus.FINISHED.value,
-                datetime.datetime.utcnow(),
-                experiment_id,
-            )
-            return
-
-        # Create container group
-        logger.debug(f"Creating container group {experiment_id}")
-        try:
-            self.client.container_groups.begin_create_or_update(
-                resource_group_name=self.resource_group_name,
-                container_group_name=experiment_id,
-                container_group=container_group,
-            ).result()
-        except Exception as e:
-            logger.error(f"Container group creation failed: {e}")
-            await self.db_conn_pool.execute(
-                "UPDATE experiments SET status = $1, error = $2 WHERE experiment_id = $3",
-                ExperimentStatus.FINISHED.value,
-                str(e),
-                experiment_id,
-            )
-            return
+            # Create container group
+            logger.debug(f"Creating container group {deployment.executor_id}")
+            try:
+                self.client.container_groups.begin_create_or_update(
+                    resource_group_name=self.resource_group_name,
+                    container_group_name=deployment.executor_id,
+                    container_group=container_group,
+                ).result()
+            except Exception as e:
+                logger.error(f"Container group creation failed: {e}")
+                await self.db_conn_pool.execute(
+                    "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                    str(e),
+                    experiment_id,
+                    deployment.executor_id,
+                )
+                return
 
         # Update experiment status
         await self.db_conn_pool.execute(
@@ -277,14 +278,25 @@ class AzureContainerConnector(Connector):
 
     async def finalize_experiment(self, experiment_id: str) -> None:
         logger.debug(f"Cleaning resources for experiment {experiment_id}")
-        try:
-            self.client.container_groups.begin_delete(
-                resource_group_name=self.resource_group_name,
-                container_group_name=experiment_id,
-            ).result()
-            logger.debug(f"Container group {experiment_id} deleted")
-        except Exception as e:
-            logger.error(f"Container group deletion failed: {e}")
+
+        experiment_data = await self.db_conn_pool.fetchval(
+            "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
+            experiment_id,
+        )
+        if experiment_data is None:
+            logger.error(f"Experiment {experiment_id} not found")
+            return
+        experiment: Experiment = Experiment.from_json(experiment_data)
+
+        for deployment in experiment:
+            try:
+                self.client.container_groups.begin_delete(
+                    resource_group_name=self.resource_group_name,
+                    container_group_name=deployment.executor_id,
+                ).result()
+                logger.debug(f"Container group {deployment.executor_id} deleted")
+            except Exception as e:
+                logger.error(f"Container group deletion failed: {e}")
 
     async def get_minion_pool(self) -> MinionPool:
         # TODO: Implement
