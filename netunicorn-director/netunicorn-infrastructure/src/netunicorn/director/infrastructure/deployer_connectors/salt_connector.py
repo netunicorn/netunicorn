@@ -216,8 +216,7 @@ class SaltConnector(Connector):
         )
 
         try:
-            results = [
-                self.local.cmd(
+            results = self.local.cmd(
                     [x.minion.name for x in deployments],
                     "cmd.run",
                     arg=[(runcommand,)],
@@ -225,7 +224,6 @@ class SaltConnector(Connector):
                     full_return=True,
                     tgt_type="list",
                 )
-            ]
         except Exception as e:
             logger.error(
                 f"Exception during deployment.\n"
