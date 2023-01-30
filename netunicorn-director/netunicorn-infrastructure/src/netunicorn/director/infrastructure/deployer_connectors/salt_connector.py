@@ -104,7 +104,7 @@ class SaltConnector(Connector):
                 )
                 await self.db_conn_pool.execute(
                     "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                    error,
+                    str(error),
                     experiment_id,
                     deployment.executor_id,
                 )
@@ -147,7 +147,7 @@ class SaltConnector(Connector):
             logger.debug(f"Deployment: {deployment}")
             await self.db_conn_pool.execute(
                 "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                exception,
+                str(exception),
                 experiment_id,
                 deployment.executor_id,
             )
@@ -291,7 +291,7 @@ class SaltConnector(Connector):
             logger.error(error)
             await self.db_conn_pool.execute(
                 "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                error,
+                str(error),
                 experiment_id,
                 deployment.executor_id,
             )
@@ -353,7 +353,7 @@ class SaltConnector(Connector):
             )
             await self.db_conn_pool.execute(
                 "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                error,
+                str(error),
                 experiment_id,
                 deployment.executor_id,
             )
@@ -373,7 +373,7 @@ class SaltConnector(Connector):
                 "VALUES ($1, $2, $3, 'Unknown', NOW(), 'Unknown')",
                 experiment_id,
                 ExperimentStatus.FINISHED.value,
-                error,
+                str(error),
             )
             logger.error(error)
             return
