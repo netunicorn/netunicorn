@@ -66,40 +66,36 @@ class AzureContainerConnector(Connector):
         Theoretically, Azure Container Instances wouldn't charge for the container groups that are not running,
         but just in case.
         """
-        logger.debug("Starting Azure Container Instances cleaner")
+        logger.info("Starting Azure Container Instances cleaner")
         while True:
-            logger.debug("Starting Azure Container Instances cleaner iteration")
             try:
                 container_groups = self.client.container_groups.list_by_resource_group(
                     self.resource_group_name
                 )
 
                 for group in container_groups:
-                    experiment_name = group.name
-                    experiment_status = await self.db_conn_pool.fetchval(
-                        "SELECT status FROM experiments WHERE experiment_id = $1",
-                        experiment_name,
-                    )
-                    if experiment_status is None:
-                        continue
-                    experiment_status = ExperimentStatus(experiment_status)
-                    if (
-                        experiment_status == ExperimentStatus.FINISHED
-                        or experiment_status == ExperimentStatus.UNKNOWN
+                    executor_id = group.name
+                    if await self.db_conn_pool.fetchval(
+                        "SELECT finished FROM executors WHERE executor_id = $1",
+                        executor_id,
                     ):
-                        logger.debug(
-                            f"Removing container group {experiment_name} from Azure Container Instances"
+                        logger.info(
+                            f"Removing container group {executor_id} from Azure Container Instances"
                         )
-                        await self.finalize_experiment(experiment_name)
+                        self.client.container_groups.begin_delete(
+                            resource_group_name=self.resource_group_name,
+                            container_group_name=executor_id,
+                        ).result()
 
             except Exception as e:
                 logger.error(f"Error while getting container groups: {e}")
                 continue
-            await asyncio.sleep(300)
+            await asyncio.sleep(30)
 
     async def start_deployment(self, experiment_id: str) -> None:
         """
-        Azure Container Instances automatically starts the container when it is created,
+        Azure Container Instances automatically starts the container when it is created
+        (seriously: https://stackoverflow.com/questions/67385581/deploying-azure-container-s-without-running-them),
         so this function only checks that all deployments are of DockerImage type,
         as it is the only type supported by Azure Container Instances.
         """
@@ -162,8 +158,31 @@ class AzureContainerConnector(Connector):
         )
         logger.debug(f"Experiment {experiment_id} deployment finished")
 
+    async def _create_container_group(
+        self, experiment_id: str, executor_id: str, container_group: dict
+    ):
+        # Create container group
+        logger.debug(f"Creating container group {executor_id}")
+        loop = asyncio.get_running_loop()
+        try:
+            request = self.client.container_groups.begin_create_or_update(
+                resource_group_name=self.resource_group_name,
+                container_group_name=executor_id,
+                container_group=container_group,
+            )
+            await loop.run_in_executor(None, request.result)
+        except Exception as e:
+            logger.error(f"Container group creation failed: {e}")
+            await self.db_conn_pool.execute(
+                "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                str(e),
+                experiment_id,
+                executor_id,
+            )
+            return
+
     async def start_execution(self, experiment_id: str) -> None:
-        logger.debug(f"Starting execution of experiment {experiment_id}")
+        logger.info(f"Starting execution of experiment {experiment_id}")
         experiment_data = await self.db_conn_pool.fetchval(
             "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
             experiment_id,
@@ -214,6 +233,7 @@ class AzureContainerConnector(Connector):
             )
             return
 
+        container_groups = {}
         for deployment in deployments_to_start:
             # Set required environment variables
             deployment.environment_definition.runtime_context.environment_variables[
@@ -228,7 +248,7 @@ class AzureContainerConnector(Connector):
             ]
 
             # TODO: DNS names, ports mapping
-            container_group = {
+            container_groups[deployment.executor_id] = {
                 "location": self.container_location,
                 "restart_policy": "Never",
                 "os_type": "Linux",
@@ -242,23 +262,12 @@ class AzureContainerConnector(Connector):
                 ],
             }
 
-            # Create container group
-            logger.debug(f"Creating container group {deployment.executor_id}")
-            try:
-                self.client.container_groups.begin_create_or_update(
-                    resource_group_name=self.resource_group_name,
-                    container_group_name=deployment.executor_id,
-                    container_group=container_group,
-                ).result()
-            except Exception as e:
-                logger.error(f"Container group creation failed: {e}")
-                await self.db_conn_pool.execute(
-                    "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                    str(e),
-                    experiment_id,
-                    deployment.executor_id,
-                )
-                return
+        await asyncio.gather(
+            *[
+                self._create_container_group(experiment_id, executor_id, group)
+                for executor_id, group in container_groups.items()
+            ]
+        )
 
         # Update experiment status
         await self.db_conn_pool.execute(
