@@ -324,7 +324,9 @@ class SaltConnector(Connector):
             logger.debug(f"Waiting for job to finish: {result}")
             for _ in range(10):
                 try:
-                    data = self.runner.cmd("jobs.list_job", arg=[result], print_event=False)
+                    data = self.runner.cmd(
+                        "jobs.list_job", arg=[result], print_event=False
+                    )
                 except Exception as e:
                     logger.error(f"Exception during job list: {e}")
                     error = str(e)
