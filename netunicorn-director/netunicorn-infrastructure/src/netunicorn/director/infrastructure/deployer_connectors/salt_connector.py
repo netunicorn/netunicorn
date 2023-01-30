@@ -55,6 +55,7 @@ class SaltConnector(Connector):
         )
 
     async def get_minion_pool(self) -> MinionPool:
+        # TODO: rewrite to cmd_async
         minions = self.local.cmd("*", "grains.item", arg=self.PUBLIC_GRAINS)
         minion_pool = MinionPool([])
         for minion_name, properties in minions.items():
