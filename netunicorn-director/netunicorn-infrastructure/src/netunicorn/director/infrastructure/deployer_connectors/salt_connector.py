@@ -1,7 +1,7 @@
 import asyncio
 import datetime
-import functools
-from typing import List, Optional, Union
+from collections import defaultdict
+from typing import List, Optional
 
 import asyncpg
 from netunicorn.base.architecture import Architecture
@@ -55,6 +55,7 @@ class SaltConnector(Connector):
         )
 
     async def get_minion_pool(self) -> MinionPool:
+        # TODO: rewrite to cmd_async
         minions = self.local.cmd("*", "grains.item", arg=self.PUBLIC_GRAINS)
         minion_pool = MinionPool([])
         for minion_name, properties in minions.items():
@@ -73,49 +74,68 @@ class SaltConnector(Connector):
         logger.debug(f"Returned minion pool length: {len(minion_pool)}")
         return minion_pool
 
-    async def start_single_deployment(
+    async def start_deploying_docker_image(
+        self, experiment_id: str, deployments: List[Deployment], image_name: str
+    ) -> None:
+        try:
+            results = self.local.cmd(
+                [x.minion.name for x in deployments],
+                "cmd.run",
+                arg=[(f"docker pull {image_name}",)],
+                timeout=600,
+                full_return=True,
+                tgt_type="list",
+            )
+            assert isinstance(results, dict)
+        except Exception as e:
+            logger.error(
+                f"Exception during deployment.\n"
+                f"Experiment id: {experiment_id}\n"
+                f"Error: {e}\n"
+                f"Deployments: {deployments}"
+            )
+            results = {x.minion.name: {"Error": e} for x in deployments}
+
+        for deployment in deployments:
+            if results.get(deployment.minion.name, {}).get("retcode", 1) != 0:
+                error = results.get(deployment.minion.name, {})
+                logger.error(
+                    f"Error during deployment of executor {deployment.executor_id}, minion {deployment.minion}: {error}"
+                )
+                await self.db_conn_pool.execute(
+                    "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                    str(error),
+                    experiment_id,
+                    deployment.executor_id,
+                )
+            else:
+                logger.debug(
+                    f"Deployment of executor {deployment.executor_id} to minion {deployment.minion}, result: {results}"
+                )
+
+        logger.info(
+            f"Finished deployment of {image_name} to {len(deployments)} minions"
+        )
+
+    async def start_deploying_shell_execution(
         self, experiment_id: str, deployment: Deployment
     ) -> None:
-        if not deployment.prepared:
-            logger.debug(
-                f"Skipping deployment of not prepared executor {deployment.executor_id}, minion {deployment.minion}"
-            )
-            return
-
-        if type(deployment.environment_definition) not in {DockerImage, ShellExecution}:
-            logger.error(
-                f"Unknown environment definition: {deployment.environment_definition}"
-            )
-            return
-
-        results: List[Union[dict, Exception]] = []
-        commands = []
-        if isinstance(deployment.environment_definition, DockerImage):
-            commands = [f"docker pull {deployment.environment_definition.image}"]
-        elif isinstance(deployment.environment_definition, ShellExecution):
-            commands = deployment.environment_definition.commands
-
         try:
-            loop = asyncio.get_event_loop()
             results = [
-                await loop.run_in_executor(
-                    None,
-                    functools.partial(
-                        self.local.cmd,
-                        deployment.minion.name,
-                        "cmd.run",
-                        arg=[(command,)],
-                        timeout=300,
-                        full_return=True,
-                    ),
+                self.local.cmd(
+                    deployment.minion.name,
+                    "cmd.run",
+                    arg=[(command,)],
+                    timeout=300,
+                    full_return=True,
                 )
-                for command in commands
+                for command in deployment.environment_definition.commands
             ]
         except Exception as e:
             logger.error(
                 f"Exception during deployment of executor {deployment.executor_id}, minion {deployment.minion}: {e}"
             )
-            results.append(e)
+            results = [e]
 
         logger.debug(
             f"Deployment of executor {deployment.executor_id} to minion {deployment.minion}, result: {results}"
@@ -127,7 +147,7 @@ class SaltConnector(Connector):
             logger.debug(f"Deployment: {deployment}")
             await self.db_conn_pool.execute(
                 "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                exception,
+                str(exception),
                 experiment_id,
                 deployment.executor_id,
             )
@@ -148,14 +168,40 @@ class SaltConnector(Connector):
         experiment: Experiment = Experiment.from_json(experiment_data)
         logger.debug(f"Starting deployment of experiment {experiment_id}")
 
-        # stage 1: make every minion to create corresponding environment
-        # (for docker: download docker image, for bare_metal - execute commands)
-        await asyncio.gather(
-            *[
-                self.start_single_deployment(experiment_id, deployment)
-                for deployment in experiment
-            ]
-        )
+        # remove all executors that are unprepared or of unknown environment definitions
+        docker_deployments = []
+        shell_deployments = []
+        for deployment in experiment:
+            if not deployment.prepared:
+                logger.debug(
+                    f"Skipping deployment of not prepared executor {deployment.executor_id}, minion {deployment.minion}"
+                )
+                continue
+            if isinstance(deployment.environment_definition, DockerImage):
+                docker_deployments.append(deployment)
+            elif isinstance(deployment.environment_definition, ShellExecution):
+                shell_deployments.append(deployment)
+            else:
+                logger.error(
+                    f"Unknown environment definition: {deployment.environment_definition}"
+                )
+
+        # 1. take all docker deployments and create a dict of image -> list of minions
+        images_dictionary = defaultdict(list)
+        for deployment in docker_deployments:
+            images_dictionary[deployment.environment_definition.image].append(
+                deployment
+            )
+
+        # 2. for each image, pull it on all minions
+        for image, deployments_list in images_dictionary.items():
+            await self.start_deploying_docker_image(
+                experiment_id, deployments_list, image
+            )
+
+        # 3. for each shell deployment, execute the commands
+        for deployment in shell_deployments:
+            await self.start_deploying_shell_execution(experiment_id, deployment)
 
         logger.debug(f"Experiment {experiment_id} deployment successfully finished")
         await self.db_conn_pool.execute(
@@ -164,11 +210,47 @@ class SaltConnector(Connector):
             experiment_id,
         )
 
+    @staticmethod
+    def __shell_runcommand(deployment: Deployment) -> str:
+        env_vars = " ".join(
+            f" {k}={v}"
+            for k, v in deployment.environment_definition.runtime_context.environment_variables.items()
+        )
+        runcommand = f"{env_vars} python3 -m netunicorn.executor"
+        return runcommand
+
+    @staticmethod
+    def __docker_runcommand(deployment: Deployment) -> str:
+        env_vars = " ".join(
+            f"-e {k}={v}"
+            for k, v in deployment.environment_definition.runtime_context.environment_variables.items()
+        )
+
+        additional_arguments = " ".join(
+            deployment.environment_definition.runtime_context.additional_arguments
+        )
+
+        ports = ""
+        if deployment.environment_definition.runtime_context.ports_mapping:
+            ports = " ".join(
+                f"-p {k}:{v}"
+                for k, v in deployment.environment_definition.runtime_context.ports_mapping.items()
+            )
+
+        runcommand = (
+            f"docker run -d {env_vars} {ports} --name {deployment.executor_id} "
+            f"{additional_arguments} {deployment.environment_definition.image}"
+        )
+        return runcommand
+
     async def start_single_execution(
         self, experiment_id: str, deployment: Deployment
     ) -> None:
+        logger.info(
+            f"Starting execution with executor {deployment.executor_id}, minion {deployment.minion}"
+        )
+
         if not deployment.prepared:
-            # You are not prepared!
             logger.debug(
                 f"Deployment with executor {deployment.executor_id} is not prepared, skipping"
             )
@@ -191,96 +273,90 @@ class SaltConnector(Connector):
             )
             return
 
-        if type(deployment.environment_definition) not in {DockerImage, ShellExecution}:
-            exception = (
-                f"Unknown environment definition: {deployment.environment_definition}"
-            )
-            logger.error(exception)
-            await self.db_conn_pool.execute(
-                "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                exception,
-                experiment_id,
-                deployment.executor_id,
-            )
-            return
-
-        executor_id = deployment.executor_id
-
-        # add required environment variables
         deployment.environment_definition.runtime_context.environment_variables[
             "NETUNICORN_EXECUTOR_ID"
-        ] = executor_id
+        ] = deployment.executor_id
         deployment.environment_definition.runtime_context.environment_variables[
             "NETUNICORN_GATEWAY_ENDPOINT"
         ] = GATEWAY_ENDPOINT
 
-        runcommand = "false"  # backup, just in case
-        if isinstance(deployment.environment_definition, ShellExecution):
-            env_vars = " ".join(
-                f" {k}={v}"
-                for k, v in deployment.environment_definition.runtime_context.environment_variables.items()
+        if isinstance(deployment.environment_definition, DockerImage):
+            runcommand = self.__docker_runcommand(deployment)
+        elif isinstance(deployment.environment_definition, ShellExecution):
+            runcommand = self.__shell_runcommand(deployment)
+        else:
+            error = (
+                f"Unknown environment definition: {deployment.environment_definition}"
             )
-            runcommand = f"{env_vars} python3 -m netunicorn.executor"
-            logger.debug("Starting ShellExecution executor with command: " + runcommand)
-
-        elif isinstance(deployment.environment_definition, DockerImage):
-            env_vars = " ".join(
-                f"-e {k}={v}"
-                for k, v in deployment.environment_definition.runtime_context.environment_variables.items()
-            )
-
-            additional_arguments = " ".join(
-                deployment.environment_definition.runtime_context.additional_arguments
-            )
-
-            ports = ""
-            if deployment.environment_definition.runtime_context.ports_mapping:
-                ports = " ".join(
-                    f"-p {k}:{v}"
-                    for k, v in deployment.environment_definition.runtime_context.ports_mapping.items()
-                )
-
-            runcommand = (
-                f"docker run -d {env_vars} {ports} --name {deployment.executor_id} "
-                f"{additional_arguments} {deployment.environment_definition.image}"
-            )
-            logger.debug("Starting Docker Image executor with command: " + runcommand)
-
-        try:
-            loop = asyncio.get_event_loop()
-            result = [
-                await loop.run_in_executor(
-                    None,
-                    functools.partial(
-                        self.local.cmd,
-                        deployment.minion.name,
-                        "cmd.run",
-                        arg=[(runcommand,)],
-                        full_return=True,
-                    ),
-                )
-            ]
-        except Exception as e:
-            result = [e]
-
-        if not self.__all_salt_results_are_correct(result, deployment.minion.name):
-            logger.error(
-                f"Failed to start executor {executor_id} on minion {deployment.minion}: {result}"
-            )
+            logger.error(error)
             await self.db_conn_pool.execute(
                 "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                str(result),
+                str(error),
                 experiment_id,
                 deployment.executor_id,
             )
             return
 
-        logger.info(
-            f"Executor {executor_id} started successfully on minion {deployment.minion}"
-        )
-        logger.debug(
-            f"Result of starting executor {executor_id} on minion {deployment.minion}: {result}"
-        )
+        error = None
+        result = ""
+        try:
+            logger.debug(f"Command: {runcommand}")
+            result: str = self.local.cmd_async(
+                deployment.minion.name,
+                "cmd.run",
+                arg=[(runcommand,)],
+                timeout=5,
+            )
+            if isinstance(result, int):
+                raise Exception(
+                    f"Salt returned unknown error - most likely minion is not available"
+                )
+        except Exception as e:
+            logger.error(
+                f"Exception during deployment.\n"
+                f"Experiment id: {experiment_id}\n"
+                f"Error: {e}\n"
+                f"Deployment: {deployment}"
+            )
+            error = str(e)
+
+        if not error:
+            logger.debug(f"Waiting for job to finish: {result}")
+            for _ in range(10):
+                try:
+                    data = self.runner.cmd("jobs.list_job", arg=[result], print_event=False)
+                except Exception as e:
+                    logger.error(f"Exception during job list: {e}")
+                    error = str(e)
+                    break
+                if not isinstance(data, dict) or "Error" in data:
+                    logger.error(f"Job list returned error: {data}")
+                    error = str(data)
+                    break
+                data = data.get("Result", {})
+                if data:
+                    result = data.get(deployment.minion.name, {}).get("retcode", 1)
+                    if result == 1:
+                        error = data.get(deployment.minion.name, {}).get(
+                            "return", "Unknown error"
+                        )
+                    logger.info(f"Job finished with result: {result}")
+                    break
+                await asyncio.sleep(2)
+            else:
+                logger.error(f"Job {result} timed out")
+                error = f"Job {result} timed out"
+
+        if error:
+            logger.error(
+                f"Failed to start executor {deployment.executor_id} on minion {deployment.minion}: {error}"
+            )
+            await self.db_conn_pool.execute(
+                "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                str(error),
+                experiment_id,
+                deployment.executor_id,
+            )
 
     async def start_execution(self, experiment_id: str):
         logger.info(f"Starting execution of experiment {experiment_id}")
@@ -297,14 +373,13 @@ class SaltConnector(Connector):
                 "VALUES ($1, $2, $3, 'Unknown', NOW(), 'Unknown')",
                 experiment_id,
                 ExperimentStatus.FINISHED.value,
-                error,
+                str(error),
             )
             logger.error(error)
             return
-        experiment = Experiment.from_json(data)
+        experiment: Experiment = Experiment.from_json(data)
 
-        # stage 2: make every minion to start corresponding environment
-        # (for docker: start docker container, for bare_metal - start executor)
+        # Start all deployments
         await asyncio.gather(
             *[
                 self.start_single_execution(experiment_id, deployment)
