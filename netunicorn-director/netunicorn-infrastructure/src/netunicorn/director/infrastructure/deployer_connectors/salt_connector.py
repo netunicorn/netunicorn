@@ -245,7 +245,7 @@ class SaltConnector(Connector):
     async def start_single_execution(
         self, experiment_id: str, deployment: Deployment
     ) -> None:
-        logger.debug(
+        logger.info(
             f"Starting execution with executor {deployment.executor_id}, minion {deployment.minion}"
         )
 
@@ -299,6 +299,7 @@ class SaltConnector(Connector):
         error = None
         result = ""
         try:
+            logger.debug(f"Command: {runcommand}")
             result: str = self.local.cmd_async(
                 deployment.minion.name,
                 "cmd.run",
@@ -322,7 +323,7 @@ class SaltConnector(Connector):
             logger.debug(f"Waiting for job to finish: {result}")
             for _ in range(10):
                 try:
-                    data = self.runner.cmd("jobs.list_job", arg=[result])
+                    data = self.runner.cmd("jobs.list_job", arg=[result], print_event=False)
                 except Exception as e:
                     logger.error(f"Exception during job list: {e}")
                     error = str(e)
@@ -338,7 +339,7 @@ class SaltConnector(Connector):
                         error = data.get(deployment.minion.name, {}).get(
                             "return", "Unknown error"
                         )
-                    logger.debug(f"Job finished with result: {result}")
+                    logger.info(f"Job finished with result: {result}")
                     break
                 await asyncio.sleep(2)
             else:
