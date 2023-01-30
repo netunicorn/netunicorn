@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import functools
 from typing import List, Optional, Union
 
 import asyncpg
@@ -95,13 +96,18 @@ class SaltConnector(Connector):
             commands = deployment.environment_definition.commands
 
         try:
+            loop = asyncio.get_event_loop()
             results = [
-                self.local.cmd(
-                    deployment.minion.name,
-                    "cmd.run",
-                    arg=[(command,)],
-                    timeout=300,
-                    full_return=True,
+                await loop.run_in_executor(
+                    None,
+                    functools.partial(
+                        self.local.cmd,
+                        deployment.minion.name,
+                        "cmd.run",
+                        arg=[(command,)],
+                        timeout=300,
+                        full_return=True,
+                    ),
                 )
                 for command in commands
             ]
@@ -241,12 +247,17 @@ class SaltConnector(Connector):
             logger.debug("Starting Docker Image executor with command: " + runcommand)
 
         try:
+            loop = asyncio.get_event_loop()
             result = [
-                self.local.cmd(
-                    deployment.minion.name,
-                    "cmd.run",
-                    [(runcommand,)],
-                    full_return=True,
+                await loop.run_in_executor(
+                    None,
+                    functools.partial(
+                        self.local.cmd,
+                        deployment.minion.name,
+                        "cmd.run",
+                        arg=[(runcommand,)],
+                        full_return=True,
+                    ),
                 )
             ]
         except Exception as e:
