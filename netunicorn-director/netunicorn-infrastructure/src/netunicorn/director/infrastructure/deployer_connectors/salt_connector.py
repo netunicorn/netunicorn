@@ -22,7 +22,7 @@ from .base import Connector
 
 
 class SaltConnector(Connector):
-    PUBLIC_GRAINS = ["location", "osarch", "kernel"]
+    PUBLIC_GRAINS = ["location", "osarch", "kernel", "ipv4", "network_type", "ip_interfaces"]
 
     def __init__(self):
         import salt.config

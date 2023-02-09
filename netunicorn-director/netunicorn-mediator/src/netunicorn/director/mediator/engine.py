@@ -201,7 +201,7 @@ async def prepare_experiment_task(
         if isinstance(env_def, ShellExecution):
             # nothing to do with shell execution
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, pipeline, minion_name, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                "INSERT INTO executors (experiment_id, executor_id, minion_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.minion.name,
