@@ -126,6 +126,10 @@ class Nodes(ABC):
         """
         pass
 
+    @abstractmethod
+    def set_property(self, name: str, value: Union[str, Set[str]]) -> Nodes:
+        pass
+
 
 class CountableNodePool(Nodes):
     """
@@ -201,6 +205,14 @@ class CountableNodePool(Nodes):
             return CountableNodePool([])
         return CountableNodePool(self.nodes[count:])
 
+    def set_property(self, name: str, value: Union[str, Set[str]]) -> CountableNodePool:
+        for node in self.nodes:
+            if isinstance(node, Node):
+                node.properties[name] = value
+            else:
+                node.set_property(name, value)
+        return self
+
 
 class UncountableNodePool(Nodes):
     """
@@ -261,6 +273,11 @@ class UncountableNodePool(Nodes):
     @classmethod
     def from_json(cls, data: dict) -> UncountableNodePool:
         return cls([Node.from_json(x) for x in data])
+
+    def set_property(self, name: str, value: Union[str, Set[str]]) -> UncountableNodePool:
+        for node in self._node_template:
+            node.properties[name] = value
+        return self
 
 
 # Legacy aliases
