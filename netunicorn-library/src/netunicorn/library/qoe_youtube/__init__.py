@@ -4,7 +4,7 @@ import time
 from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
-from netunicorn.base.minions import Minion
+from netunicorn.base.nodes import Minion
 from netunicorn.base.task import Failure, Success, Task, TaskDispatcher
 
 

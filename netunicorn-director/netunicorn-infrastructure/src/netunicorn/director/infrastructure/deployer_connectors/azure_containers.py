@@ -24,7 +24,7 @@ import asyncpg
 from netunicorn.base.architecture import Architecture
 from netunicorn.base.environment_definitions import DockerImage
 from netunicorn.base.experiment import Experiment, ExperimentStatus
-from netunicorn.base.minions import MinionPool
+from netunicorn.base.nodes import MinionPool
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,

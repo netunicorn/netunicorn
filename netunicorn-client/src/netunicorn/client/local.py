@@ -12,7 +12,7 @@ from netunicorn.base.experiment import (
     Experiment,
     ExperimentStatus,
 )
-from netunicorn.base.minions import Minion, MinionPool
+from netunicorn.base.nodes import Minion, MinionPool
 from netunicorn.base.pipeline import Pipeline, PipelineResult
 from netunicorn.base.utils import NonStablePool as Pool
 from netunicorn.executor.executor import PipelineExecutor, PipelineExecutorState

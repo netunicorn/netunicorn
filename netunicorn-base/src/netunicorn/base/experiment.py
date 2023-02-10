@@ -4,12 +4,12 @@ import base64
 import copy
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterator, List, Optional, Tuple, Union
+from typing import Iterator, List, Optional, Tuple, Union, Sequence
 
 from returns.result import Result
 
 from .deployment import Deployment
-from .minions import Minion, MinionPool
+from .nodes import Node, Nodes
 from .pipeline import Pipeline, PipelineResult
 from .utils import LogType
 
@@ -32,19 +32,22 @@ class ExperimentStatus(Enum):
 class Experiment:
     def __init__(self, keep_alive_timeout_minutes: int = 10):
         """
-        :param keep_alive_timeout_minutes: how long to wait for a minion
+        :param keep_alive_timeout_minutes: how long to wait for a node
          after deployer showed that it's unresponsive to recover
         """
         self.deployment_map: List[Deployment] = []
         self.keep_alive_timeout_minutes = keep_alive_timeout_minutes
 
-    def append(self, minion: Minion, pipeline: Pipeline) -> Experiment:
-        self.deployment_map.append(Deployment(minion, pipeline))
+    def append(self, node: Node, pipeline: Pipeline) -> Experiment:
+        self.deployment_map.append(Deployment(node, pipeline))
         return self
 
-    def map(self, minions: MinionPool, pipeline: Pipeline) -> Experiment:
-        for minion in minions:
-            self.append(minion, pipeline)
+    def map(self, nodes: Sequence[Node], pipeline: Pipeline) -> Experiment:
+        if isinstance(nodes, Nodes):
+            raise TypeError("Expected sequence of nodes, got Nodes instead")
+
+        for node in nodes:
+            self.append(node, pipeline)
         return self
 
     def __json__(self) -> dict:
@@ -86,12 +89,12 @@ class Experiment:
 class DeploymentExecutionResult:
     def __init__(
         self,
-        minion: Minion,
+        node: Node,
         serialized_pipeline: bytes,
         result: Optional[bytes],
         error: Optional[str] = None,
     ):
-        self.minion = minion
+        self.node = node
         self._pipeline = serialized_pipeline
         self._result = result
         self.error = error
@@ -111,14 +114,14 @@ class DeploymentExecutionResult:
         return cloudpickle.loads(self._result) if self._result else None
 
     def __str__(self) -> str:
-        return f"DeploymentExecutionResult(minion={self.minion}, result={self.result}, error={self.error})"
+        return f"DeploymentExecutionResult(node={self.node}, result={self.result}, error={self.error})"
 
     def __repr__(self):
         return self.__str__()
 
     def __json__(self) -> dict:
         return {
-            "minion": self.minion.__json__(),
+            "node": self.node.__json__(),
             "pipeline": base64.b64encode(self._pipeline).decode("utf-8"),
             "result": base64.b64encode(self._result).decode("utf-8")
             if self._result
@@ -129,7 +132,7 @@ class DeploymentExecutionResult:
     @classmethod
     def from_json(cls, data: dict):
         return cls(
-            Minion.from_json(data["minion"]),
+            Node.from_json(data["node"]),
             base64.b64decode(data["pipeline"]),
             base64.b64decode(data["result"]) if data["result"] else None,
             data["error"],

@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import netunicorn.base.environment_definitions
 
-from .minions import Minion
+from .nodes import Node
 from .pipeline import Pipeline
 from .task import TaskDispatcher
 from .utils import SerializedPipelineType
@@ -21,8 +21,8 @@ except ImportError:
 
 
 class Deployment:
-    def __init__(self, minion: Minion, pipeline: Pipeline):
-        self.minion = minion
+    def __init__(self, node: Node, pipeline: Pipeline):
+        self.node = node
         self.prepared = False
         self.executor_id = ""
         self.error: Optional[Exception] = None
@@ -31,7 +31,7 @@ class Deployment:
 
         for i, element in enumerate(pipeline.tasks):
             pipeline.tasks[i] = [
-                x.dispatch(minion) if isinstance(x, TaskDispatcher) else x
+                x.dispatch(node) if isinstance(x, TaskDispatcher) else x
                 for x in element
             ]
             for x in pipeline.tasks[i]:
@@ -40,14 +40,14 @@ class Deployment:
         self.pipeline = cloudpickle.dumps(pipeline)
 
     def __str__(self):
-        return f"Deployment: Minion={self.minion.name}, executor_id={self.executor_id}, prepared={self.prepared}"
+        return f"Deployment: Node={self.node.name}, executor_id={self.executor_id}, prepared={self.prepared}"
 
     def __repr__(self):
         return self.__str__()
 
     def __json__(self):
         return {
-            "minion": self.minion.__json__(),
+            "node": self.node.__json__(),
             "prepared": self.prepared,
             "executor_id": self.executor_id,
             "error": str(self.error) if self.error else None,
@@ -60,7 +60,7 @@ class Deployment:
     def from_json(cls, data: dict):
         instance = cls.__new__(cls)
 
-        instance.minion = Minion.from_json(data["minion"])
+        instance.node = Node.from_json(data["node"])
         instance.prepared = data["prepared"]
         instance.executor_id = data["executor_id"]
         instance.error = Exception(data["error"]) if data["error"] else None

@@ -1,7 +1,7 @@
 from typing import Iterable
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
-from netunicorn.base.minions import MinionPool
+from netunicorn.base.nodes import MinionPool
 
 
 class BaseClient:
