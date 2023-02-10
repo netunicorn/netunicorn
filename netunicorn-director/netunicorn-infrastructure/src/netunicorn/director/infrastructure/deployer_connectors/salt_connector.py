@@ -320,7 +320,7 @@ class SaltConnector(Connector):
             )
             error = str(e)
 
-        if not error:
+        if not error and not isinstance(deployment.environment_definition, ShellExecution):  # don't need to wait shell executions to finish
             logger.debug(f"Waiting for job to finish: {result}")
             for _ in range(10):
                 try:
