@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set, Union, Iterator
 
 from netunicorn.base.architecture import Architecture
 
@@ -76,8 +76,9 @@ class MinionPool:
     def __init__(self, minions: List[Minion]):
         self.minions = minions
 
-    def append(self, minion):
+    def append(self, minion) -> MinionPool:
         self.minions.append(minion)
+        return self
 
     def __json__(self):
         return [x.__json__() for x in self.minions]
@@ -86,22 +87,24 @@ class MinionPool:
     def from_json(cls, data: dict):
         return cls([Minion.from_json(x) for x in data])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.minions)
 
-    def __getitem__(self, item):
-        return self.minions[item]
+    def __getitem__(self, key: Union[slice, int]) -> Union[Minion, MinionPool]:
+        if isinstance(key, slice):
+            return MinionPool(self.minions[key])
+        return self.minions[key]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.minions)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Minion]:
         return iter(self.minions)
 
-    def __contains__(self, item):
+    def __contains__(self, item) -> bool:
         return item in self.minions
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.minions)
 
     def filter(self, key: str, value: str) -> MinionPool:
@@ -114,3 +117,11 @@ class MinionPool:
             )
             return self
         return MinionPool(self.minions[:count])
+
+    def skip(self, count: int) -> MinionPool:
+        if count > len(self.minions):
+            print(
+                f"Warning: asked to skip {count} minions, but only {len(self.minions)} available"
+            )
+            return self
+        return MinionPool(self.minions[count:])

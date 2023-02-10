@@ -16,8 +16,20 @@
       <excludeFolder url="file://$MODULE_DIR$/venv" />
       <excludeFolder url="file://$MODULE_DIR$/netunicorn-director/netunicorn-compilation/src/netunicorn_director_compilation.egg-info" />
       <excludeFolder url="file://$MODULE_DIR$/netunicorn-director/netunicorn-compilation/build" />
+      <excludeFolder url="file://$MODULE_DIR$/.idea/dataSources" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-base/src/netunicorn_base.egg-info" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-base/build" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-base/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-client/src/netunicorn_client.egg-info" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-client/build" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-client/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-executor/src/netunicorn_executor.egg-info" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-executor/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-library/src/netunicorn_library.egg-info" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-library/build" />
+      <excludeFolder url="file://$MODULE_DIR$/netunicorn-library/dist" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.8 (unicorn)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.9 (netunicorn)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">

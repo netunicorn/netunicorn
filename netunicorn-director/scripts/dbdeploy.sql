@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS Authentication (
     username TEXT NOT NULL,
-    token TEXT NOT NULL,
-    additional_info TEXT,
+    hash TEXT NOT NULL,
+    sudo BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (username)
 );
 

@@ -4,7 +4,33 @@ import platform
 from dataclasses import dataclass, field
 from typing import Optional
 
+
 # TODO: make classes frozen to make hash stable
+
+
+@dataclass
+class RuntimeContext:
+    ports_mapping: dict[int, int] = field(default_factory=dict)
+    environment_variables: dict[str, str] = field(default_factory=dict)
+    additional_arguments: list[str] = field(default_factory=list)
+
+    def __json__(self):
+        return {
+            "ports_mapping": self.ports_mapping,
+            "environment_variables": self.environment_variables,
+            "additional_arguments": self.additional_arguments,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict) -> RuntimeContext:
+        ports_mapping = data["ports_mapping"]
+        environment_variables = data["environment_variables"]
+        additional_arguments = data["additional_arguments"]
+        return cls(
+            ports_mapping=ports_mapping,
+            environment_variables=environment_variables,
+            additional_arguments=additional_arguments,
+        )
 
 
 @dataclass
@@ -32,10 +58,19 @@ class ShellExecution(EnvironmentDefinition):
     This class represents Environment Definition that's created by executing shell commands.
     """
 
+    runtime_context: RuntimeContext = field(default_factory=RuntimeContext)
+
+    def __json__(self):
+        return {
+            "commands": self.commands,
+            "runtime_context": self.runtime_context,
+        }
+
     @classmethod
     def from_json(cls, data: dict) -> ShellExecution:
         instance = cls.__new__(cls)
         instance.commands = data["commands"]
+        instance.runtime_context = RuntimeContext.from_json(data["runtime_context"])
         return instance
 
 
@@ -81,6 +116,7 @@ class DockerImage(EnvironmentDefinition):
 
     image: Optional[str] = None
     build_context: BuildContext = field(default_factory=BuildContext)
+    runtime_context: RuntimeContext = field(default_factory=RuntimeContext)
 
     def __hash__(self):
         if self.image:
@@ -98,6 +134,7 @@ class DockerImage(EnvironmentDefinition):
         return {
             "image": self.image,
             "build_context": self.build_context.__json__(),
+            "runtime_context": self.runtime_context.__json__(),
             "commands": self.commands,
         }
 
@@ -107,4 +144,5 @@ class DockerImage(EnvironmentDefinition):
         instance.commands = data["commands"]
         instance.image = data["image"]
         instance.build_context = BuildContext.from_json(data["build_context"])
+        instance.runtime_context = RuntimeContext.from_json(data["runtime_context"])
         return instance

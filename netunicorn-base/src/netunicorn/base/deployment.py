@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from base64 import b64decode
 from typing import Optional
+from copy import deepcopy
 
 import netunicorn.base.environment_definitions
 
@@ -26,7 +27,7 @@ class Deployment:
         self.executor_id = ""
         self.error: Optional[Exception] = None
         self.pipeline: SerializedPipelineType = b""
-        self.environment_definition = pipeline.environment_definition
+        self.environment_definition = deepcopy(pipeline.environment_definition)
 
         for i, element in enumerate(pipeline.tasks):
             pipeline.tasks[i] = [
