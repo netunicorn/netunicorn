@@ -1,6 +1,6 @@
 from typing import List
 
-from netunicorn.base.minions import MinionPool
+from netunicorn.base.nodes import MinionPool
 
 
 class Connector:

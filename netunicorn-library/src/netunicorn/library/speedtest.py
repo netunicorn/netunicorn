@@ -1,7 +1,7 @@
 import subprocess
 from typing import Dict
 
-from netunicorn.base.minions import Minion
+from netunicorn.base.nodes import Minion
 from netunicorn.base.task import Failure, Task, TaskDispatcher
 
 

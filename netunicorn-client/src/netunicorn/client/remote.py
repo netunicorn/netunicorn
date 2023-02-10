@@ -3,7 +3,7 @@ from typing import Iterable
 
 import requests as req
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
-from netunicorn.base.minions import MinionPool
+from netunicorn.base.nodes import MinionPool
 from netunicorn.base.utils import UnicornEncoder
 
 from .base import BaseClient

@@ -5,7 +5,7 @@ from typing import Any, Collection, List, Union
 
 from returns.result import Failure, Result, Success
 
-from .minions import Minion
+from .nodes import Node
 from .utils import safe
 
 # Keep classes for export
@@ -78,9 +78,9 @@ class TaskDispatcher:
     This class is a wrapper for several tasks that are designed to implement the same functionality for different
     architectures, platforms, etc. It is designed to be used as a base class for your task dispatcher.
 
-    Dispatching is done by calling the dispatch method. This method should return the proper task for the minion
-    given minion information (such as architecture, platform, etc).
+    Dispatching is done by calling the dispatch method. This method should return the proper task for the node
+    given node information (such as architecture, platform, etc).
     """
 
-    def dispatch(self, minion: Minion) -> Task:
+    def dispatch(self, node: Node) -> Task:
         raise NotImplementedError

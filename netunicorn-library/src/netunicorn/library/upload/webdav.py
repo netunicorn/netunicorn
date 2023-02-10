@@ -2,7 +2,7 @@ import os
 import subprocess
 from typing import Literal, Optional, Set
 
-from netunicorn.base.minions import Architecture, Minion
+from netunicorn.base.nodes import Architecture, Minion
 from netunicorn.base.task import Task, TaskDispatcher
 
 

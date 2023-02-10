@@ -8,7 +8,7 @@ from netunicorn.base.architecture import Architecture
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.experiment import Experiment, ExperimentStatus
-from netunicorn.base.minions import Minion, MinionPool
+from netunicorn.base.nodes import Minion, MinionPool
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,

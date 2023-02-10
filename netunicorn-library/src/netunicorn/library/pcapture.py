@@ -3,7 +3,7 @@ import time
 import signal
 from typing import List, Optional
 
-from netunicorn.base.minions import Minion
+from netunicorn.base.nodes import Minion
 from netunicorn.base.task import Failure, Task, TaskDispatcher
 
 

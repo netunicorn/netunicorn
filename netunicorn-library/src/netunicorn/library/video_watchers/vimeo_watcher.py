@@ -8,7 +8,7 @@ import time
 from typing import Optional
 
 from netunicorn.base.task import Result, Failure, Success, Task, TaskDispatcher
-from netunicorn.base.minions import Minion
+from netunicorn.base.nodes import Minion
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
