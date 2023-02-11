@@ -14,10 +14,10 @@ from abc import ABC, abstractmethod
 
 class Node:
     def __init__(
-            self,
-            name: str,
-            properties: Dict[str, Union[str, int, float, Set[str]]],
-            architecture: Architecture = Architecture.UNKNOWN,
+        self,
+        name: str,
+        properties: Dict[str, Union[str, int, float, Set[str]]],
+        architecture: Architecture = Architecture.UNKNOWN,
     ):
         self.name = name
         self.properties = properties
@@ -38,10 +38,10 @@ class Node:
 
     def __eq__(self, other) -> bool:
         return (
-                self.name == other.name
-                and self.properties == other.properties
-                and self.additional_properties == other.additional_properties
-                and self.architecture == other.architecture
+            self.name == other.name
+            and self.properties == other.properties
+            and self.additional_properties == other.additional_properties
+            and self.architecture == other.architecture
         )
 
     def __json__(self) -> dict:
@@ -80,7 +80,9 @@ class Nodes(ABC):
 
     @staticmethod
     def dispatch_and_deserialize(data: dict) -> Nodes:
-        return getattr(netunicorn.base.nodes, data["node_pool_type"]).from_json(data["node_pool_data"])
+        return getattr(netunicorn.base.nodes, data["node_pool_type"]).from_json(
+            data["node_pool_data"]
+        )
 
     @classmethod
     @abstractmethod
@@ -99,6 +101,10 @@ class Nodes(ABC):
 
     @abstractmethod
     def __len__(self) -> int:
+        pass
+
+    @abstractmethod
+    def __getitem__(self, item) -> Node:
         pass
 
     @abstractmethod
@@ -225,7 +231,9 @@ class UncountableNodePool(Nodes):
         self._nodes = cycle(node_template)
 
     def __str__(self) -> str:
-        return str(f"<Uncountable node pool with next node template: {self._node_template}>")
+        return str(
+            f"<Uncountable node pool with next node template: {self._node_template}>"
+        )
 
     def __repr__(self) -> str:
         return str(self)
@@ -274,7 +282,9 @@ class UncountableNodePool(Nodes):
     def from_json(cls, data: dict) -> UncountableNodePool:
         return cls([Node.from_json(x) for x in data])
 
-    def set_property(self, name: str, value: Union[str, Set[str]]) -> UncountableNodePool:
+    def set_property(
+        self, name: str, value: Union[str, Set[str]]
+    ) -> UncountableNodePool:
         for node in self._node_template:
             node.properties[name] = value
         return self

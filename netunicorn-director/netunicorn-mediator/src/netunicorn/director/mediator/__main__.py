@@ -22,6 +22,7 @@ from .engine import (
     get_experiment_status,
     get_nodes,
     get_experiments,
+    delete_experiment,
     open_db_connection,
     prepare_experiment_task,
     start_experiment,
@@ -86,7 +87,7 @@ async def nodes_handler(username: str = Depends(check_credentials)):
     return await get_nodes(username)
 
 
-@app.get("/api/v1/experiments", status_code=200)
+@app.get("/api/v1/experiment", status_code=200)
 async def get_experiments_handler(username: str = Depends(check_credentials)):
     return await get_experiments(username)
 
@@ -136,6 +137,14 @@ async def experiment_status_handler(
     experiment_name: str, username: str = Depends(check_credentials)
 ):
     result = await get_experiment_status(experiment_name, username)
+    return result_to_response(result)
+
+
+@app.delete("/api/v1/experiment/{experiment_name}", status_code=200)
+async def delete_experiment_handler(
+    experiment_name: str, username: str = Depends(check_credentials)
+):
+    result = await delete_experiment(experiment_name, username)
     return result_to_response(result)
 
 

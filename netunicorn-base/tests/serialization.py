@@ -28,7 +28,9 @@ class TestAllJSONSerialization(unittest.TestCase):
             ]
         )
         json_node_pool = UnicornEncoder().encode(node_pool)
-        deserialized_node_pool = Nodes.dispatch_and_deserialize(json.loads(json_node_pool))
+        deserialized_node_pool = Nodes.dispatch_and_deserialize(
+            json.loads(json_node_pool)
+        )
         for _ in range(len(node_pool)):
             left_element = node_pool.take(1)[0]
             right_element = deserialized_node_pool.take(1)[0]
@@ -60,9 +62,12 @@ class TestAllJSONSerialization(unittest.TestCase):
                     "python_version": platform.python_version(),
                     "cloudpickle_version": cloudpickle_version,
                 },
-                'runtime_context': {'additional_arguments': [],
-                                    'environment_variables': {},
-                                    'ports_mapping': {}}},
+                "runtime_context": {
+                    "additional_arguments": [],
+                    "environment_variables": {},
+                    "ports_mapping": {},
+                },
+            },
             "environment_definition_type": "DockerImage",
         }
         self.assertEqual(json.loads(json_deployment), encoded_object)

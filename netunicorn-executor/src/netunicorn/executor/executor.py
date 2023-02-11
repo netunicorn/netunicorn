@@ -64,7 +64,9 @@ class PipelineExecutor:
         while self.state != PipelineExecutorState.FINISHED:
             try:
                 await asyncio.sleep(30)
-                req.get(f"{self.gateway_endpoint}/api/v1/executor/heartbeat/{self.executor_id}")
+                req.get(
+                    f"{self.gateway_endpoint}/api/v1/executor/heartbeat/{self.executor_id}"
+                )
             except Exception as e:
                 self.logger.exception(e)
             except CancelledError:

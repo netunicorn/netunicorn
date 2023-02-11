@@ -14,20 +14,6 @@ class RemoteClientException(Exception):
 
 
 class RemoteClient(BaseClient):
-    def get_experiments(self) -> Sequence[ExperimentExecutionInformation]:
-
-        result_data = req.get(
-            f"{self.endpoint}/api/v1/experiments",
-            auth=(self.login, self.password),
-        )
-        if result_data.status_code != 200:
-            raise RemoteClientException(
-                "Failed to get experiment status. "
-                f"Status code: {result_data.status_code}, content: {result_data.content}"
-            )
-
-        return [ExperimentExecutionInformation.from_json(x) for x in result_data.json()]
-
     def __init__(self, endpoint: str, login: str, password: str):
         """
         Remote client for Unicorn.
@@ -52,6 +38,31 @@ class RemoteClient(BaseClient):
             f"Failed to get node pool. "
             f"Status code: {result.status_code}, content: {result.content}"
         )
+
+    def delete_experiment(self, experiment_name: str) -> None:
+        result_data = req.delete(
+            f"{self.endpoint}/api/v1/experiment/{experiment_name}",
+            auth=(self.login, self.password),
+        )
+        if result_data.status_code != 200:
+            raise RemoteClientException(
+                f"Failed to delete the experiment {experiment_name}. "
+                f"Status code: {result_data.status_code}, content: {result_data.content}"
+            )
+
+    def get_experiments(self) -> Sequence[ExperimentExecutionInformation]:
+
+        result_data = req.get(
+            f"{self.endpoint}/api/v1/experiment",
+            auth=(self.login, self.password),
+        )
+        if result_data.status_code != 200:
+            raise RemoteClientException(
+                "Failed to get experiments status. "
+                f"Status code: {result_data.status_code}, content: {result_data.content}"
+            )
+
+        return [ExperimentExecutionInformation.from_json(x) for x in result_data.json()]
 
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
         data = json.dumps(experiment, cls=UnicornEncoder)

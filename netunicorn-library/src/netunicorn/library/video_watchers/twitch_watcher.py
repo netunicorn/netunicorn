@@ -15,7 +15,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
 
-def watch(url: str, duration: int = 10, chrome_location: Optional[str] = None) -> Result[str, str]:
+def watch(
+    url: str, duration: int = 10, chrome_location: Optional[str] = None
+) -> Result[str, str]:
     display_number = random.randint(100, 500)
     xvfb_process = subprocess.Popen(
         ["Xvfb", f":{display_number}", "-screen", "0", "1920x1080x24"]
@@ -63,7 +65,9 @@ class WatchTwitchStreamLinuxImplementation(Task):
         "from webdriver_manager.chrome import ChromeDriverManager; from webdriver_manager.core.utils import ChromeType; ChromeDriverManager(chrome_type=ChromeType.CHROMIUM,path='/usr/bin/').install()",
     ]
 
-    def __init__(self, video_url: str, duration: int = 10, chrome_location: Optional[str] = None):
+    def __init__(
+        self, video_url: str, duration: int = 10, chrome_location: Optional[str] = None
+    ):
         self.video_url = video_url
         self.duration = duration
         self.chrome_location = chrome_location

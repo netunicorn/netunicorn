@@ -118,6 +118,25 @@ async def get_experiments(username: str) -> list:
     return results
 
 
+async def delete_experiment(experiment_name: str, username: str) -> Result[None, str]:
+    experiment_id, status = await get_experiment_id_and_status(experiment_name, username)
+    if is_successful(status):
+        status = status.unwrap()
+    else:
+        return Failure(status.failure())
+
+    if status in {ExperimentStatus.RUNNING, ExperimentStatus.PREPARING}:
+        return Failure(f"Experiment is in status {status}, cannot delete it")
+
+    # actually just rename the user to save experiment in the history
+    await db_conn_pool.execute(
+        "UPDATE experiments SET username = $1 WHERE experiment_id = $2",
+        f"deleted_{username}",
+        experiment_id,
+    )
+    return Success(None)
+
+
 async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
     """
     checking additional_arguments in runtime_context of environment definitions and whether user us allowed to use them
@@ -242,9 +261,7 @@ async def prepare_experiment_task(
             # specific case: if key is in the envs, that means that we need to wait this deployment too
             # description: that happens when 2 deployments have the same environment definition object in memory,
             #  so update of image name for one deployment will affect another deployment
-            _key = hash(
-                (_deployment.pipeline, env_def, _deployment.node.architecture)
-            )
+            _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
             if _key in envs:
                 deployments_waiting_for_compilation.append(_deployment)
                 return
@@ -267,9 +284,7 @@ async def prepare_experiment_task(
             deployments_waiting_for_compilation.append(_deployment)
 
             # unique compilation is combination of pipeline, docker commands, and node architecture
-            _key = hash(
-                (_deployment.pipeline, env_def, _deployment.node.architecture)
-            )
+            _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
             if _key in envs:
                 # we already started this compilation
                 env_def.image = f"{DOCKER_REGISTRY_URL}/{envs[_key]}:latest"

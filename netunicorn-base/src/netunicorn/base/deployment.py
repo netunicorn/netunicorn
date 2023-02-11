@@ -21,7 +21,9 @@ except ImportError:
 
 
 class Deployment:
-    def __init__(self, node: Node, pipeline: Pipeline, keep_alive_timeout_minutes: int = 10):
+    def __init__(
+        self, node: Node, pipeline: Pipeline, keep_alive_timeout_minutes: int = 10
+    ):
         self.node = node
         self.prepared = False
         self.executor_id = ""

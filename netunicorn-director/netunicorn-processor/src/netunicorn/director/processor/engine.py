@@ -103,12 +103,11 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
         logger.error(f"Experiment {experiment_id} is in unexpected status {status}")
         return
 
-    logger.debug(
-        f"Experiment {experiment_id} started at {start_time}"
-    )
+    logger.debug(f"Experiment {experiment_id} started at {start_time}")
     # executor_id: (finished_flag, timeout_minutes)
     executor_status: Dict[str, list[bool, int]] = {
-        x.executor_id: [not x.prepared, x.keep_alive_timeout_minutes] for x in experiment
+        x.executor_id: [not x.prepared, x.keep_alive_timeout_minutes]
+        for x in experiment
     }
     logger.debug(f"Executors finished: {executor_status}")
 

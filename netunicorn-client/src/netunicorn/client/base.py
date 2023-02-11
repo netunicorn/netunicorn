@@ -6,7 +6,6 @@ from netunicorn.base.nodes import Nodes
 
 
 class BaseClient(ABC):
-
     @abstractmethod
     def get_nodes(self) -> Nodes:
         """
@@ -20,6 +19,14 @@ class BaseClient(ABC):
         """
         This method returns information about all experiments that belong to the user.
         :return: list of ExperimentExecutionInformation objects
+        """
+        pass
+
+    @abstractmethod
+    def delete_experiment(self, experiment_name: str) -> None:
+        """
+        This method deletes FINISHED experiment from the system or raise the exception if something's wrong.
+        :param experiment_name: name of the experiment to delete
         """
         pass
 
