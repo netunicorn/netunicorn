@@ -2,7 +2,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import List
 
-from netunicorn.base.nodes import Minion
+from netunicorn.base.nodes import Node
 from netunicorn.base.task import Failure, Task, TaskDispatcher
 
 
@@ -34,11 +34,11 @@ class Ping(TaskDispatcher):
         self.count = count
         super().__init__()
 
-    def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get("os_family", "").lower() == "linux":
+    def dispatch(self, node: Node) -> Task:
+        if node.properties.get("os_family", "").lower() == "linux":
             return PingLinuxImplementation(self.address, self.count)
         raise NotImplementedError(
-            f'Ping is not implemented for {minion.properties.get("os_family", "")}'
+            f'Ping is not implemented for {node.properties.get("os_family", "")}'
         )
 
 

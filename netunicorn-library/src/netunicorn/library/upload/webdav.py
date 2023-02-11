@@ -2,7 +2,7 @@ import os
 import subprocess
 from typing import Literal, Optional, Set
 
-from netunicorn.base.nodes import Architecture, Minion
+from netunicorn.base.nodes import Architecture, Node
 from netunicorn.base.task import Task, TaskDispatcher
 
 
@@ -25,7 +25,7 @@ class UploadToWebDav(TaskDispatcher):
 
         super().__init__()
 
-    def dispatch(self, minion: Minion) -> Task:
+    def dispatch(self, node: Node) -> Task:
         result = UploadToWebDavImplementation(
             self.filepaths,
             self.endpoint,
@@ -34,12 +34,12 @@ class UploadToWebDav(TaskDispatcher):
             self.authentication,
         )
 
-        if minion.architecture in {Architecture.LINUX_AMD64, Architecture.LINUX_ARM64}:
+        if node.architecture in {Architecture.LINUX_AMD64, Architecture.LINUX_ARM64}:
             result.requirements = ["sudo apt-get install -y curl"]
             return result
 
         raise NotImplementedError(
-            f"UploadToWebDav is not implemented for {minion.architecture}"
+            f"UploadToWebDav is not implemented for {node.architecture}"
         )
 
 

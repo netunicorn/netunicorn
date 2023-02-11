@@ -1,14 +1,14 @@
 from typing import Iterable
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
-from netunicorn.base.nodes import MinionPool
+from netunicorn.base.nodes import Nodes
 
 
 class BaseClient:
-    def get_minion_pool(self) -> MinionPool:
+    def get_nodes(self) -> Nodes:
         """
-        This method returns description of available minions in the system.
-        :return: MinionPool with available minions
+        This method returns description of available nodes in the system.
+        :return: Nodes object with available nodes
         """
         raise NotImplementedError()
 
@@ -45,7 +45,7 @@ class BaseClient:
     ) -> ExperimentExecutionInformation:
         """
         Returns status and results of experiment.
-        If experiment preparation succeed, you can explore map to see what minions are prepared for deployment.
+        If experiment preparation succeed, you can explore map to see what nodes are prepared for deployment.
         If experiment finished, you can explore results of the experiment
         :param experiment_id: id of the experiment returned by 'deploy_map' function
         :return: current status of the experiment, optionally experiment definition, optionally experiment results

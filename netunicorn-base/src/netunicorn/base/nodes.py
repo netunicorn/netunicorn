@@ -278,8 +278,3 @@ class UncountableNodePool(Nodes):
         for node in self._node_template:
             node.properties[name] = value
         return self
-
-
-# Legacy aliases
-Minion = Node
-MinionPool = Nodes

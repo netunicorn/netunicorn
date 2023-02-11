@@ -45,7 +45,7 @@ async def collect_all_executor_results(
 
         execution_results.append(
             DeploymentExecutionResult(
-                minion=deployment.minion,
+                node=deployment.node,
                 serialized_pipeline=deployment.pipeline,
                 result=executor_result,
                 error=error,
@@ -185,12 +185,12 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
         experiment_id,
     )
 
-    # remove all locks from minions
-    minion_names = [x.minion.name for x in experiment]
+    # remove all locks from nodes
+    node_names = [x.node.name for x in experiment]
     await db_conn_pool.execute(
-        "UPDATE locks SET username = NULL WHERE username = $1 AND minion_name = ANY($2)",
+        "UPDATE locks SET username = NULL WHERE username = $1 AND node_name = ANY($2)",
         lock,
-        minion_names,
+        node_names,
     )
     logger.debug(f"Experiment {experiment_id} finished.")
     return

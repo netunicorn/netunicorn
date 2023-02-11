@@ -8,7 +8,7 @@ import time
 from typing import Optional
 
 from netunicorn.base.task import Result, Failure, Success, Task, TaskDispatcher
-from netunicorn.base.nodes import Minion
+from netunicorn.base.nodes import Node
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -75,12 +75,12 @@ class WatchVimeoVideo(TaskDispatcher):
         self.duration = duration
         super().__init__()
 
-    def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get("os_family", "").lower() == "linux":
+    def dispatch(self, node: Node) -> Task:
+        if node.properties.get("os_family", "").lower() == "linux":
             return WatchVimeoVideoLinuxImplementation(self.video_url, self.duration)
 
         raise NotImplementedError(
-            f'WatchYouTubeVideo is not implemented for {minion.properties.get("os_family", "")}'
+            f'WatchYouTubeVideo is not implemented for {node.properties.get("os_family", "")}'
         )
 
 

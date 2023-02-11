@@ -3,7 +3,7 @@ import time
 import signal
 from typing import List, Optional
 
-from netunicorn.base.nodes import Minion
+from netunicorn.base.nodes import Node
 from netunicorn.base.task import Failure, Task, TaskDispatcher
 
 
@@ -13,12 +13,12 @@ class StartCapture(TaskDispatcher):
         self.arguments = arguments
         super().__init__()
 
-    def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get("os_family", "").lower() == "linux":
+    def dispatch(self, node: Node) -> Task:
+        if node.properties.get("os_family", "").lower() == "linux":
             return StartCaptureLinuxImplementation(self.filepath, self.arguments)
 
         raise NotImplementedError(
-            f'StartCapture is not implemented for {minion.properties.get("os_family", "")}'
+            f'StartCapture is not implemented for {node.properties.get("os_family", "")}'
         )
 
 
@@ -48,12 +48,12 @@ class StartCaptureLinuxImplementation(Task):
 
 
 class StopAllTCPDumps(TaskDispatcher):
-    def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get("os_family", "").lower() == "linux":
+    def dispatch(self, node: Node) -> Task:
+        if node.properties.get("os_family", "").lower() == "linux":
             return StopAllTCPDumpsLinuxImplementation()
 
         raise NotImplementedError(
-            f'StopAllTCPDumps is not implemented for {minion.properties.get("os_family", "")}'
+            f'StopAllTCPDumps is not implemented for {node.properties.get("os_family", "")}'
         )
 
 

@@ -1,17 +1,17 @@
 import subprocess
 from typing import Dict
 
-from netunicorn.base.nodes import Minion
+from netunicorn.base.nodes import Node
 from netunicorn.base.task import Failure, Task, TaskDispatcher
 
 
 class SpeedTest(TaskDispatcher):
-    def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get("os_family", "").lower() == "linux":
+    def dispatch(self, node: Node) -> Task:
+        if node.properties.get("os_family", "").lower() == "linux":
             return SpeedTestLinuxImplementation()
 
         raise NotImplementedError(
-            f'SpeedTest is not implemented for {minion.properties.get("os_family", "")}'
+            f'SpeedTest is not implemented for {node.properties.get("os_family", "")}'
         )
 
 

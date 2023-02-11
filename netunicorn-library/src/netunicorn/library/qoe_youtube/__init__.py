@@ -4,7 +4,7 @@ import time
 from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
-from netunicorn.base.nodes import Minion
+from netunicorn.base.nodes import Node
 from netunicorn.base.task import Failure, Success, Task, TaskDispatcher
 
 
@@ -17,14 +17,14 @@ class StartQoECollectionServer(TaskDispatcher):
         self.port = port
         super().__init__()
 
-    def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get("os_family", "").lower() == "linux":
+    def dispatch(self, node: Node) -> Task:
+        if node.properties.get("os_family", "").lower() == "linux":
             return StartQoECollectionServerLinuxImplementation(
                 self.data_folder, self.interface, self.port
             )
 
         raise NotImplementedError(
-            f'StartQoECollectionServer is not implemented for {minion.properties.get("os_family", "")}'
+            f'StartQoECollectionServer is not implemented for {node.properties.get("os_family", "")}'
         )
 
 
@@ -75,12 +75,12 @@ class StartQoECollectionServerLinuxImplementation(Task):
 
 
 class StopQoECollectionServer(TaskDispatcher):
-    def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get("os_family", "").lower() == "linux":
+    def dispatch(self, node: Node) -> Task:
+        if node.properties.get("os_family", "").lower() == "linux":
             return StopQoECollectionServerLinuxImplementation()
 
         raise NotImplementedError(
-            f'StopQoECollectionServer is not implemented for {minion.properties.get("os_family", "")}'
+            f'StopQoECollectionServer is not implemented for {node.properties.get("os_family", "")}'
         )
 
 
@@ -120,8 +120,8 @@ class WatchYouTubeVideo(TaskDispatcher):
         self.report_time = report_time
         super().__init__()
 
-    def dispatch(self, minion: Minion) -> Task:
-        if minion.properties.get("os_family", "").lower() == "linux":
+    def dispatch(self, node: Node) -> Task:
+        if node.properties.get("os_family", "").lower() == "linux":
             return WatchYouTubeVideoLinuxImplementation(
                 self.video_url,
                 self.duration,
@@ -132,7 +132,7 @@ class WatchYouTubeVideo(TaskDispatcher):
             )
 
         raise NotImplementedError(
-            f'WatchYouTubeVideo is not implemented for {minion.properties.get("os_family", "")}'
+            f'WatchYouTubeVideo is not implemented for {node.properties.get("os_family", "")}'
         )
 
 

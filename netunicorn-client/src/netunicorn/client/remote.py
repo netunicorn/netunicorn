@@ -3,7 +3,7 @@ from typing import Iterable
 
 import requests as req
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
-from netunicorn.base.nodes import MinionPool
+from netunicorn.base.nodes import Nodes
 from netunicorn.base.utils import UnicornEncoder
 
 from .base import BaseClient
@@ -27,15 +27,15 @@ class RemoteClient(BaseClient):
         self.login = login
         self.password = password
 
-    def get_minion_pool(self) -> MinionPool:
+    def get_nodes(self) -> Nodes:
         result = req.get(
-            f"{self.endpoint}/api/v1/minion_pool", auth=(self.login, self.password)
+            f"{self.endpoint}/api/v1/nodes", auth=(self.login, self.password)
         )
         if result.status_code == 200:
-            return MinionPool.from_json(result.json())
+            return Nodes.dispatch_and_deserialize(result.json())
 
         raise RemoteClientException(
-            f"Failed to get minion pool. "
+            f"Failed to get node pool. "
             f"Status code: {result.status_code}, content: {result.content}"
         )
 

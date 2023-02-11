@@ -20,7 +20,7 @@ from .engine import (
     credentials_check,
     experiment_precheck,
     get_experiment_status,
-    get_minion_pool,
+    get_nodes,
     open_db_connection,
     prepare_experiment_task,
     start_experiment,
@@ -80,9 +80,9 @@ async def on_shutdown():
     logger.info("Mediator stopped")
 
 
-@app.get("/api/v1/minion_pool", status_code=200)
-async def minion_pool_handler(username: str = Depends(check_credentials)):
-    return await get_minion_pool(username)
+@app.get("/api/v1/nodes", status_code=200)
+async def nodes_handler(username: str = Depends(check_credentials)):
+    return await get_nodes(username)
 
 
 @app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
