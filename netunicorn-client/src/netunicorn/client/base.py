@@ -31,6 +31,14 @@ class BaseClient(ABC):
         pass
 
     @abstractmethod
+    def healthcheck(self) -> bool:
+        """
+        This method checks if the system is alive.
+        :return: True if server is alive, raises exception otherwise
+        """
+        pass
+
+    @abstractmethod
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
         """
         Prepares a deployment map. Server will start compiling and distributing the environment among nodes.

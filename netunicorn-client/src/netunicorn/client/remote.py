@@ -27,6 +27,18 @@ class RemoteClient(BaseClient):
         self.login = login
         self.password = password
 
+    def healthcheck(self) -> bool:
+        result = req.get(
+            f"{self.endpoint}/health"
+        )
+        if result.status_code == 200:
+            return True
+
+        raise RemoteClientException(
+            f"The backend is not in healthy state. "
+            f"Status code: {result.status_code}, content: {result.content}"
+        )
+
     def get_nodes(self) -> Nodes:
         result = req.get(
             f"{self.endpoint}/api/v1/nodes", auth=(self.login, self.password)
