@@ -21,8 +21,9 @@ CREATE TABLE IF NOT EXISTS Experiments (
 
 CREATE TABLE IF NOT EXISTS Locks (
     minion_name TEXT NOT NULL,
+    connector TEXT NOT NULL,
     username TEXT,
-    PRIMARY KEY (minion_name)
+    PRIMARY KEY (minion_name, connector)
 );
 
 CREATE TABLE IF NOT EXISTS Compilations (
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS Executors (
     experiment_id TEXT NOT NULL,
     executor_id TEXT NOT NULL,
     minion_name TEXT NOT NULL,
+    connector TEXT NOT NULL,
     pipeline BYTEA,
     result BYTEA,
     keepalive TIMESTAMP,
