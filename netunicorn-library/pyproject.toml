@@ -1,0 +1,20 @@
+[project]
+name = "netunicorn-library"
+version = "0.2.0"
+authors = [
+    {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
+]
+description = "netunicorn contrib library"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["netunicorn"]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "netunicorn-base >= 0.2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

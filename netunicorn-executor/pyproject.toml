@@ -1,0 +1,23 @@
+[project]
+name = "netunicorn-executor"
+version = "0.2.0"
+authors = [
+    {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
+]
+description = "netunicorn executor module"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["netunicorn"]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "returns",
+    "cloudpickle",
+    "requests",
+    "netunicorn-base >= 0.2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

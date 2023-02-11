@@ -1,0 +1,20 @@
+[project]
+name = "netunicorn-base"
+version = "0.2.0"
+authors = [
+    {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
+]
+description = "netunicorn base module"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["netunicorn"]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "returns",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
