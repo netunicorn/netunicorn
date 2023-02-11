@@ -35,9 +35,7 @@ logger = get_logger("netunicorn.director.mediator")
 proxy_path = os.environ.get("PROXY_PATH", "").removesuffix("/")
 app = FastAPI(
     title="netunicorn API",
-    docs_url=f"{proxy_path}/docs",
-    redoc_url=f"{proxy_path}/redoc",
-    openapi_url=f"{proxy_path}/openapi.json",
+    root_path=proxy_path,
 )
 security = HTTPBasic()
 
