@@ -32,7 +32,13 @@ from .engine import (
 
 logger = get_logger("netunicorn.director.mediator")
 
-app = FastAPI()
+proxy_path = os.environ.get("PROXY_PATH", "")
+app = FastAPI(
+    title="netunicorn API",
+    docs_url=f"{proxy_path}/docs",
+    redoc_url=f"{proxy_path}/redoc",
+    openapi_url=f"{proxy_path}/openapi.json",
+)
 security = HTTPBasic()
 
 
