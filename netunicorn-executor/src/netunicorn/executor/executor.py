@@ -40,7 +40,7 @@ class PipelineExecutor:
             executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
         )
 
-        self.logfile_name = f"executor_{executor_id}.log"
+        self.logfile_name = f"executor_{self.executor_id}.log"
         self.print_file = open(self.logfile_name, "at")
 
         logging.basicConfig()
@@ -75,7 +75,7 @@ class PipelineExecutor:
     def create_logger(self) -> logging.Logger:
         logger = logging.getLogger(f"executor_{self.executor_id}")
         logger.addHandler(logging.FileHandler(self.logfile_name))
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         return logger
 
     def __call__(self) -> None:
