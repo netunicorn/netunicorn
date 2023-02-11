@@ -16,7 +16,7 @@ class Node:
     def __init__(
             self,
             name: str,
-            properties: Dict[str, Union[str, Set[str]]],
+            properties: Dict[str, Union[str, int, float, Set[str]]],
             architecture: Architecture = Architecture.UNKNOWN,
     ):
         self.name = name
