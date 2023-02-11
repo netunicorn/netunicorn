@@ -77,7 +77,7 @@ async def return_pipeline(executor_id: str, response: Response) -> Optional[byte
 @app.post("/api/v1/executor/result")
 async def receive_result(result: PipelineResult):
     """
-    Receives pipeline execution results from executor and stores it in Redis
+    Receives pipeline execution results from executor and stores it in database
     """
     pipeline_results = b64decode(result.results)
     await db_conn_pool.execute(
@@ -87,4 +87,12 @@ async def receive_result(result: PipelineResult):
     )
 
 
-# TODO: https://stackoverflow.com/questions/63510041/adding-python-logging-to-fastapi-endpoints-hosted-on-docker-doesnt-display-api
+@app.post("/api/v1/executor/heartbeat/{executor_id}")
+async def receive_heartbeat(executor_id: str):
+    """
+    Receives executor heartbeat and updates it in database
+    """
+    await db_conn_pool.execute(
+        "UPDATE executors SET keepalive = NOW() WHERE executor_id = $1",
+        executor_id,
+    )

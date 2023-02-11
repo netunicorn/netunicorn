@@ -86,10 +86,6 @@ class TestAllJSONSerialization(unittest.TestCase):
         json_experiment = UnicornEncoder().encode(experiment)
         deserialized_experiment = Experiment.from_json(json.loads(json_experiment))
         self.assertEqual(
-            experiment.keep_alive_timeout_minutes,
-            deserialized_experiment.keep_alive_timeout_minutes,
-        )
-        self.assertEqual(
             len(experiment.deployment_map), len(deserialized_experiment.deployment_map)
         )
 

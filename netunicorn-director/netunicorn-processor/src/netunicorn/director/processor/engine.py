@@ -67,7 +67,6 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
         return
 
     experiment: Experiment = Experiment.from_json(experiment_data)
-    timeout_minutes = experiment.keep_alive_timeout_minutes
     start_time = datetime.utcnow()
 
     try:
@@ -89,8 +88,8 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
                 "SELECT status FROM experiments WHERE experiment_id = $1", experiment_id
             )
         )
-        if datetime.utcnow() > start_time + timedelta(minutes=timeout_minutes):
-            exc = f"Experiment {experiment_id} timeout reached and still not started."
+        if datetime.utcnow() > start_time + timedelta(minutes=10):
+            exc = f"Experiment {experiment_id} timeout (10 minutes) reached and still not started."
             logger.error(exc)
             await db_conn_pool.execute(
                 "UPDATE experiments SET status = $1, error = $2 WHERE experiment_id = $3",
@@ -105,11 +104,11 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
         return
 
     logger.debug(
-        f"Experiment {experiment_id} started at {start_time}, keep alive timeout: {timeout_minutes} minutes"
+        f"Experiment {experiment_id} started at {start_time}"
     )
-    # executor_id: finished_flag
-    executor_status: Dict[str, bool] = {
-        x.executor_id: not x.prepared for x in experiment
+    # executor_id: (finished_flag, timeout_minutes)
+    executor_status: Dict[str, list[bool, int]] = {
+        x.executor_id: [not x.prepared, x.keep_alive_timeout_minutes] for x in experiment
     }
     logger.debug(f"Executors finished: {executor_status}")
 
@@ -136,7 +135,7 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
             )
             break
 
-        for executor_id, finished in executor_status.items():
+        for executor_id, (finished, timeout_minutes) in executor_status.items():
             if finished:
                 continue
             if await db_conn_pool.fetchval(
@@ -144,7 +143,7 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
                 experiment_id,
                 executor_id,
             ):
-                executor_status[executor_id] = True
+                executor_status[executor_id][0] = True
                 continue
 
             last_time_contacted = (
@@ -162,7 +161,7 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
                 f" time elapsed: {time_elapsed / 60} minutes, timeout: {timeout_minutes} minutes"
             )
             if time_elapsed > timeout_minutes * 60:
-                executor_status[executor_id] = True
+                executor_status[executor_id][0] = True
                 exception = f"Executor {executor_id} timeout reached."
                 await db_conn_pool.execute(
                     "UPDATE executors SET error = $1, finished = TRUE WHERE experiment_id = $2 AND executor_id = $3",
@@ -172,7 +171,7 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
                 )
 
         await collect_all_executor_results(experiment, experiment_id)
-        if all(executor_status.values()):
+        if all(x[0] for x in executor_status.values()):
             break
 
         await asyncio.sleep(30)

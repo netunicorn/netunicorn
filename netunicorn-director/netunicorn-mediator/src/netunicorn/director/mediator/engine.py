@@ -101,6 +101,23 @@ async def get_nodes(username: str) -> list:
     return result
 
 
+async def get_experiments(username: str) -> list:
+    experiment_names = await db_conn_pool.fetch(
+        "SELECT experiment_name FROM experiments WHERE username = $1",
+        username,
+    )
+    if experiment_names is None:
+        return []
+
+    results = []
+    for line in experiment_names:
+        name = line["experiment_name"]
+        result = await get_experiment_status(name, username)
+        if is_successful(result):
+            results.append(result.unwrap())
+    return results
+
+
 async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
     """
     checking additional_arguments in runtime_context of environment definitions and whether user us allowed to use them
@@ -487,7 +504,7 @@ async def cancel_experiment(experiment_name: str, username: str) -> Result[str, 
         "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id,
     )
-    await cancel_executors_task([x["executor_id"] for x in executors])
+    await cancel_executors_task(username, [x["executor_id"] for x in executors])
     return Success(f"Experiment {experiment_name} cancellation started")
 
 

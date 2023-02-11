@@ -30,13 +30,8 @@ class ExperimentStatus(Enum):
 
 
 class Experiment:
-    def __init__(self, keep_alive_timeout_minutes: int = 10):
-        """
-        :param keep_alive_timeout_minutes: how long to wait for a node
-         after deployer showed that it's unresponsive to recover
-        """
+    def __init__(self):
         self.deployment_map: List[Deployment] = []
-        self.keep_alive_timeout_minutes = keep_alive_timeout_minutes
 
     def append(self, node: Node, pipeline: Pipeline) -> Experiment:
         self.deployment_map.append(Deployment(node, pipeline))
@@ -53,7 +48,6 @@ class Experiment:
     def __json__(self) -> dict:
         return {
             "deployment_map": [x.__json__() for x in self.deployment_map],
-            "keep_alive_timeout_minutes": self.keep_alive_timeout_minutes,
         }
 
     @classmethod
@@ -62,7 +56,6 @@ class Experiment:
         instance.deployment_map = [
             Deployment.from_json(x) for x in data["deployment_map"]
         ]
-        instance.keep_alive_timeout_minutes = data["keep_alive_timeout_minutes"]
         return instance
 
     def __getitem__(self, item) -> Deployment:

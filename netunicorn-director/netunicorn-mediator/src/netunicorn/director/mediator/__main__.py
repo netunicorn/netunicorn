@@ -21,6 +21,7 @@ from .engine import (
     experiment_precheck,
     get_experiment_status,
     get_nodes,
+    get_experiments,
     open_db_connection,
     prepare_experiment_task,
     start_experiment,
@@ -83,6 +84,11 @@ async def on_shutdown():
 @app.get("/api/v1/nodes", status_code=200)
 async def nodes_handler(username: str = Depends(check_credentials)):
     return await get_nodes(username)
+
+
+@app.get("/api/v1/experiments", status_code=200)
+async def get_experiments_handler(username: str = Depends(check_credentials)):
+    return await get_experiments(username)
 
 
 @app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)

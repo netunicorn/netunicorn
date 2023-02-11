@@ -1,5 +1,5 @@
 import json
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import requests as req
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
@@ -14,6 +14,20 @@ class RemoteClientException(Exception):
 
 
 class RemoteClient(BaseClient):
+    def get_experiments(self) -> Sequence[ExperimentExecutionInformation]:
+
+        result_data = req.get(
+            f"{self.endpoint}/api/v1/experiments",
+            auth=(self.login, self.password),
+        )
+        if result_data.status_code != 200:
+            raise RemoteClientException(
+                "Failed to get experiment status. "
+                f"Status code: {result_data.status_code}, content: {result_data.content}"
+            )
+
+        return [ExperimentExecutionInformation.from_json(x) for x in result_data.json()]
+
     def __init__(self, endpoint: str, login: str, password: str):
         """
         Remote client for Unicorn.

@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import time
+from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from copy import deepcopy
 from enum import Enum
@@ -49,13 +50,25 @@ class PipelineExecutor:
         )
         self.logger.info(f"Current directory: {os.getcwd()}")
 
-        # increasing timeout in msecs to wait between network requests
+        # increasing timeout in secs to wait between network requests
         self.backoff_func = (0.1 * x for x in itertools.count(1))
 
         self.pipeline: Optional[Pipeline] = None
         self.step_results: List[PipelineElementResult] = []
         self.pipeline_results: Optional[Result[PipelineResult, PipelineResult]] = None
         self.state = PipelineExecutorState.LOOKING_FOR_PIPELINE
+
+        self.heartbeat_task = asyncio.create_task(self.heartbeat())
+
+    async def heartbeat(self):
+        while self.state != PipelineExecutorState.FINISHED:
+            try:
+                await asyncio.sleep(30)
+                req.get(f"{self.gateway_endpoint}/api/v1/executor/heartbeat/{self.executor_id}")
+            except Exception as e:
+                self.logger.exception(e)
+            except CancelledError:
+                return
 
     def create_logger(self) -> logging.Logger:
         logger = logging.getLogger(f"executor_{self.executor_id}")
@@ -78,6 +91,7 @@ class PipelineExecutor:
                 elif self.state == PipelineExecutorState.REPORTING:
                     self.report_results()
                 elif self.state == PipelineExecutorState.FINISHED:
+                    self.heartbeat_task.cancel()
                     return
             except Exception as e:
                 self.logger.exception(e)
@@ -136,6 +150,7 @@ class PipelineExecutor:
         return cloudpickle.dumps(result)
 
     def std_redirection(self, *args):
+        _ = args
         sys.stdout = self.print_file
         sys.stderr = self.print_file
 

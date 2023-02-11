@@ -21,13 +21,14 @@ except ImportError:
 
 
 class Deployment:
-    def __init__(self, node: Node, pipeline: Pipeline):
+    def __init__(self, node: Node, pipeline: Pipeline, keep_alive_timeout_minutes: int = 10):
         self.node = node
         self.prepared = False
         self.executor_id = ""
         self.error: Optional[Exception] = None
         self.pipeline: SerializedPipelineType = b""
         self.environment_definition = deepcopy(pipeline.environment_definition)
+        self.keep_alive_timeout_minutes = keep_alive_timeout_minutes
 
         for i, element in enumerate(pipeline.tasks):
             pipeline.tasks[i] = [
@@ -52,6 +53,7 @@ class Deployment:
             "executor_id": self.executor_id,
             "error": str(self.error) if self.error else None,
             "pipeline": self.pipeline,
+            "keep_alive_timeout_minutes": self.keep_alive_timeout_minutes,
             "environment_definition": self.environment_definition.__json__(),
             "environment_definition_type": self.environment_definition.__class__.__name__,
         }
@@ -65,6 +67,7 @@ class Deployment:
         instance.executor_id = data["executor_id"]
         instance.error = Exception(data["error"]) if data["error"] else None
         instance.pipeline = b64decode(data["pipeline"])
+        instance.keep_alive_timeout_minutes = data["keep_alive_timeout_minutes"]
         instance.environment_definition = getattr(
             netunicorn.base.environment_definitions, data["environment_definition_type"]
         ).from_json(data["environment_definition"])
