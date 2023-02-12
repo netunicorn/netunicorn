@@ -28,7 +28,7 @@ class PipelineExecutorState(Enum):
 
 
 class PipelineExecutor:
-    def __init__(self, executor_id: str = None, gateway_endpoint: str = None):
+    def __init__(self, executor_id: str = None, gateway_endpoint: str = None, experiment_id: str = None):
         # load up our own ID and the local communicator info
         self.gateway_endpoint: str = (
             gateway_endpoint or os.environ["NETUNICORN_GATEWAY_ENDPOINT"]
@@ -38,6 +38,9 @@ class PipelineExecutor:
 
         self.executor_id: str = (
             executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
+        )
+        self.experiment_id: str = (
+            experiment_id or os.environ.get("NETUNICORN_EXPERIMENT_ID") or "Unknown"
         )
 
         self.logfile_name = f"executor_{self.executor_id}.log"
