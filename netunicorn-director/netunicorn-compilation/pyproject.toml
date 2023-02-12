@@ -14,8 +14,6 @@ classifiers = [
 ]
 dependencies = [
     "netunicorn-base >= 0.2.0",
-    "fastapi",
-    "uvicorn",
     "asyncpg",
 ]
 
