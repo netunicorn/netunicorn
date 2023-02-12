@@ -48,19 +48,9 @@ async def docker_compilation_cycle(
     compilation_id: str = compilation_request["compilation_id"]
     architecture: str = compilation_request["architecture"]
     pipeline: Optional[bytes] = compilation_request["pipeline"]
-    environment_definition = environment_definitions.EnvironmentDefinition.from_json(
+    environment_definition = environment_definitions.DockerImage.from_json(
         compilation_request["environment_definition"]
     )
-
-    if not isinstance(environment_definition, environment_definitions.DockerImage):
-        await record_compilation_result(
-            experiment_id,
-            compilation_id,
-            False,
-            f"Environment definition is not of type DockerImage: {environment_definition}",
-            db_pool
-        )
-        return True
 
     if environment_definition.image is None:
         await record_compilation_result(
