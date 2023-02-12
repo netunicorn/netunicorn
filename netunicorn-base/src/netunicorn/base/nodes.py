@@ -108,10 +108,6 @@ class Nodes(ABC):
         pass
 
     @abstractmethod
-    def __iter__(self) -> Iterator[Node]:
-        pass
-
-    @abstractmethod
     def filter(self, function: Callable[[Node], bool]) -> Nodes:
         """
         Returns a pool of nodes that match the given filter.
@@ -168,17 +164,13 @@ class CountableNodePool(Nodes):
         return len(self.nodes)
 
     def __getitem__(self, key: int) -> Union[Node, UncountableNodePool, CountableNodePool]:
-        iterator = self.__iter__()
-        for _ in range(key):
-            next(iterator)
-        return next(iterator)
+        return self.nodes[key]
 
     def __setitem__(self, key: int, value: Union[Node, CountableNodePool, UncountableNodePool]):
         self.nodes[key] = value
 
-    def __iter__(self) -> Iterator[Node]:
-        chains = [[x] if isinstance(x, Node) else x for x in self.nodes]
-        return chain.from_iterable(chains)
+    def __iter__(self) -> Iterator[Union[Node, UncountableNodePool, CountableNodePool]]:
+        return iter(self.nodes)
 
     def pop(self, index: int):
         self.nodes.pop(index)
@@ -199,7 +191,7 @@ class CountableNodePool(Nodes):
         return CountableNodePool(nodes)
 
     def take(self, count: int) -> Sequence[Node]:
-        iterator = self.__iter__()
+        iterator = chain.from_iterable([x] if isinstance(x, Node) else x for x in self.nodes)
         nodes = []
         for _ in range(count):
             try:
@@ -244,19 +236,16 @@ class UncountableNodePool(Nodes):
     def __repr__(self) -> str:
         return str(self)
 
+    def __iter__(self):
+        return self
+
     def __next__(self) -> Node:
         node = deepcopy(next(self._nodes))
         node.name += str(uuid4())
         return node
 
-    def __iter__(self) -> Iterator[Node]:
-        return self
-
     def __getitem__(self, key: int) -> Node:
-        iterator = self.__iter__()
-        for _ in range(key):
-            next(iterator)
-        return next(iterator)
+        return self._node_template[key]
 
     def __setitem__(self, key: int, value: Node):
         self._node_template[key] = value
@@ -268,10 +257,9 @@ class UncountableNodePool(Nodes):
         return UncountableNodePool([x for x in self._node_template if function(x)])
 
     def take(self, count: int) -> Sequence[Node]:
-        iterator = self.__iter__()
         nodes = []
         for _ in range(count):
-            nodes.append(next(iterator))
+            nodes.append(next(self))
         return nodes
 
     def skip(self, count: int) -> UncountableNodePool:

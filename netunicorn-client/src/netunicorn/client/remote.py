@@ -62,7 +62,7 @@ class RemoteClient(BaseClient):
                 f"Status code: {result_data.status_code}, content: {result_data.content}"
             )
 
-    def get_experiments(self) -> Sequence[ExperimentExecutionInformation]:
+    def get_experiments(self) -> dict[str, ExperimentExecutionInformation]:
 
         result_data = req.get(
             f"{self.endpoint}/api/v1/experiment",
@@ -73,8 +73,7 @@ class RemoteClient(BaseClient):
                 "Failed to get experiments status. "
                 f"Status code: {result_data.status_code}, content: {result_data.content}"
             )
-
-        return [ExperimentExecutionInformation.from_json(x) for x in result_data.json()]
+        return {k: ExperimentExecutionInformation.from_json(v) for k, v in result_data.json().items()}
 
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
         data = json.dumps(experiment, cls=UnicornEncoder)

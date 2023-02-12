@@ -15,17 +15,17 @@ class BaseClient(ABC):
         pass
 
     @abstractmethod
-    def get_experiments(self) -> Sequence[ExperimentExecutionInformation]:
+    def get_experiments(self) -> dict[str, ExperimentExecutionInformation]:
         """
         This method returns information about all experiments that belong to the user.
-        :return: list of ExperimentExecutionInformation objects
+        :return: dictionary of experiment-name: ExperimentExecutionInformation
         """
         pass
 
     @abstractmethod
     def delete_experiment(self, experiment_name: str) -> None:
         """
-        This method deletes FINISHED experiment from the system or raise the exception if something's wrong.
+        This method deletes experiment from the system or raise the exception if something's wrong.
         :param experiment_name: name of the experiment to delete
         """
         pass
@@ -41,30 +41,29 @@ class BaseClient(ABC):
     @abstractmethod
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
         """
-        Prepares a deployment map. Server will start compiling and distributing the environment among nodes.
-        You can check status of preparation by calling 'get_deployment_status' function and checking if it's in
-        "DeploymentStatus.READY" status.
-        You need to provide a per-user unique deployment id.
-        This method is network-failure-safe: subsequent calls with the same deployment id
-        will not create additional deployment process.
-        :param experiment: map to be prepared for deployment
-        :param experiment_id: user-wide unique deployment id
-        :return: the same deployment_id if preparation already in progress or finished.
+        Prepares an Experiment. Server will start compiling and distributing the environment among nodes.
+        You can check status of preparation by calling 'get_experiment_status' function and checking if it's in
+        "READY" status.
+        You need to provide a per-user unique experiment name.
+        This method is network-failure-safe: subsequent calls with the same network name
+        will not create additional deployment processes.
+        :param experiment: experiment to prepare
+        :param experiment_id: user-wide unique experiment name
+        :return: the same experiment_id if everything's correct
         """
         pass
 
     @abstractmethod
     def start_execution(self, experiment_id: str) -> str:
         """
-        Starts execution of prepared deployment map.
-        You can check status of deployment by calling 'get_deployment_status' function and checking if it's in
-        "DeploymentStatus.FINISHED" status.
-        You can retrieve results by calling 'get_deployment_result' function.
-        You need to provide a per-user unique deployment id.
-        This method is network-failure-safe: subsequent calls with the same deployment id
-        will not create additional deployment process.
-        :param experiment_id: prepared deployment id
-        :return: the same deployment_id if execution already in progress or finished
+        Starts execution of prepared experiment.
+        You can check status and results of an experiment by calling 'get_experiment_status' function and checking if it's in
+        "FINISHED" status.
+        You need to provide an experiment_id of prepared experiment to start.
+        This method is network-failure-safe: subsequent calls with the same experiment id
+        will not create additional start process.
+        :param experiment_id: prepared experiment id
+        :return: the same experiment_id if execution already in progress or finished
         """
         pass
 
@@ -76,7 +75,7 @@ class BaseClient(ABC):
         Returns status and results of experiment.
         If experiment preparation succeed, you can explore map to see what nodes are prepared for deployment.
         If experiment finished, you can explore results of the experiment
-        :param experiment_id: id of the experiment returned by 'deploy_map' function
+        :param experiment_id: id of the experiment returned by 'prepare_experiment' function
         :return: current status of the experiment, optionally experiment definition, optionally experiment results
         """
         pass
