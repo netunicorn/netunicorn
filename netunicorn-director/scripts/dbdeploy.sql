@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS Compilations (
     compilation_id TEXT NOT NULL,
     status BOOLEAN,
     result TEXT,
+    architecture TEXT NOT NULL,
+    pipeline bytea,
+    environment_definition jsonb NOT NULL,
     PRIMARY KEY (experiment_id, compilation_id)
 );
 
