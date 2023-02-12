@@ -227,7 +227,7 @@ async def experiment_precheck(experiment: Experiment) -> Result[None, str]:
 async def prepare_experiment_task(
     experiment_name: str, experiment: Experiment, username: str
 ) -> None:
-    async def prepare_deployment(_username: str, _deployment: Deployment) -> None:
+    async def prepare_deployment(_username: str, _deployment: Deployment, _envs: dict) -> None:
         _deployment.executor_id = str(uuid4())
         env_def = _deployment.environment_definition
 
@@ -268,11 +268,11 @@ async def prepare_experiment_task(
             isinstance(env_def, DockerImage)
             and _deployment.environment_definition.image is not None
         ):
-            # specific case: if key is in the envs, that means that we need to wait this deployment too
+            # specific case: if key is in the _envs, that means that we need to wait this deployment too
             # description: that happens when 2 deployments have the same environment definition object in memory,
             #  so update of image name for one deployment will affect another deployment
             _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
-            if _key in envs:
+            if _key in _envs:
                 deployments_waiting_for_compilation.append(_deployment)
                 return
 
@@ -295,9 +295,9 @@ async def prepare_experiment_task(
 
             # unique compilation is combination of pipeline, docker commands, and node architecture
             _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
-            if _key in envs:
+            if _key in _envs:
                 # we already started this compilation
-                env_def.image = f"{DOCKER_REGISTRY_URL}/{envs[_key]}:latest"
+                env_def.image = f"{DOCKER_REGISTRY_URL}/{_envs[_key]}:latest"
                 return
 
             # if not - we create a new compilation request
@@ -309,8 +309,8 @@ async def prepare_experiment_task(
             # put compilation_uid both to:
             #  - original key without image name (so any similar deployments will find it)
             #  - key with image name (so we can find it later)
-            envs[_key] = compilation_uid
-            envs[
+            _envs[_key] = compilation_uid
+            _envs[
                 hash((_deployment.pipeline, env_def, _deployment.node.architecture))
             ] = compilation_uid
 
@@ -367,17 +367,13 @@ async def prepare_experiment_task(
     envs = {}  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation = []
     for deployment in experiment:
-        await prepare_deployment(username, deployment)
+        await prepare_deployment(username, deployment, envs)
 
     compilation_ids = set(envs.values())
     await db_conn_pool.execute(
         "UPDATE experiments SET data = $1::jsonb WHERE experiment_id = $2",
         experiment,
         experiment_id,
-    )
-    await db_conn_pool.executemany(
-        "INSERT INTO compilations (experiment_id, compilation_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-        [(experiment_id, compilation_id) for compilation_id in compilation_ids],
     )
     await db_conn_pool.executemany(
         "INSERT INTO executors (experiment_id, executor_id, node_name, finished) VALUES ($1, $2, $3, FALSE) ON CONFLICT DO NOTHING",
