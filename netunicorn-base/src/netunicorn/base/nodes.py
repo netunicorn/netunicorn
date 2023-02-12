@@ -142,7 +142,7 @@ class CountableNodePool(Nodes):
     Represents a typical pool of nodes.
     """
 
-    def __init__(self, nodes: Sequence[Union[Node, Nodes]]):
+    def __init__(self, nodes: list[Union[Node, Nodes]]):
         self.nodes = nodes
 
     def __json__(self):
@@ -167,15 +167,21 @@ class CountableNodePool(Nodes):
     def __len__(self) -> int:
         return len(self.nodes)
 
-    def __getitem__(self, key: int) -> Node:
+    def __getitem__(self, key: int) -> Union[Node, UncountableNodePool, CountableNodePool]:
         iterator = self.__iter__()
         for _ in range(key):
             next(iterator)
         return next(iterator)
 
+    def __setitem__(self, key: int, value: Union[Node, CountableNodePool, UncountableNodePool]):
+        self.nodes[key] = value
+
     def __iter__(self) -> Iterator[Node]:
         chains = [[x] if isinstance(x, Node) else x for x in self.nodes]
         return chain.from_iterable(chains)
+
+    def pop(self, index: int):
+        self.nodes.pop(index)
 
     def __repr__(self) -> str:
         return str(self.nodes)
@@ -226,7 +232,7 @@ class UncountableNodePool(Nodes):
     In the current implementation cannot have Nodes as elements.
     """
 
-    def __init__(self, node_template: Sequence[Node]):
+    def __init__(self, node_template: list[Node]):
         self._node_template = node_template
         self._nodes = cycle(node_template)
 
@@ -251,6 +257,9 @@ class UncountableNodePool(Nodes):
         for _ in range(key):
             next(iterator)
         return next(iterator)
+
+    def __setitem__(self, key: int, value: Node):
+        self._node_template[key] = value
 
     def __len__(self) -> int:
         return len(self._node_template)

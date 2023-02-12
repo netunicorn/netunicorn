@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import asyncpg.connection
 import requests as req
+from netunicorn.base.nodes import Nodes, UncountableNodePool, Node, CountableNodePool
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.experiment import (
     Deployment,
@@ -83,22 +84,38 @@ async def get_experiment_id_and_status(
     return Success((experiment_id, status))
 
 
-async def get_nodes(username: str) -> list:
+async def __filter_locked_nodes(username: str, nodes: CountableNodePool) -> CountableNodePool:
+    # go over all countable pools, select these nodes and check their locks
+    # if the node is locked by not the current user, then add it to the list of locked nodes
+    # and create a new pool with the same name, but without the locked nodes
+    for i in reversed(range(len(nodes))):
+        if isinstance(nodes[i], CountableNodePool):
+            new_pool = await __filter_locked_nodes(username, nodes[i])
+            if len(new_pool) == 0:
+                nodes.pop(i)
+            else:
+                nodes[i] = new_pool
+        if isinstance(nodes[i], Node):
+            node_name = nodes[i].name
+            current_lock = await db_conn_pool.fetchval(
+                "SELECT username FROM locks WHERE node_name = $1", node_name
+            )
+            if current_lock is not None and current_lock == username:
+                nodes.pop(i)
+        else:
+            continue
+    return nodes
+
+
+async def get_nodes(username: str) -> Nodes:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/nodes/{username}"
     result = req.get(url, timeout=300)
     result.raise_for_status()
     serialized_nodes = result.json()
-    result = []
-    for node in serialized_nodes:
-        node_name = node.get("name", "")
-        current_lock = await db_conn_pool.fetchval(
-            "SELECT username FROM locks WHERE node_name = $1", node_name
-        )
-        if current_lock is None or current_lock == username:
-            result.append(node)
-        else:
-            logger.debug(f"Node {node_name} is locked by {current_lock}")
-    return result
+    # noinspection PyTypeChecker
+    # we know that top is always CountableNodePool
+    nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)
+    return await __filter_locked_nodes(username, nodes)
 
 
 async def get_experiments(username: str) -> list:
