@@ -124,7 +124,7 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
     while True:
         # get all experiment that are in PREPARING, READY, or RUNNING state
         experiments = await db_conn_pool.fetch(
-            "SELECT username, data::json FROM experiments WHERE status IN ($1, $2, $3)",
+            "SELECT username, data::jsonb FROM experiments WHERE status IN ($1, $2, $3)",
             ExperimentStatus.PREPARING.value,
             ExperimentStatus.READY.value,
             ExperimentStatus.RUNNING.value,
@@ -146,7 +146,7 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
                 # we want to delete all rows, seriously
                 await conn.execute("TRUNCATE TABLE locks")
                 for username, node, connector in nodes_to_lock:
-                    await conn.executemany(
+                    await conn.execute(
                         "INSERT INTO locks (username, node_name, connector) VALUES ($1, $2, $3)",
                         username, node, connector
                     )
@@ -154,8 +154,8 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
         await asyncio.sleep(timeout_sec)
 
 
-async def on_startup() -> None:
-    global db_conn_pool, locker_task_handler, update_experiments_task_handler
+async def main():
+    global locker_task_handler, update_experiments_task_handler, db_conn_pool
     db_conn_pool = await asyncpg.create_pool(
         host=DATABASE_ENDPOINT,
         user=DATABASE_USER,
@@ -163,13 +163,7 @@ async def on_startup() -> None:
         database=DATABASE_DB,
         init=__init_connection,
     )
-    locker_task_handler = asyncio.create_task(locker_task())
-    update_experiments_task_handler = asyncio.create_task(update_experiments_task())
 
-
-async def main():
-    global locker_task_handler, update_experiments_task_handler
-    await on_startup()
     locker_task_handler = asyncio.create_task(locker_task())
     update_experiments_task_handler = asyncio.create_task(update_experiments_task())
     while True:
@@ -181,5 +175,3 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-
-
