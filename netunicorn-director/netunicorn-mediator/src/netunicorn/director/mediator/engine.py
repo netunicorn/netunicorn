@@ -319,7 +319,7 @@ async def prepare_experiment_task(
                 "INSERT INTO compilations "
                 "(experiment_id, compilation_id, status, result, architecture, pipeline, environment_definition) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7) "
-                "ON CONFLICT DO UPDATE SET "
+                "ON CONFLICT (experiment_id, compilation_id) DO UPDATE SET "
                 "status = $3, result = $4, architecture = $5, pipeline = $6::bytea, environment_definition = $7::jsonb",
                 experiment_id,
                 compilation_uid,
