@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, NoReturn
 
 import asyncpg
 from netunicorn.base.experiment import (
@@ -19,6 +19,8 @@ from netunicorn.director.base.utils import __init_connection
 
 logger = get_logger("netunicorn.director.processor")
 db_conn_pool: Optional[asyncpg.Pool] = None
+
+locker_task_handler: asyncio.Task
 
 
 async def collect_all_executor_results(
@@ -58,7 +60,7 @@ async def collect_all_executor_results(
     )
 
 
-async def watch_experiment_task(experiment_id: str, lock: str) -> None:
+async def watch_experiment_task(experiment_id: str) -> None:
     experiment_data = await db_conn_pool.fetchval(
         "SELECT data::jsonb FROM experiments WHERE experiment_id = $1", experiment_id
     )
@@ -182,14 +184,6 @@ async def watch_experiment_task(experiment_id: str, lock: str) -> None:
         ExperimentStatus.FINISHED.value,
         experiment_id,
     )
-
-    # remove all locks from nodes
-    node_names = [x.node.name for x in experiment]
-    await db_conn_pool.execute(
-        "UPDATE locks SET username = NULL WHERE username = $1 AND node_name = ANY($2)",
-        lock,
-        node_names,
-    )
     logger.debug(f"Experiment {experiment_id} finished.")
     return
 
@@ -198,8 +192,43 @@ async def healthcheck() -> None:
     await db_conn_pool.fetchval("SELECT 1")
 
 
+async def locker_task(timeout_sec: int = 10) -> NoReturn:
+    logger.info("Locker task started.")
+    while True:
+        # get all experiment that are in PREPARING, READY, or RUNNING state
+        experiments = await db_conn_pool.fetch(
+            "SELECT username, data FROM experiments WHERE status IN ($1, $2, $3)",
+            ExperimentStatus.PREPARING.value,
+            ExperimentStatus.READY.value,
+            ExperimentStatus.RUNNING.value,
+        )
+        if not experiments:
+            await asyncio.sleep(timeout_sec)
+            continue
+
+        nodes_to_lock: set[tuple[str, str, str]] = set()   # username, node_name, connector
+        # get all nodes that are in use by these experiments
+        for experiment in experiments:
+            experiment_data = Experiment.from_json(experiment["data"])
+            for deployment in experiment_data.deployment_map:
+                nodes_to_lock.add((experiment["username"], deployment.node.name, deployment.node['connector']))
+
+        # in transaction: delete all from the table and insert current locks
+        async with db_conn_pool.acquire() as conn:
+            async with conn.transaction():
+                # we want to delete all rows, seriously
+                await conn.execute("TRUNCATE TABLE locks")
+                for username, node, connector in nodes_to_lock:
+                    await conn.executemany(
+                        "INSERT INTO locks (username, node_name, connector) VALUES ($1, $2, $3)",
+                        username, node, connector
+                    )
+
+        await asyncio.sleep(timeout_sec)
+
+
 async def on_startup() -> None:
-    global db_conn_pool
+    global db_conn_pool, locker_task_handler
     db_conn_pool = await asyncpg.create_pool(
         host=DATABASE_ENDPOINT,
         user=DATABASE_USER,
@@ -208,7 +237,9 @@ async def on_startup() -> None:
         init=__init_connection,
     )
     await healthcheck()
+    locker_task_handler = asyncio.create_task(locker_task())
 
 
 async def on_shutdown() -> None:
+    locker_task_handler.cancel()
     await db_conn_pool.close()
