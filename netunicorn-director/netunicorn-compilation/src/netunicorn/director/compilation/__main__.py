@@ -6,6 +6,7 @@ from typing import Optional
 
 import asyncpg
 import netunicorn.base.environment_definitions as environment_definitions
+from netunicorn.director.base.utils import __init_connection
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,
@@ -186,6 +187,7 @@ async def main():
         password=DATABASE_PASSWORD,
         database=DATABASE_DB,
         host=DATABASE_ENDPOINT,
+        init=__init_connection
     )
     await db_conn_pool.fetchval("SELECT 1")
     while True:
