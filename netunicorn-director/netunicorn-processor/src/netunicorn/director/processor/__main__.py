@@ -76,20 +76,21 @@ async def update_experiment_status(experiment_id: str, experiment: Experiment, s
         experiment_id,
     )
     alive_executor_exists = False
-    for executor_id, keepalive in unfinished_executors:
-        if keepalive is None:
-            keepalive = start_time
-        if keepalive + timedelta(minutes=executor_timeouts[executor_id]) < datetime.now():
-            # executor is timed out
-            await db_conn_pool.execute(
-                "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
-                "Executor timed out",
-                experiment_id,
-                executor_id,
-            )
-            logger.debug(f"Executor {executor_id} timed out")
-        else:
-            alive_executor_exists = True
+    if unfinished_executors is not None:
+        for executor_id, keepalive in unfinished_executors:
+            if keepalive is None:
+                keepalive = start_time
+            if keepalive + timedelta(minutes=executor_timeouts[executor_id]) < datetime.now():
+                # executor is timed out
+                await db_conn_pool.execute(
+                    "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
+                    "Executor timed out",
+                    experiment_id,
+                    executor_id,
+                )
+                logger.debug(f"Executor {executor_id} timed out")
+            else:
+                alive_executor_exists = True
 
     if not alive_executor_exists:
         # all executors are finished
