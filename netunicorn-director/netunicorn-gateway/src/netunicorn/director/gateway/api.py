@@ -93,6 +93,6 @@ async def receive_heartbeat(executor_id: str):
     Receives executor heartbeat and updates it in database
     """
     await db_conn_pool.execute(
-        "UPDATE executors SET keepalive = NOW() WHERE executor_id = $1",
+        "UPDATE executors SET keepalive = timezone('utc', now()) WHERE executor_id = $1",
         executor_id,
     )
