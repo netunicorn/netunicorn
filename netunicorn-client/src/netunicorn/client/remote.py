@@ -28,9 +28,7 @@ class RemoteClient(BaseClient):
         self.password = password
 
     def healthcheck(self) -> bool:
-        result = req.get(
-            f"{self.endpoint}/health"
-        )
+        result = req.get(f"{self.endpoint}/health")
         if result.status_code == 200:
             return True
 
@@ -73,7 +71,10 @@ class RemoteClient(BaseClient):
                 "Failed to get experiments status. "
                 f"Status code: {result_data.status_code}, content: {result_data.content}"
             )
-        return {k: ExperimentExecutionInformation.from_json(v) for k, v in result_data.json().items()}
+        return {
+            k: ExperimentExecutionInformation.from_json(v)
+            for k, v in result_data.json().items()
+        }
 
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
         data = json.dumps(experiment, cls=UnicornEncoder)

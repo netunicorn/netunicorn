@@ -20,14 +20,18 @@ logger = get_logger("netunicorn.director.compiler")
 
 
 async def record_compilation_result(
-    experiment_id: str, compilation_id: str, success: bool, log: str, db_conn_pool: asyncpg.Pool
+    experiment_id: str,
+    compilation_id: str,
+    success: bool,
+    log: str,
+    db_conn_pool: asyncpg.Pool,
 ) -> None:
     await db_conn_pool.execute(
         "UPDATE compilations SET status = $3, result = $4 WHERE experiment_id = $1 AND compilation_id = $2",
         experiment_id,
         compilation_id,
         success,
-        log
+        log,
     )
 
 
@@ -58,7 +62,7 @@ async def docker_compilation_cycle(
             compilation_id,
             False,
             f"Container image name is not provided",
-            db_pool
+            db_pool,
         )
         return True
 
@@ -68,7 +72,7 @@ async def docker_compilation_cycle(
             compilation_id,
             False,
             f"Unknown architecture for docker container: {architecture}",
-            db_pool
+            db_pool,
         )
         return True
 
@@ -85,7 +89,7 @@ async def docker_compilation_cycle(
             compilation_id,
             False,
             f"Unknown Python version: {environment_definition.build_context.python_version}",
-            db_pool
+            db_pool,
         )
         return True
     python_version = ".".join(match_result[0].split(".")[:2])
@@ -98,7 +102,7 @@ async def docker_compilation_cycle(
             False,
             f"Commands list of the environment definition is incorrect. "
             f"Received object: {commands}",
-            db_pool
+            db_pool,
         )
         return True
 
@@ -155,7 +159,9 @@ async def docker_compilation_cycle(
         if result is not None:
             log += f"\n{result.stdout.decode()}"
             log += f"\n{result.stderr.decode()}"
-        await record_compilation_result(experiment_id, compilation_id, False, log, db_pool)
+        await record_compilation_result(
+            experiment_id, compilation_id, False, log, db_pool
+        )
         return True
 
     logger.debug(f"Finished compilation of {compilation_id}")
@@ -166,7 +172,7 @@ async def docker_compilation_cycle(
         compilation_id,
         True,
         result.stdout.decode("utf-8") + "\n" + result.stderr.decode("utf-8"),
-        db_pool
+        db_pool,
     )
     return True
 
@@ -177,7 +183,7 @@ async def main():
         password=DATABASE_PASSWORD,
         database=DATABASE_DB,
         host=DATABASE_ENDPOINT,
-        init=__init_connection
+        init=__init_connection,
     )
     await db_conn_pool.fetchval("SELECT 1")
     while True:
@@ -189,5 +195,6 @@ async def main():
         # nothing was compiled, wait for a while
         await asyncio.sleep(10)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     asyncio.run(main())

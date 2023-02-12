@@ -79,7 +79,9 @@ async def get_experiment_id_and_status(
     return Success((experiment_id, status))
 
 
-async def __filter_locked_nodes(username: str, nodes: CountableNodePool) -> CountableNodePool:
+async def __filter_locked_nodes(
+    username: str, nodes: CountableNodePool
+) -> CountableNodePool:
     # go over all countable pools, select these nodes and check their locks
     # if the node is locked by not the current user, then add it to the list of locked nodes
     # and create a new pool with the same name, but without the locked nodes
@@ -95,7 +97,7 @@ async def __filter_locked_nodes(username: str, nodes: CountableNodePool) -> Coun
             current_lock = await db_conn_pool.fetchval(
                 "SELECT username FROM locks WHERE node_name = $1 AND connector = $2",
                 node_name,
-                nodes[i]['connector']
+                nodes[i]["connector"],
             )
             if current_lock is not None and current_lock != username:
                 nodes.pop(i)
@@ -116,7 +118,9 @@ async def get_nodes(username: str) -> Result[Nodes, str]:
     return Success(result)
 
 
-async def get_experiments(username: str) -> Result[dict[str, ExperimentExecutionInformation], str]:
+async def get_experiments(
+    username: str,
+) -> Result[dict[str, ExperimentExecutionInformation], str]:
     experiment_names = await db_conn_pool.fetch(
         "SELECT experiment_name FROM experiments WHERE username = $1",
         username,
@@ -227,7 +231,9 @@ async def experiment_precheck(experiment: Experiment) -> Result[None, str]:
 async def prepare_experiment_task(
     experiment_name: str, experiment: Experiment, username: str
 ) -> None:
-    async def prepare_deployment(_username: str, _deployment: Deployment, _envs: dict) -> None:
+    async def prepare_deployment(
+        _username: str, _deployment: Deployment, _envs: dict
+    ) -> None:
         _deployment.executor_id = str(uuid4())
         env_def = _deployment.environment_definition
 
@@ -235,7 +241,7 @@ async def prepare_experiment_task(
         current_lock = await db_conn_pool.fetchval(
             "SELECT username FROM locks WHERE node_name = $1 AND connector = $2",
             _deployment.node.name,
-            _deployment.node['connector'],
+            _deployment.node["connector"],
         )
         if current_lock is not None and current_lock != _username:
             _deployment.prepared = False
@@ -327,7 +333,7 @@ async def prepare_experiment_task(
                 None,
                 _deployment.node.architecture.value,
                 _deployment.pipeline,
-                _deployment.environment_definition.__json__()
+                _deployment.environment_definition.__json__(),
             )
 
     # if experiment is already in progress - do nothing
@@ -504,7 +510,9 @@ async def start_experiment(experiment_name: str, username: str) -> Result[str, s
             str(e),
             experiment_id,
         )
-        return Failure(f"Error occurred during experiment execution, ask administrator for details. \n{e}")
+        return Failure(
+            f"Error occurred during experiment execution, ask administrator for details. \n{e}"
+        )
     return Success(experiment_name)
 
 

@@ -17,7 +17,6 @@ from netunicorn.director.base.resources import (
 )
 from netunicorn.director.base.utils import __init_connection
 
-
 logger = get_logger("netunicorn.director.processor")
 db_conn_pool: Optional[asyncpg.Pool] = None
 
@@ -54,9 +53,11 @@ async def collect_executors_results(experiment_id: str, experiment: Experiment) 
     )
 
 
-async def update_experiment_status(experiment_id: str, experiment: Experiment, start_time: datetime) -> None:
+async def update_experiment_status(
+    experiment_id: str, experiment: Experiment, start_time: datetime
+) -> None:
     if await db_conn_pool.fetchval(
-            "SELECT error FROM experiments WHERE experiment_id = $1", experiment_id
+        "SELECT error FROM experiments WHERE experiment_id = $1", experiment_id
     ):
         # error happened, set status to UNKNOWN
         await db_conn_pool.execute(
@@ -70,7 +71,9 @@ async def update_experiment_status(experiment_id: str, experiment: Experiment, s
     await collect_executors_results(experiment_id, experiment)
 
     # check if there are any unfinished executors
-    executor_timeouts = {x.executor_id: x.keep_alive_timeout_minutes for x in experiment}
+    executor_timeouts = {
+        x.executor_id: x.keep_alive_timeout_minutes for x in experiment
+    }
     unfinished_executors = await db_conn_pool.fetchval(
         "SELECT executor_id, keepalive FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id,
@@ -80,7 +83,10 @@ async def update_experiment_status(experiment_id: str, experiment: Experiment, s
         for executor_id, keepalive in unfinished_executors:
             if keepalive is None:
                 keepalive = start_time
-            if keepalive + timedelta(minutes=executor_timeouts[executor_id]) < datetime.now():
+            if (
+                keepalive + timedelta(minutes=executor_timeouts[executor_id])
+                < datetime.now()
+            ):
                 # executor is timed out
                 await db_conn_pool.execute(
                     "UPDATE executors SET finished = TRUE, error = $1 WHERE experiment_id = $2 AND executor_id = $3",
@@ -115,7 +121,9 @@ async def update_experiments_task(timeout_sec: int = 30) -> NoReturn:
                     experiment_id = line["experiment_id"]
                     experiment = Experiment.from_json(line["data"])
                     start_time = line["start_time"]
-                    await update_experiment_status(experiment_id, experiment, start_time)
+                    await update_experiment_status(
+                        experiment_id, experiment, start_time
+                    )
         await asyncio.sleep(timeout_sec)
 
 
@@ -133,7 +141,9 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
             await asyncio.sleep(timeout_sec)
             continue
 
-        nodes_to_lock: set[tuple[str, str, str]] = set()  # username, node_name, connector
+        nodes_to_lock: set[
+            tuple[str, str, str]
+        ] = set()  # username, node_name, connector
         # get all nodes that are in use by these experiments
         for experiment in experiments:
             experiment_data = experiment["data"]
@@ -141,7 +151,13 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
                 continue
             experiment_data = Experiment.from_json(experiment_data)
             for deployment in experiment_data.deployment_map:
-                nodes_to_lock.add((experiment["username"], deployment.node.name, deployment.node['connector']))
+                nodes_to_lock.add(
+                    (
+                        experiment["username"],
+                        deployment.node.name,
+                        deployment.node["connector"],
+                    )
+                )
 
         # in transaction: delete all from the table and insert current locks
         async with db_conn_pool.acquire() as conn:
@@ -151,10 +167,24 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
                 for username, node, connector in nodes_to_lock:
                     await conn.execute(
                         "INSERT INTO locks (username, node_name, connector) VALUES ($1, $2, $3)",
-                        username, node, connector
+                        username,
+                        node,
+                        connector,
                     )
 
         await asyncio.sleep(timeout_sec)
+
+
+async def task_done_callback(fut: asyncio.Future) -> None:
+    try:
+        locker_task_handler.cancel()
+        update_experiments_task_handler.cancel()
+        fut.result()
+    except asyncio.CancelledError:
+        logger.info("Task cancelled.")
+    except Exception as e:
+        logger.error(f"Task failed: {e}")
+        raise e
 
 
 async def main():
@@ -168,15 +198,13 @@ async def main():
     )
 
     locker_task_handler = asyncio.create_task(locker_task())
-    update_experiments_task_handler = asyncio.create_task(update_experiments_task())
-    while True:
-        await asyncio.sleep(1)
-        if locker_task_handler.done() or update_experiments_task_handler.done():
-            locker_task_handler.cancel()
-            update_experiments_task_handler.cancel()
-            logger.error(locker_task_handler.result())
-            logger.error(update_experiments_task_handler.result())
-            break
+    locker_task_handler.add_done_callback(task_done_callback)
 
-if __name__ == '__main__':
+    update_experiments_task_handler = asyncio.create_task(update_experiments_task())
+    update_experiments_task_handler.add_done_callback(task_done_callback)
+
+    await asyncio.gather(locker_task_handler, update_experiments_task_handler)
+
+
+if __name__ == "__main__":
     asyncio.run(main())

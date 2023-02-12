@@ -163,10 +163,14 @@ class CountableNodePool(Nodes):
     def __len__(self) -> int:
         return len(self.nodes)
 
-    def __getitem__(self, key: int) -> Union[Node, UncountableNodePool, CountableNodePool]:
+    def __getitem__(
+        self, key: int
+    ) -> Union[Node, UncountableNodePool, CountableNodePool]:
         return self.nodes[key]
 
-    def __setitem__(self, key: int, value: Union[Node, CountableNodePool, UncountableNodePool]):
+    def __setitem__(
+        self, key: int, value: Union[Node, CountableNodePool, UncountableNodePool]
+    ):
         self.nodes[key] = value
 
     def __iter__(self) -> Iterator[Union[Node, UncountableNodePool, CountableNodePool]]:
@@ -191,7 +195,9 @@ class CountableNodePool(Nodes):
         return CountableNodePool(nodes)
 
     def take(self, count: int) -> Sequence[Node]:
-        iterator = chain.from_iterable([x] if isinstance(x, Node) else x for x in self.nodes)
+        iterator = chain.from_iterable(
+            [x] if isinstance(x, Node) else x for x in self.nodes
+        )
         nodes = []
         for _ in range(count):
             try:
