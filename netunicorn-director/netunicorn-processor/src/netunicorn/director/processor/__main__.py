@@ -136,7 +136,10 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
         nodes_to_lock: set[tuple[str, str, str]] = set()  # username, node_name, connector
         # get all nodes that are in use by these experiments
         for experiment in experiments:
-            experiment_data = Experiment.from_json(experiment["data"])
+            experiment_data = experiment["data"]
+            if experiment_data is None:
+                continue
+            experiment_data = Experiment.from_json(experiment_data)
             for deployment in experiment_data.deployment_map:
                 nodes_to_lock.add((experiment["username"], deployment.node.name, deployment.node['connector']))
 
@@ -171,6 +174,8 @@ async def main():
         if locker_task_handler.done() or update_experiments_task_handler.done():
             locker_task_handler.cancel()
             update_experiments_task_handler.cancel()
+            logger.error(locker_task_handler.result())
+            logger.error(update_experiments_task_handler.result())
             break
 
 if __name__ == '__main__':
