@@ -6,7 +6,6 @@ from typing import Any, Collection, List, Union
 from returns.result import Failure, Result, Success
 
 from .nodes import Node
-from .utils import safe
 
 # Keep classes for export
 Success = Success
@@ -52,13 +51,10 @@ class Task:
 
     def __init__(self):
         """
-        ## This method is to be overridden by your implementation. ##
         This is a constructor for the task. Any variables (state) that `run` method should use should be provided here.
+        Please, do not forget to call `super().__init__()` in your implementation.
         """
         self.name = str(uuid.uuid4())  # Each task should have a name
-        self.run = safe(
-            self.run
-        )  # Each task should have its `run` method protected by `safe` decorator
 
     def run(self) -> Any:
         """

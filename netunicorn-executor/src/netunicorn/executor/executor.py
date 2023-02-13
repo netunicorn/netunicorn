@@ -15,6 +15,7 @@ import requests as req
 import requests.exceptions
 from netunicorn.base.pipeline import Pipeline, PipelineElementResult, PipelineResult
 from netunicorn.base.task import Task
+from netunicorn.base.utils import safe
 from netunicorn.base.utils import NonStablePool as Pool
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
@@ -59,17 +60,15 @@ class PipelineExecutor:
         self.logger.info(f"Current directory: {os.getcwd()}")
 
         # increasing timeout in secs to wait between network requests
-        self.backoff_func = (0.1 * x for x in itertools.count(1))
+        self.backoff_func = (0.5 * x for x in range(75))  # limit to 1425 secs total, then StopIteration Exception
 
         self.pipeline: Optional[Pipeline] = None
         self.step_results: List[PipelineElementResult] = []
         self.pipeline_results: Optional[Result[PipelineResult, PipelineResult]] = None
         self.state = PipelineExecutorState.LOOKING_FOR_PIPELINE
 
-        self.heartbeat_task = asyncio.create_task(self.heartbeat())
-
     async def heartbeat(self):
-        while self.state != PipelineExecutorState.FINISHED:
+        while self.state == PipelineExecutorState.EXECUTING:
             try:
                 await asyncio.sleep(30)
                 req.get(
@@ -101,7 +100,6 @@ class PipelineExecutor:
                 elif self.state == PipelineExecutorState.REPORTING:
                     self.report_results()
                 elif self.state == PipelineExecutorState.FINISHED:
-                    self.heartbeat_task.cancel()
                     return
             except Exception as e:
                 self.logger.exception(e)
@@ -156,7 +154,7 @@ class PipelineExecutor:
     @staticmethod
     def execute_task(task: bytes) -> None:
         task = cloudpickle.loads(task)
-        result = task.run()
+        result = safe(task.run)()
         return cloudpickle.dumps(result)
 
     def std_redirection(self, *args):
@@ -168,6 +166,8 @@ class PipelineExecutor:
         """
         This method executes the pipeline.
         """
+
+        self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
         if not self.pipeline:
             self.logger.error("No pipeline to execute.")
