@@ -1,9 +1,9 @@
 import json
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import requests as req
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
-from netunicorn.base.minions import MinionPool
+from netunicorn.base.nodes import Nodes
 from netunicorn.base.utils import UnicornEncoder
 
 from .base import BaseClient
@@ -27,17 +27,54 @@ class RemoteClient(BaseClient):
         self.login = login
         self.password = password
 
-    def get_minion_pool(self) -> MinionPool:
-        result = req.get(
-            f"{self.endpoint}/api/v1/minion_pool", auth=(self.login, self.password)
-        )
+    def healthcheck(self) -> bool:
+        result = req.get(f"{self.endpoint}/health")
         if result.status_code == 200:
-            return MinionPool.from_json(result.json())
+            return True
 
         raise RemoteClientException(
-            f"Failed to get minion pool. "
+            f"The backend is not in healthy state. "
             f"Status code: {result.status_code}, content: {result.content}"
         )
+
+    def get_nodes(self) -> Nodes:
+        result = req.get(
+            f"{self.endpoint}/api/v1/nodes", auth=(self.login, self.password)
+        )
+        if result.status_code == 200:
+            return Nodes.dispatch_and_deserialize(result.json())
+
+        raise RemoteClientException(
+            f"Failed to get node pool. "
+            f"Status code: {result.status_code}, content: {result.content}"
+        )
+
+    def delete_experiment(self, experiment_name: str) -> None:
+        result_data = req.delete(
+            f"{self.endpoint}/api/v1/experiment/{experiment_name}",
+            auth=(self.login, self.password),
+        )
+        if result_data.status_code != 200:
+            raise RemoteClientException(
+                f"Failed to delete the experiment {experiment_name}. "
+                f"Status code: {result_data.status_code}, content: {result_data.content}"
+            )
+
+    def get_experiments(self) -> dict[str, ExperimentExecutionInformation]:
+
+        result_data = req.get(
+            f"{self.endpoint}/api/v1/experiment",
+            auth=(self.login, self.password),
+        )
+        if result_data.status_code != 200:
+            raise RemoteClientException(
+                "Failed to get experiments status. "
+                f"Status code: {result_data.status_code}, content: {result_data.content}"
+            )
+        return {
+            k: ExperimentExecutionInformation.from_json(v)
+            for k, v in result_data.json().items()
+        }
 
     def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
         data = json.dumps(experiment, cls=UnicornEncoder)

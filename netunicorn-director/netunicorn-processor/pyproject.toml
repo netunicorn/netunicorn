@@ -1,0 +1,21 @@
+[project]
+name = "netunicorn-director-processor"
+version = "0.2.0"
+authors = [
+    {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
+]
+description = "netunicorn processor module"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["netunicorn"]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "netunicorn-base >= 0.2.0",
+    "asyncpg",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

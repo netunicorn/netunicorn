@@ -5,8 +5,7 @@ from typing import Any, Collection, List, Union
 
 from returns.result import Failure, Result, Success
 
-from .minions import Minion
-from .utils import safe
+from .nodes import Node
 
 # Keep classes for export
 Success = Success
@@ -52,13 +51,10 @@ class Task:
 
     def __init__(self):
         """
-        ## This method is to be overridden by your implementation. ##
         This is a constructor for the task. Any variables (state) that `run` method should use should be provided here.
+        Please, do not forget to call `super().__init__()` in your implementation.
         """
         self.name = str(uuid.uuid4())  # Each task should have a name
-        self.run = safe(
-            self.run
-        )  # Each task should have its `run` method protected by `safe` decorator
 
     def run(self) -> Any:
         """
@@ -78,9 +74,9 @@ class TaskDispatcher:
     This class is a wrapper for several tasks that are designed to implement the same functionality for different
     architectures, platforms, etc. It is designed to be used as a base class for your task dispatcher.
 
-    Dispatching is done by calling the dispatch method. This method should return the proper task for the minion
-    given minion information (such as architecture, platform, etc).
+    Dispatching is done by calling the dispatch method. This method should return the proper task for the node
+    given node information (such as architecture, platform, etc).
     """
 
-    def dispatch(self, minion: Minion) -> Task:
+    def dispatch(self, node: Node) -> Task:
         raise NotImplementedError

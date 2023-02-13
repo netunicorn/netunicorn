@@ -20,7 +20,9 @@ from .engine import (
     credentials_check,
     experiment_precheck,
     get_experiment_status,
-    get_minion_pool,
+    get_nodes,
+    get_experiments,
+    delete_experiment,
     open_db_connection,
     prepare_experiment_task,
     start_experiment,
@@ -30,7 +32,11 @@ from .engine import (
 
 logger = get_logger("netunicorn.director.mediator")
 
-app = FastAPI()
+proxy_path = os.environ.get("PROXY_PATH", "").removesuffix("/")
+app = FastAPI(
+    title="netunicorn API",
+    root_path=proxy_path,
+)
 security = HTTPBasic()
 
 
@@ -80,9 +86,14 @@ async def on_shutdown():
     logger.info("Mediator stopped")
 
 
-@app.get("/api/v1/minion_pool", status_code=200)
-async def minion_pool_handler(username: str = Depends(check_credentials)):
-    return await get_minion_pool(username)
+@app.get("/api/v1/nodes", status_code=200)
+async def nodes_handler(username: str = Depends(check_credentials)):
+    return result_to_response(await get_nodes(username))
+
+
+@app.get("/api/v1/experiment", status_code=200)
+async def get_experiments_handler(username: str = Depends(check_credentials)):
+    return result_to_response(await get_experiments(username))
 
 
 @app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
@@ -130,6 +141,14 @@ async def experiment_status_handler(
     experiment_name: str, username: str = Depends(check_credentials)
 ):
     result = await get_experiment_status(experiment_name, username)
+    return result_to_response(result)
+
+
+@app.delete("/api/v1/experiment/{experiment_name}", status_code=200)
+async def delete_experiment_handler(
+    experiment_name: str, username: str = Depends(check_credentials)
+):
+    result = await delete_experiment(experiment_name, username)
     return result_to_response(result)
 
 

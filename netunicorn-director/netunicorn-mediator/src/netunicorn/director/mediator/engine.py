@@ -1,11 +1,11 @@
 import asyncio
-import base64
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import asyncpg.connection
 import requests as req
+from netunicorn.base.nodes import Nodes, Node, CountableNodePool
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.experiment import (
     Deployment,
@@ -27,9 +27,7 @@ from .preprocessors import experiment_preprocessors
 from .resources import (
     DOCKER_REGISTRY_URL,
     NETUNICORN_AUTH_ENDPOINT,
-    NETUNICORN_COMPILATION_ENDPOINT,
     NETUNICORN_INFRASTRUCTURE_ENDPOINT,
-    NETUNICORN_PROCESSOR_ENDPOINT,
     logger,
 )
 
@@ -57,8 +55,6 @@ async def check_services_availability():
 
     for url in [
         NETUNICORN_INFRASTRUCTURE_ENDPOINT,
-        NETUNICORN_PROCESSOR_ENDPOINT,
-        NETUNICORN_COMPILATION_ENDPOINT,
         NETUNICORN_AUTH_ENDPOINT,
     ]:
         req.get(f"{url}/health", timeout=30).raise_for_status()
@@ -83,22 +79,82 @@ async def get_experiment_id_and_status(
     return Success((experiment_id, status))
 
 
-async def get_minion_pool(username: str) -> list:
-    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/minions"
+async def __filter_locked_nodes(
+    username: str, nodes: CountableNodePool
+) -> CountableNodePool:
+    # go over all countable pools, select these nodes and check their locks
+    # if the node is locked by not the current user, then add it to the list of locked nodes
+    # and create a new pool with the same name, but without the locked nodes
+    for i in reversed(range(len(nodes))):
+        if isinstance(nodes[i], CountableNodePool):
+            new_pool = await __filter_locked_nodes(username, nodes[i])
+            if len(new_pool) == 0:
+                nodes.pop(i)
+            else:
+                nodes[i] = new_pool
+        if isinstance(nodes[i], Node):
+            node_name = nodes[i].name
+            current_lock = await db_conn_pool.fetchval(
+                "SELECT username FROM locks WHERE node_name = $1 AND connector = $2",
+                node_name,
+                nodes[i]["connector"],
+            )
+            if current_lock is not None and current_lock != username:
+                nodes.pop(i)
+        else:
+            continue
+    return nodes
+
+
+async def get_nodes(username: str) -> Result[Nodes, str]:
+    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/nodes/{username}"
     result = req.get(url, timeout=300)
     result.raise_for_status()
-    serialized_minion_pool = result.json()
-    result = []
-    for minion in serialized_minion_pool:
-        minion_name = minion.get("name", "")
-        current_lock = await db_conn_pool.fetchval(
-            "SELECT username FROM locks WHERE minion_name = $1", minion_name
-        )
-        if current_lock is None or current_lock == username:
-            result.append(minion)
-        else:
-            logger.debug(f"Minion {minion_name} is locked by {current_lock}")
-    return result
+    serialized_nodes = result.json()
+    # noinspection PyTypeChecker
+    # we know that top is always CountableNodePool
+    nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)
+    result = await __filter_locked_nodes(username, nodes)
+    return Success(result)
+
+
+async def get_experiments(
+    username: str,
+) -> Result[dict[str, ExperimentExecutionInformation], str]:
+    experiment_names = await db_conn_pool.fetch(
+        "SELECT experiment_name FROM experiments WHERE username = $1",
+        username,
+    )
+    if experiment_names is None:
+        return Success({})
+
+    results = {}
+    for line in experiment_names:
+        name = line["experiment_name"]
+        result = await get_experiment_status(name, username)
+        if is_successful(result):
+            results[name] = result.unwrap()
+    return Success(results)
+
+
+async def delete_experiment(experiment_name: str, username: str) -> Result[None, str]:
+    result = await get_experiment_id_and_status(experiment_name, username)
+    if is_successful(result):
+        experiment_id, status = result.unwrap()
+    else:
+        return Failure(result.failure())
+
+    if status in {ExperimentStatus.RUNNING, ExperimentStatus.PREPARING}:
+        return Failure(f"Experiment is in status {status}, cannot delete it")
+
+    # actually just rename the user to save experiment in the history
+    await db_conn_pool.execute(
+        "UPDATE experiments SET username = $1, status = $2 WHERE experiment_id = $3",
+        f"deleted_{username}",
+        ExperimentStatus.FINISHED.value,
+        experiment_id,
+    )
+    return Success(None)
 
 
 async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
@@ -175,36 +231,32 @@ async def experiment_precheck(experiment: Experiment) -> Result[None, str]:
 async def prepare_experiment_task(
     experiment_name: str, experiment: Experiment, username: str
 ) -> None:
-    async def prepare_deployment(_username: str, _deployment: Deployment) -> None:
+    async def prepare_deployment(
+        _username: str, _deployment: Deployment, _envs: dict
+    ) -> None:
         _deployment.executor_id = str(uuid4())
         env_def = _deployment.environment_definition
 
-        # insert minion name if it doesn't exist yet
-        await db_conn_pool.execute(
-            "INSERT INTO locks (minion_name) VALUES ($1) ON CONFLICT DO NOTHING",
-            _deployment.minion.name,
-        )
-
-        # check and set lock on device for the user
+        # check lock on device for the user
         current_lock = await db_conn_pool.fetchval(
-            "UPDATE locks SET username = $1 WHERE minion_name = $2 AND (username IS NULL OR username = $1) RETURNING username",
-            _username,
-            _deployment.minion.name,
+            "SELECT username FROM locks WHERE node_name = $1 AND connector = $2",
+            _deployment.node.name,
+            _deployment.node["connector"],
         )
-        if current_lock != _username:
+        if current_lock is not None and current_lock != _username:
             _deployment.prepared = False
             _deployment.error = Exception(
-                f"Minion {_deployment.minion.name} is already locked by {current_lock}"
+                f"Node {_deployment.node.name} is already locked by {current_lock}"
             )
             return
 
         if isinstance(env_def, ShellExecution):
             # nothing to do with shell execution
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, minion_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
-                _deployment.minion.name,
+                _deployment.node.name,
                 _deployment.pipeline,
             )
             _deployment.prepared = True
@@ -222,22 +274,20 @@ async def prepare_experiment_task(
             isinstance(env_def, DockerImage)
             and _deployment.environment_definition.image is not None
         ):
-            # specific case: if key is in the envs, that means that we need to wait this deployment too
+            # specific case: if key is in the _envs, that means that we need to wait this deployment too
             # description: that happens when 2 deployments have the same environment definition object in memory,
             #  so update of image name for one deployment will affect another deployment
-            _key = hash(
-                (_deployment.pipeline, env_def, _deployment.minion.architecture)
-            )
-            if _key in envs:
+            _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
+            if _key in _envs:
                 deployments_waiting_for_compilation.append(_deployment)
                 return
 
             # if docker image is provided - just provide pipeline
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, minion_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
-                _deployment.minion.name,
+                _deployment.node.name,
                 _deployment.pipeline,
             )
             _deployment.prepared = True
@@ -249,13 +299,11 @@ async def prepare_experiment_task(
         ):
             deployments_waiting_for_compilation.append(_deployment)
 
-            # unique compilation is combination of pipeline, docker commands, and minion architecture
-            _key = hash(
-                (_deployment.pipeline, env_def, _deployment.minion.architecture)
-            )
-            if _key in envs:
+            # unique compilation is combination of pipeline, docker commands, and node architecture
+            _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
+            if _key in _envs:
                 # we already started this compilation
-                env_def.image = f"{DOCKER_REGISTRY_URL}/{envs[_key]}:latest"
+                env_def.image = f"{DOCKER_REGISTRY_URL}/{_envs[_key]}:latest"
                 return
 
             # if not - we create a new compilation request
@@ -267,32 +315,26 @@ async def prepare_experiment_task(
             # put compilation_uid both to:
             #  - original key without image name (so any similar deployments will find it)
             #  - key with image name (so we can find it later)
-            envs[_key] = compilation_uid
-            envs[
-                hash((_deployment.pipeline, env_def, _deployment.minion.architecture))
+            _envs[_key] = compilation_uid
+            _envs[
+                hash((_deployment.pipeline, env_def, _deployment.node.architecture))
             ] = compilation_uid
 
-            # start compilation process for this compilation request
-            _url = f"{NETUNICORN_COMPILATION_ENDPOINT}/compile/docker"
-            _data = {
-                "experiment_id": experiment_id,
-                "compilation_id": compilation_uid,
-                "architecture": _deployment.minion.architecture.value,
-                "environment_definition": _deployment.environment_definition.__json__(),
-                "pipeline": base64.b64encode(_deployment.pipeline).decode("utf-8"),
-            }
-            try:
-                req.post(_url, json=_data, timeout=30).raise_for_status()
-            except Exception as _e:
-                logger.exception(_e)
-                await db_conn_pool.execute(
-                    "INSERT INTO compilations (experiment_id, compilation_id, status, result) VALUES ($1, $2, $3, $4) "
-                    "ON CONFLICT (experiment_id, compilation_id) DO UPDATE SET status = $3, result = $4",
-                    experiment_id,
-                    compilation_uid,
-                    False,
-                    str(_e),
-                )
+            # put compilation request to the database
+            await db_conn_pool.execute(
+                "INSERT INTO compilations "
+                "(experiment_id, compilation_id, status, result, architecture, pipeline, environment_definition) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7) "
+                "ON CONFLICT (experiment_id, compilation_id) DO UPDATE SET "
+                "status = $3, result = $4, architecture = $5, pipeline = $6::bytea, environment_definition = $7::jsonb",
+                experiment_id,
+                compilation_uid,
+                None,
+                None,
+                _deployment.node.architecture.value,
+                _deployment.pipeline,
+                _deployment.environment_definition.__json__(),
+            )
 
     # if experiment is already in progress - do nothing
     if await db_conn_pool.fetchval(
@@ -331,7 +373,7 @@ async def prepare_experiment_task(
     envs = {}  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation = []
     for deployment in experiment:
-        await prepare_deployment(username, deployment)
+        await prepare_deployment(username, deployment, envs)
 
     compilation_ids = set(envs.values())
     await db_conn_pool.execute(
@@ -340,12 +382,8 @@ async def prepare_experiment_task(
         experiment_id,
     )
     await db_conn_pool.executemany(
-        "INSERT INTO compilations (experiment_id, compilation_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-        [(experiment_id, compilation_id) for compilation_id in compilation_ids],
-    )
-    await db_conn_pool.executemany(
-        "INSERT INTO executors (experiment_id, executor_id, minion_name, finished) VALUES ($1, $2, $3, FALSE) ON CONFLICT DO NOTHING",
-        [(experiment_id, d.executor_id, d.minion.name) for d in experiment],
+        "INSERT INTO executors (experiment_id, executor_id, node_name, finished) VALUES ($1, $2, $3, FALSE) ON CONFLICT DO NOTHING",
+        [(experiment_id, d.executor_id, d.node.name) for d in experiment],
     )
 
     everything_compiled = False
@@ -359,7 +397,7 @@ async def prepare_experiment_task(
         )
         everything_compiled = all([c["result"] for c in compilation_statuses])
 
-    # collect compilation results and set preparation flag for all minions
+    # collect compilation results and set preparation flag for all nodes
     compilation_results: Dict[str, Tuple[bool, str]] = {}
     data = await db_conn_pool.fetch(
         "SELECT compilation_id, status, result FROM compilations WHERE experiment_id = $1 AND compilation_id = ANY($2)",
@@ -383,7 +421,7 @@ async def prepare_experiment_task(
             (
                 deployment.pipeline,
                 deployment.environment_definition,
-                deployment.minion.architecture,
+                deployment.node.architecture,
             )
         )
         compilation_result = compilation_results.get(
@@ -401,7 +439,7 @@ async def prepare_experiment_task(
 
     # start deployment of environments
     try:
-        url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/start_deployment/{experiment_id}"
+        url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/deployment/{username}/{experiment_id}"
         req.post(url, timeout=30).raise_for_status()
     except Exception as e:
         logger.exception(e)
@@ -455,11 +493,26 @@ async def start_experiment(experiment_name: str, username: str) -> Result[str, s
             f"Experiment {experiment_name} is not ready to start. Current status: {status}"
         )
 
-    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/start_execution/{experiment_id}"
-    req.post(url, timeout=30).raise_for_status()
+    await db_conn_pool.execute(
+        "UPDATE experiments SET status = $1, start_time = timezone('utc', now()) WHERE experiment_id = $2",
+        ExperimentStatus.RUNNING.value,
+        experiment_id,
+    )
 
-    url = f"{NETUNICORN_PROCESSOR_ENDPOINT}/watch_experiment/{experiment_id}/{username}"
-    req.post(url, timeout=30).raise_for_status()
+    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/execution/{username}/{experiment_id}"
+    try:
+        req.post(url, timeout=30).raise_for_status()
+    except Exception as e:
+        logger.exception(e)
+        await db_conn_pool.execute(
+            "UPDATE experiments SET status = $1, error = $2 WHERE experiment_id = $3",
+            ExperimentStatus.UNKNOWN.value,
+            str(e),
+            experiment_id,
+        )
+        return Failure(
+            f"Error occurred during experiment execution, ask administrator for details. \n{e}"
+        )
     return Success(experiment_name)
 
 
@@ -487,7 +540,7 @@ async def cancel_experiment(experiment_name: str, username: str) -> Result[str, 
         "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id,
     )
-    await cancel_executors_task([x["executor_id"] for x in executors])
+    await cancel_executors_task(username, [x["executor_id"] for x in executors])
     return Success(f"Experiment {experiment_name} cancellation started")
 
 
@@ -518,10 +571,10 @@ async def cancel_executors(executors: List[str], username: str) -> Result[str, s
             f"Some of executors do not belong to user {username}: \n {other_executors}"
         )
 
-    await cancel_executors_task(executors)
+    await cancel_executors_task(username, executors)
     return Success("Executors cancellation started")
 
 
-async def cancel_executors_task(executors: List[str]) -> None:
-    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/cancel_executors"
-    req.post(url, json=executors, timeout=30).raise_for_status()
+async def cancel_executors_task(username: str, executors: List[str]) -> None:
+    url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/executors/{username}"
+    req.delete(url, json=executors, timeout=30).raise_for_status()

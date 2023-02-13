@@ -35,6 +35,14 @@ def safe(
     def decorator(*args: Any, **kwargs: Any):
         try:
             result = function(*args, **kwargs)
+            if result is None:
+                """
+                Well, ok. The problem is that if we create Success(None) object,
+                cloudpickle serialization somewhere breaks and we receive this error:
+                AttributeError: 'Success' object has no attribute '_inner_value'
+                So, for now - we return 0 instead of None until we find and fix/report the bug.
+                """
+                result = 0
             if isinstance(result, Result):
                 return result
             return Success(result)
@@ -81,6 +89,7 @@ class UnicornEncoder(JSONEncoder):
         if isinstance(obj, bytes):
             return b64encode(obj).decode("utf-8")
         if isinstance(obj, Result):
+            # noinspection PyProtectedMember
             return {"result_type": obj.__class__.__name__, "result": obj._inner_value}
         if isinstance(obj, EnvironmentDefinition):
             return {

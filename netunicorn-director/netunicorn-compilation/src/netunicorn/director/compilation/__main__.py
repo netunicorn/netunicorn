@@ -1,13 +1,12 @@
+import asyncio
 import re
 import subprocess
-from base64 import b64decode
 from collections.abc import Iterable
 from typing import Optional
 
 import asyncpg
 import netunicorn.base.environment_definitions as environment_definitions
-import uvicorn
-from fastapi import BackgroundTasks, FastAPI
+from netunicorn.director.base.utils import __init_connection
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,
@@ -16,80 +15,56 @@ from netunicorn.director.base.resources import (
     get_logger,
 )
 
-from .api_types import CompilationRequest
 
 logger = get_logger("netunicorn.director.compiler")
 
-app = FastAPI()
-db_conn_pool: Optional[asyncpg.Pool] = None
 
-
-@app.get("/health")
-async def health_check() -> str:
-    await db_conn_pool.fetchval("SELECT 1")
-    return "OK"
-
-
-@app.on_event("startup")
-async def startup():
-    global db_conn_pool
-    db_conn_pool = await asyncpg.create_pool(
-        user=DATABASE_USER,
-        password=DATABASE_PASSWORD,
-        database=DATABASE_DB,
-        host=DATABASE_ENDPOINT,
-    )
-    await db_conn_pool.fetchval("SELECT 1")
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    await db_conn_pool.close()
-
-
-@app.post("/compile/shell")
-async def shell_compilation(request: CompilationRequest):
-    await record_compilation_result(
-        request.experiment_id,
-        request.compilation_id,
-        True,
-        "Shell environments do not require compilation.",
-    )
-
-
-@app.post("/compile/docker")
-async def docker_compilation(
-    request: CompilationRequest, background_tasks: BackgroundTasks
-):
-    environment_definition = environment_definitions.DockerImage.from_json(
-        request.environment_definition
-    )
-    background_tasks.add_task(
-        docker_compilation_task,
-        request.experiment_id,
-        request.compilation_id,
-        request.architecture,
-        environment_definition,
-        b64decode(request.pipeline),
-    )
-    return {"result": "success"}
-
-
-async def docker_compilation_task(
+async def record_compilation_result(
     experiment_id: str,
     compilation_id: str,
-    architecture: str,
-    environment_definition: environment_definitions.DockerImage,
-    pipeline: bytes,
+    success: bool,
+    log: str,
+    db_conn_pool: asyncpg.Pool,
 ) -> None:
+    await db_conn_pool.execute(
+        "UPDATE compilations SET status = $3, result = $4 WHERE experiment_id = $1 AND compilation_id = $2",
+        experiment_id,
+        compilation_id,
+        success,
+        log,
+    )
+
+
+async def docker_compilation_cycle(
+    db_pool: asyncpg.pool.Pool,
+) -> bool:
+    compilation_request = await db_pool.fetchrow(
+        "SELECT "
+        "experiment_id, compilation_id, architecture, "
+        "pipeline::bytea, environment_definition::jsonb "
+        "FROM compilations WHERE status IS NULL LIMIT 1"
+    )
+    if compilation_request is None:
+        # nothing to compile, sleep
+        return False
+
+    experiment_id: str = compilation_request["experiment_id"]
+    compilation_id: str = compilation_request["compilation_id"]
+    architecture: str = compilation_request["architecture"]
+    pipeline: Optional[bytes] = compilation_request["pipeline"]
+    environment_definition = environment_definitions.DockerImage.from_json(
+        compilation_request["environment_definition"]
+    )
+
     if environment_definition.image is None:
         await record_compilation_result(
             experiment_id,
             compilation_id,
             False,
             f"Container image name is not provided",
+            db_pool,
         )
-        return
+        return True
 
     if architecture not in {"linux/arm64", "linux/amd64"}:
         await record_compilation_result(
@@ -97,8 +72,9 @@ async def docker_compilation_task(
             compilation_id,
             False,
             f"Unknown architecture for docker container: {architecture}",
+            db_pool,
         )
-        return
+        return True
 
     logger.debug(
         f"Received compilation request: {compilation_id=}, {architecture=}, "
@@ -113,8 +89,9 @@ async def docker_compilation_task(
             compilation_id,
             False,
             f"Unknown Python version: {environment_definition.build_context.python_version}",
+            db_pool,
         )
-        return
+        return True
     python_version = ".".join(match_result[0].split(".")[:2])
 
     commands = environment_definition.commands or []
@@ -125,18 +102,23 @@ async def docker_compilation_task(
             False,
             f"Commands list of the environment definition is incorrect. "
             f"Received object: {commands}",
+            db_pool,
         )
-        return
-
-    with open(f"{compilation_id}.pipeline", "wb") as f:
-        f.write(pipeline)
+        return True
 
     filelines = [
         f"FROM python:{python_version}-slim",
         "ENV DEBIAN_FRONTEND=noninteractive",
         "RUN apt update",
         *["RUN " + str(x).removeprefix("sudo ") for x in commands],
-        f"COPY {compilation_id}.pipeline unicorn.pipeline",
+    ]
+
+    if pipeline is not None:
+        filelines.append(f"COPY {compilation_id}.pipeline unicorn.pipeline")
+        with open(f"{compilation_id}.pipeline", "wb") as f:
+            f.write(pipeline)
+
+    filelines += [
         f"RUN pip install netunicorn-base",
         f"RUN pip install netunicorn-executor",
     ]
@@ -177,8 +159,10 @@ async def docker_compilation_task(
         if result is not None:
             log += f"\n{result.stdout.decode()}"
             log += f"\n{result.stderr.decode()}"
-        await record_compilation_result(experiment_id, compilation_id, False, log)
-        return
+        await record_compilation_result(
+            experiment_id, compilation_id, False, log, db_pool
+        )
+        return True
 
     logger.debug(f"Finished compilation of {compilation_id}")
     if isinstance(result, subprocess.CompletedProcess):
@@ -188,21 +172,29 @@ async def docker_compilation_task(
         compilation_id,
         True,
         result.stdout.decode("utf-8") + "\n" + result.stderr.decode("utf-8"),
+        db_pool,
     )
+    return True
 
 
-async def record_compilation_result(
-    experiment_id: str, compilation_id: str, success: bool, log: str
-) -> None:
-    await db_conn_pool.execute(
-        "INSERT INTO compilations (experiment_id, compilation_id, status, result) VALUES ($1, $2, $3, $4) "
-        "ON CONFLICT (experiment_id, compilation_id) DO UPDATE SET status = $3, result = $4",
-        experiment_id,
-        compilation_id,
-        success,
-        log,
+async def main():
+    db_conn_pool = await asyncpg.create_pool(
+        user=DATABASE_USER,
+        password=DATABASE_PASSWORD,
+        database=DATABASE_DB,
+        host=DATABASE_ENDPOINT,
+        init=__init_connection,
     )
-    return
+    await db_conn_pool.fetchval("SELECT 1")
+    while True:
+        result = await docker_compilation_cycle(db_conn_pool)
+        if result:
+            # something was compiled
+            continue
+
+        # nothing was compiled, wait for a while
+        await asyncio.sleep(10)
 
 
-uvicorn.run(app, host="127.0.0.1", port=26513)
+if __name__ == "__main__":
+    asyncio.run(main())

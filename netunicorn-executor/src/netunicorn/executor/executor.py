@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import time
+from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from copy import deepcopy
 from enum import Enum
@@ -14,6 +15,7 @@ import requests as req
 import requests.exceptions
 from netunicorn.base.pipeline import Pipeline, PipelineElementResult, PipelineResult
 from netunicorn.base.task import Task
+from netunicorn.base.utils import safe
 from netunicorn.base.utils import NonStablePool as Pool
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
@@ -27,7 +29,12 @@ class PipelineExecutorState(Enum):
 
 
 class PipelineExecutor:
-    def __init__(self, executor_id: str = None, gateway_endpoint: str = None):
+    def __init__(
+        self,
+        executor_id: str = None,
+        gateway_endpoint: str = None,
+        experiment_id: str = None,
+    ):
         # load up our own ID and the local communicator info
         self.gateway_endpoint: str = (
             gateway_endpoint or os.environ["NETUNICORN_GATEWAY_ENDPOINT"]
@@ -38,8 +45,11 @@ class PipelineExecutor:
         self.executor_id: str = (
             executor_id or os.environ.get("NETUNICORN_EXECUTOR_ID") or "Unknown"
         )
+        self.experiment_id: str = (
+            experiment_id or os.environ.get("NETUNICORN_EXPERIMENT_ID") or "Unknown"
+        )
 
-        self.logfile_name = f"executor_{executor_id}.log"
+        self.logfile_name = f"executor_{self.executor_id}.log"
         self.print_file = open(self.logfile_name, "at")
 
         logging.basicConfig()
@@ -49,18 +59,30 @@ class PipelineExecutor:
         )
         self.logger.info(f"Current directory: {os.getcwd()}")
 
-        # increasing timeout in msecs to wait between network requests
-        self.backoff_func = (0.1 * x for x in itertools.count(1))
+        # increasing timeout in secs to wait between network requests
+        self.backoff_func = (0.5 * x for x in range(75))  # limit to 1425 secs total, then StopIteration Exception
 
         self.pipeline: Optional[Pipeline] = None
         self.step_results: List[PipelineElementResult] = []
         self.pipeline_results: Optional[Result[PipelineResult, PipelineResult]] = None
         self.state = PipelineExecutorState.LOOKING_FOR_PIPELINE
 
+    async def heartbeat(self):
+        while self.state == PipelineExecutorState.EXECUTING:
+            try:
+                await asyncio.sleep(30)
+                req.get(
+                    f"{self.gateway_endpoint}/api/v1/executor/heartbeat/{self.executor_id}"
+                )
+            except Exception as e:
+                self.logger.exception(e)
+            except CancelledError:
+                return
+
     def create_logger(self) -> logging.Logger:
         logger = logging.getLogger(f"executor_{self.executor_id}")
         logger.addHandler(logging.FileHandler(self.logfile_name))
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         return logger
 
     def __call__(self) -> None:
@@ -132,10 +154,11 @@ class PipelineExecutor:
     @staticmethod
     def execute_task(task: bytes) -> None:
         task = cloudpickle.loads(task)
-        result = task.run()
+        result = safe(task.run)()
         return cloudpickle.dumps(result)
 
     def std_redirection(self, *args):
+        _ = args
         sys.stdout = self.print_file
         sys.stderr = self.print_file
 
@@ -143,6 +166,8 @@ class PipelineExecutor:
         """
         This method executes the pipeline.
         """
+
+        self.heartbeat_task = asyncio.create_task(self.heartbeat())
 
         if not self.pipeline:
             self.logger.error("No pipeline to execute.")
