@@ -74,7 +74,7 @@ async def update_experiment_status(
     executor_timeouts = {
         x.executor_id: x.keep_alive_timeout_minutes for x in experiment
     }
-    unfinished_executors = await db_conn_pool.fetchval(
+    unfinished_executors = await db_conn_pool.fetch(
         "SELECT executor_id, keepalive FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id,
     )
