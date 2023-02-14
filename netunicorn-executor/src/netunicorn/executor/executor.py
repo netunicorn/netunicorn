@@ -1,5 +1,4 @@
 import asyncio
-import itertools
 import logging
 import os
 import sys
@@ -34,6 +33,7 @@ class PipelineExecutor:
         executor_id: str = None,
         gateway_endpoint: str = None,
         experiment_id: str = None,
+        heartbeat: bool = True,
     ):
         # load up our own ID and the local communicator info
         self.gateway_endpoint: str = (
@@ -51,6 +51,7 @@ class PipelineExecutor:
 
         self.logfile_name = f"executor_{self.executor_id}.log"
         self.print_file = open(self.logfile_name, "at")
+        self.heartbeat_flag = heartbeat
 
         logging.basicConfig()
         self.logger = self.create_logger()
@@ -167,7 +168,8 @@ class PipelineExecutor:
         This method executes the pipeline.
         """
 
-        self.heartbeat_task = asyncio.create_task(self.heartbeat())
+        if self.heartbeat_flag:
+            asyncio.create_task(self.heartbeat())
 
         if not self.pipeline:
             self.logger.error("No pipeline to execute.")
