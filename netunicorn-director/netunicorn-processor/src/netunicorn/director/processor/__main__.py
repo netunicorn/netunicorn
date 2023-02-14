@@ -80,7 +80,9 @@ async def update_experiment_status(
     )
     alive_executor_exists = False
     if unfinished_executors is not None:
-        for executor_id, keepalive in unfinished_executors:
+        for line in unfinished_executors:
+            executor_id = line["executor_id"]
+            keepalive = line["keepalive"]
             if keepalive is None:
                 keepalive = start_time
             if (
