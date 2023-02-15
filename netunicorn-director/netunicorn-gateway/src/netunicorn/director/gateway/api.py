@@ -23,7 +23,7 @@ GATEWAY_PORT = int(os.environ.get("NETUNICORN_GATEWAY_PORT", "26512"))
 logger.info(f"Starting gateway on {GATEWAY_IP}:{GATEWAY_PORT}")
 
 app = FastAPI()
-db_conn_pool: Optional[asyncpg.Pool] = None
+db_conn_pool: asyncpg.Pool
 
 
 @app.get("/health")
@@ -33,7 +33,7 @@ async def health_check() -> str:
 
 
 @app.on_event("startup")
-async def startup():
+async def startup() -> None:
     global db_conn_pool
     db_conn_pool = await asyncpg.create_pool(
         user=DATABASE_USER,
@@ -46,7 +46,7 @@ async def startup():
 
 
 @app.on_event("shutdown")
-async def shutdown():
+async def shutdown() -> None:
     await db_conn_pool.close()
     logger.info("Gateway stopped")
 
@@ -69,13 +69,13 @@ async def return_pipeline(executor_id: str, response: Response) -> Optional[byte
             f"Executor {executor_id} requested pipeline, but it is not found"
         )
         response.status_code = 204
-        return
+        return None
 
     return b64encode(pipeline)
 
 
 @app.post("/api/v1/executor/result")
-async def receive_result(result: PipelineResult):
+async def receive_result(result: PipelineResult) -> None:
     """
     Receives pipeline execution results from executor and stores it in database
     """
@@ -88,7 +88,7 @@ async def receive_result(result: PipelineResult):
 
 
 @app.post("/api/v1/executor/heartbeat/{executor_id}")
-async def receive_heartbeat(executor_id: str):
+async def receive_heartbeat(executor_id: str) -> None:
     """
     Receives executor heartbeat and updates it in database
     """
