@@ -74,7 +74,7 @@ class PipelineExecutor:
         while self.state == PipelineExecutorState.EXECUTING:
             try:
                 await asyncio.sleep(30)
-                req.get(
+                req.post(
                     f"{self.gateway_endpoint}/api/v1/executor/heartbeat/{self.executor_id}"
                 )
             except Exception as e:
