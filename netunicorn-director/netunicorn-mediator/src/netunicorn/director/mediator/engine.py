@@ -540,8 +540,7 @@ async def cancel_experiment(experiment_name: str, username: str) -> Result[str, 
         "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id,
     )
-    await cancel_executors_task(username, [x["executor_id"] for x in executors])
-    return Success(f"Experiment {experiment_name} cancellation started")
+    return await cancel_executors_task(username, [x["executor_id"] for x in executors])
 
 
 async def cancel_executors(executors: List[str], username: str) -> Result[str, str]:
