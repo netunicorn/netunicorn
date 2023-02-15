@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from typing import List
+from typing import List, Any, Union
 
 import uvicorn
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
@@ -40,7 +40,7 @@ app = FastAPI(
 security = HTTPBasic()
 
 
-def result_to_response(result: Result) -> Response:
+def result_to_response(result: Result[Any, Any]) -> Response:
     status_code = 200 if is_successful(result) else 400
     content = result.unwrap() if is_successful(result) else result.failure()
     return Response(
@@ -50,7 +50,7 @@ def result_to_response(result: Result) -> Response:
     )
 
 
-async def check_credentials(credentials: HTTPBasicCredentials = Depends(security)):
+async def check_credentials(credentials: HTTPBasicCredentials = Depends(security)) -> str:
     current_username = credentials.username
     current_token = credentials.password
     if not await credentials_check(current_username, current_token):
@@ -63,7 +63,7 @@ async def check_credentials(credentials: HTTPBasicCredentials = Depends(security
 
 
 @app.exception_handler(Exception)
-async def unicorn_exception_handler(_: Request, exc: Exception):
+async def unicorn_exception_handler(_: Request, exc: Exception) -> Response:
     logger.exception(exc)
     return Response(status_code=500, content=str(exc))
 
@@ -75,24 +75,24 @@ async def health_check() -> str:
 
 
 @app.on_event("startup")
-async def on_startup():
+async def on_startup() -> None:
     await open_db_connection()
     logger.info("Mediator started, connection to DB established")
 
 
 @app.on_event("shutdown")
-async def on_shutdown():
+async def on_shutdown() -> None:
     await close_db_connection()
     logger.info("Mediator stopped")
 
 
 @app.get("/api/v1/nodes", status_code=200)
-async def nodes_handler(username: str = Depends(check_credentials)):
+async def nodes_handler(username: str = Depends(check_credentials)) -> Response:
     return result_to_response(await get_nodes(username))
 
 
 @app.get("/api/v1/experiment", status_code=200)
-async def get_experiments_handler(username: str = Depends(check_credentials)):
+async def get_experiments_handler(username: str = Depends(check_credentials)) -> Response:
     return result_to_response(await get_experiments(username))
 
 
@@ -102,7 +102,7 @@ async def prepare_experiment_handler(
     request: Request,
     background_tasks: BackgroundTasks,
     username: str = Depends(check_credentials),
-):
+) -> Union[Response, str]:
     try:
         data = await request.json()
         experiment = Experiment.from_json(data)
@@ -131,7 +131,7 @@ async def prepare_experiment_handler(
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
 async def start_experiment_handler(
     experiment_name: str, username: str = Depends(check_credentials)
-):
+) -> Response:
     result = await start_experiment(experiment_name, username)
     return result_to_response(result)
 
@@ -139,7 +139,7 @@ async def start_experiment_handler(
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(
     experiment_name: str, username: str = Depends(check_credentials)
-):
+) -> Response:
     result = await get_experiment_status(experiment_name, username)
     return result_to_response(result)
 
@@ -147,7 +147,7 @@ async def experiment_status_handler(
 @app.delete("/api/v1/experiment/{experiment_name}", status_code=200)
 async def delete_experiment_handler(
     experiment_name: str, username: str = Depends(check_credentials)
-):
+) -> Response:
     result = await delete_experiment(experiment_name, username)
     return result_to_response(result)
 
@@ -155,7 +155,7 @@ async def delete_experiment_handler(
 @app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
 async def cancel_experiment_handler(
     experiment_name: str, username: str = Depends(check_credentials)
-):
+) -> Response:
     result = await cancel_experiment(experiment_name, username)
     return result_to_response(result)
 
@@ -163,7 +163,7 @@ async def cancel_experiment_handler(
 @app.post("/api/v1/executors/cancel", status_code=200)
 async def cancel_executors_handler(
     executors: List[str], username: str = Depends(check_credentials)
-):
+) -> Response:
     result = await cancel_executors(executors, username)
     return result_to_response(result)
 

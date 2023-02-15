@@ -31,8 +31,7 @@ from .resources import (
     logger,
 )
 
-db_conn_pool: Optional[asyncpg.Pool] = None
-current_tasks = set()
+db_conn_pool: asyncpg.Pool
 
 
 async def open_db_connection() -> None:
@@ -50,7 +49,7 @@ async def close_db_connection() -> None:
     await db_conn_pool.close()
 
 
-async def check_services_availability():
+async def check_services_availability() -> None:
     await db_conn_pool.fetchval("SELECT 1")
 
     for url in [
@@ -177,7 +176,7 @@ async def check_sudo_access(experiment: Experiment, username: str) -> Result[Non
 
 
 async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
-    def check_ports_types(ports_mapping: dict) -> bool:
+    def check_ports_types(ports_mapping: dict[int, int]) -> bool:
         for k, v in ports_mapping.items():
             try:
                 int(k), int(v)
@@ -185,7 +184,7 @@ async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
                 return False
         return True
 
-    def check_env_values(env_mapping: dict) -> bool:
+    def check_env_values(env_mapping: dict[str, str]) -> bool:
         for k, v in env_mapping.items():
             if " " in k or " " in v:
                 return False
@@ -232,7 +231,7 @@ async def prepare_experiment_task(
     experiment_name: str, experiment: Experiment, username: str
 ) -> None:
     async def prepare_deployment(
-        _username: str, _deployment: Deployment, _envs: dict
+        _username: str, _deployment: Deployment, _envs: dict[int, str]
     ) -> None:
         _deployment.executor_id = str(uuid4())
         env_def = _deployment.environment_definition
@@ -370,8 +369,8 @@ async def prepare_experiment_task(
         return
 
     # get all distinct combinations of environment_definitions and pipelines, and add compilation_request info to experiment items
-    envs = {}  # key: unique compilation request, result: compilation_uid
-    deployments_waiting_for_compilation = []
+    envs: dict[int, str] = {}  # key: unique compilation request, result: compilation_uid
+    deployments_waiting_for_compilation: List[Deployment] = []
     for deployment in experiment:
         await prepare_deployment(username, deployment, envs)
 
@@ -425,7 +424,7 @@ async def prepare_experiment_task(
             )
         )
         compilation_result = compilation_results.get(
-            envs.get(key, None), (False, "Compilation result not found")
+            envs.get(key, ""), (False, "Compilation result not found")
         )
         deployment.prepared = compilation_result[0]
         if not compilation_result[0]:

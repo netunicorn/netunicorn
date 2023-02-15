@@ -7,10 +7,12 @@ This module allows to add external preprocessors.
 """
 
 from netunicorn.base.experiment import Experiment
-
-experiment_preprocessors = []
+from typing import List
 
 
 class BasePreprocessor:
     def __call__(self, experiment: Experiment) -> Experiment:
         return experiment
+
+
+experiment_preprocessors: List[BasePreprocessor] = []
