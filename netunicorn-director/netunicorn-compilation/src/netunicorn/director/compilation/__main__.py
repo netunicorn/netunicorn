@@ -2,7 +2,7 @@ import asyncio
 import re
 import subprocess
 from collections.abc import Iterable
-from typing import Optional
+from typing import Optional, NoReturn
 
 import asyncpg
 import netunicorn.base.environment_definitions as environment_definitions
@@ -177,7 +177,7 @@ async def docker_compilation_cycle(
     return True
 
 
-async def main():
+async def main() -> NoReturn:
     db_conn_pool = await asyncpg.create_pool(
         user=DATABASE_USER,
         password=DATABASE_PASSWORD,
