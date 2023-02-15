@@ -579,5 +579,6 @@ async def cancel_executors_task(username: str, executors: List[str]) -> Result[s
     result = req.delete(url, json=executors, timeout=30)
     if not result.ok:
         error = result.content.decode("utf-8")
+        logger.error(error)
         return Failure(error)
     return Success("Executors cancellation started")
