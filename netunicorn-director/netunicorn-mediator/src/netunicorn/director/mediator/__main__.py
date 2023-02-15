@@ -50,7 +50,9 @@ def result_to_response(result: Result[Any, Any]) -> Response:
     )
 
 
-async def check_credentials(credentials: HTTPBasicCredentials = Depends(security)) -> str:
+async def check_credentials(
+    credentials: HTTPBasicCredentials = Depends(security),
+) -> str:
     current_username = credentials.username
     current_token = credentials.password
     if not await credentials_check(current_username, current_token):
@@ -92,11 +94,15 @@ async def nodes_handler(username: str = Depends(check_credentials)) -> Response:
 
 
 @app.get("/api/v1/experiment", status_code=200)
-async def get_experiments_handler(username: str = Depends(check_credentials)) -> Response:
+async def get_experiments_handler(
+    username: str = Depends(check_credentials),
+) -> Response:
     return result_to_response(await get_experiments(username))
 
 
-@app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200, response_model=None)
+@app.post(
+    "/api/v1/experiment/{experiment_name}/prepare", status_code=200, response_model=None
+)
 async def prepare_experiment_handler(
     experiment_name: str,
     request: Request,

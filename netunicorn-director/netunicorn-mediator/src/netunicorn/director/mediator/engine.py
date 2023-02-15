@@ -253,11 +253,13 @@ async def prepare_experiment_task(
         if isinstance(env_def, ShellExecution):
             # nothing to do with shell execution
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished, connector) "
+                "VALUES ($1, $2, $3, $4, FALSE, $5) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.node.name,
                 _deployment.pipeline,
+                _deployment.node["connector"],
             )
             _deployment.prepared = True
             return
@@ -284,11 +286,13 @@ async def prepare_experiment_task(
 
             # if docker image is provided - just provide pipeline
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished, connector) "
+                "VALUES ($1, $2, $3, $4, FALSE, $5) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.node.name,
                 _deployment.pipeline,
+                _deployment.node["connector"],
             )
             _deployment.prepared = True
             return
@@ -370,7 +374,9 @@ async def prepare_experiment_task(
         return
 
     # get all distinct combinations of environment_definitions and pipelines, and add compilation_request info to experiment items
-    envs: dict[int, str] = {}  # key: unique compilation request, result: compilation_uid
+    envs: dict[
+        int, str
+    ] = {}  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation: List[Deployment] = []
     for deployment in experiment:
         await prepare_deployment(username, deployment, envs)
@@ -382,8 +388,12 @@ async def prepare_experiment_task(
         experiment_id,
     )
     await db_conn_pool.executemany(
-        "INSERT INTO executors (experiment_id, executor_id, node_name, finished) VALUES ($1, $2, $3, FALSE) ON CONFLICT DO NOTHING",
-        [(experiment_id, d.executor_id, d.node.name) for d in experiment],
+        "INSERT INTO executors (experiment_id, executor_id, node_name, connector, finished) "
+        "VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+        [
+            (experiment_id, d.executor_id, d.node.name, d.node["connector"])
+            for d in experiment
+        ],
     )
 
     everything_compiled = False
@@ -573,7 +583,9 @@ async def cancel_executors(executors: List[str], username: str) -> Result[str, s
     return await cancel_executors_task(username, executors)
 
 
-async def cancel_executors_task(username: str, executors: List[str]) -> Result[str, str]:
+async def cancel_executors_task(
+    username: str, executors: List[str]
+) -> Result[str, str]:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/executors/{username}"
     result = req.delete(url, json=executors, timeout=30)
     if not result.ok:
