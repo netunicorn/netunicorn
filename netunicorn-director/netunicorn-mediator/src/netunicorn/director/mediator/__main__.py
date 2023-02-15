@@ -96,7 +96,7 @@ async def get_experiments_handler(username: str = Depends(check_credentials)) ->
     return result_to_response(await get_experiments(username))
 
 
-@app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200)
+@app.post("/api/v1/experiment/{experiment_name}/prepare", status_code=200, response_model=None)
 async def prepare_experiment_handler(
     experiment_name: str,
     request: Request,
