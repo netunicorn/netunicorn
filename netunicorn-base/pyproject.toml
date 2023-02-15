@@ -14,7 +14,15 @@ classifiers = [
 ]
 dependencies = [
     "returns",
+    "typing-extensions",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.mypy]
+python_version = "3.7"
+ignore_missing_imports = true
+strict = true
+explicit_package_bases = true
+exclude = "tests"

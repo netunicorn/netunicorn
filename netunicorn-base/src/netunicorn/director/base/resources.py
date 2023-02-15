@@ -38,8 +38,8 @@ LOGGING_LEVELS = {
     "CRITICAL": __logging.CRITICAL,
 }
 
-__logger_level = __os.environ.get("NETUNICORN_LOG_LEVEL", "INFO").upper()
-__logger_level = LOGGING_LEVELS.get(__logger_level, __logging.INFO)
+__logger_level_ = __os.environ.get("NETUNICORN_LOG_LEVEL", "INFO").upper()
+__logger_level = LOGGING_LEVELS.get(__logger_level_, __logging.INFO)
 
 
 def get_logger(name: str, level: int = __logger_level) -> __logging.Logger:

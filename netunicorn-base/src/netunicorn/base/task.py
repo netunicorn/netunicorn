@@ -32,12 +32,19 @@ class Task:
     requirements: List[str] = []
 
     # this variable would be overwritten before task start with results of previous tasks
-    previous_steps: List[Union[Result, Collection[Result]]] = []
+    previous_steps: List[Union[Result[Any, Any], Collection[Result[Any, Any]]]] = []
 
-    def __call__(self):
+    def __init__(self) -> None:
+        """
+        This is a constructor for the task. Any variables (state) that `run` method should use should be provided here.
+        Please, do not forget to call `super().__init__()` in your implementation.
+        """
+        self.name = str(uuid.uuid4())  # Each task should have a name
+
+    def __call__(self) -> Any:
         return self.run()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def add_requirement(self, command: str) -> Task:
@@ -48,13 +55,6 @@ class Task:
         """
         self.requirements.append(command)
         return self
-
-    def __init__(self):
-        """
-        This is a constructor for the task. Any variables (state) that `run` method should use should be provided here.
-        Please, do not forget to call `super().__init__()` in your implementation.
-        """
-        self.name = str(uuid.uuid4())  # Each task should have a name
 
     def run(self) -> Any:
         """

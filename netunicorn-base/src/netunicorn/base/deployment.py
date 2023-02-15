@@ -8,8 +8,9 @@ import netunicorn.base.environment_definitions
 
 from .nodes import Node
 from .pipeline import Pipeline
-from .task import TaskDispatcher
+from .task import TaskDispatcher, Task
 from .utils import SerializedPipelineType
+from .types import DeploymentRepresentation
 
 try:
     import cloudpickle  # it's needed only on client side, but this module is also imported on engine side
@@ -38,17 +39,18 @@ class Deployment:
                 for x in element
             ]
             for x in pipeline.tasks[i]:
-                self.environment_definition.commands.extend(x.requirements)
+                # now it's only Tasks
+                self.environment_definition.commands.extend(x.requirements)  # type: ignore
 
         self.pipeline = cloudpickle.dumps(pipeline)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Deployment: Node={self.node.name}, executor_id={self.executor_id}, prepared={self.prepared}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def __json__(self):
+    def __json__(self) -> DeploymentRepresentation:
         return {
             "node": self.node.__json__(),
             "prepared": self.prepared,
@@ -61,7 +63,7 @@ class Deployment:
         }
 
     @classmethod
-    def from_json(cls, data: dict):
+    def from_json(cls, data: DeploymentRepresentation) -> Deployment:
         instance = cls.__new__(cls)
 
         instance.node = Node.from_json(data["node"])
