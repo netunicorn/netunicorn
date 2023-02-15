@@ -1,4 +1,4 @@
-from typing import Iterable, Sequence
+from typing import Iterable, Dict
 from abc import ABC, abstractmethod
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
@@ -15,7 +15,7 @@ class BaseClient(ABC):
         pass
 
     @abstractmethod
-    def get_experiments(self) -> dict[str, ExperimentExecutionInformation]:
+    def get_experiments(self) -> Dict[str, ExperimentExecutionInformation]:
         """
         This method returns information about all experiments that belong to the user.
         :return: dictionary of experiment-name: ExperimentExecutionInformation
