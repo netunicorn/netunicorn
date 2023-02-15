@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from uuid import uuid4
 
 import asyncpg.connection
@@ -108,7 +108,8 @@ async def __filter_locked_nodes(
 async def get_nodes(username: str) -> Result[Nodes, str]:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/nodes/{username}"
     result = req.get(url, timeout=300)
-    result.raise_for_status()
+    if not result.ok:
+        return Failure(str(result.content))
     serialized_nodes = result.json()
     # noinspection PyTypeChecker
     # we know that top is always CountableNodePool
@@ -570,10 +571,13 @@ async def cancel_executors(executors: List[str], username: str) -> Result[str, s
             f"Some of executors do not belong to user {username}: \n {other_executors}"
         )
 
-    await cancel_executors_task(username, executors)
-    return Success("Executors cancellation started")
+    return await cancel_executors_task(username, executors)
 
 
-async def cancel_executors_task(username: str, executors: List[str]) -> None:
+async def cancel_executors_task(username: str, executors: List[str]) -> Result[str, str]:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/executors/{username}"
-    req.delete(url, json=executors, timeout=30).raise_for_status()
+    result = req.delete(url, json=executors, timeout=30)
+    if not result.ok:
+        error = result.content.decode("utf-8")
+        return Failure(error)
+    return Success("Executors cancellation started")
