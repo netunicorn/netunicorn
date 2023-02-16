@@ -4,6 +4,8 @@ name: Release netunicorn-client
 
 on:
   push:
+    paths:
+      - "netunicorn-client/pyproject.toml"
     branches: ["main"]
   workflow_dispatch:
 

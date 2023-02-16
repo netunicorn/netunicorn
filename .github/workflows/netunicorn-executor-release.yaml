@@ -4,6 +4,8 @@ name: Release netunicorn-executor
 
 on:
   push:
+    paths:
+      - "netunicorn-executor/pyproject.toml"
     branches: ["main"]
   workflow_dispatch:
 
