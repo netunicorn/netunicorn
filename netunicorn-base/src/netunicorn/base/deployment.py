@@ -33,6 +33,8 @@ class Deployment:
         self.environment_definition = deepcopy(pipeline.environment_definition)
         self.keep_alive_timeout_minutes = keep_alive_timeout_minutes
 
+        pipeline = deepcopy(pipeline)
+
         for i, element in enumerate(pipeline.tasks):
             pipeline.tasks[i] = [
                 x.dispatch(node) if isinstance(x, TaskDispatcher) else x
