@@ -1,10 +1,10 @@
 [project]
-name = "netunicorn-director-processor"
-version = "0.2.0"
+name = "netunicorn-director-infrastructure"
+version = "0.2.1"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
-description = "netunicorn processor module"
+description = "netunicorn infrastructure module"
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["netunicorn"]
@@ -13,8 +13,13 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
+    "fastapi",
     "netunicorn-base >= 0.2.0",
+    "uvicorn",
     "asyncpg",
+    "pyyaml",
+    "returns",
+    "aiohttp",
 ]
 
 [tool.setuptools.packages.find]
@@ -23,6 +28,4 @@ where = ["src"]
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
-explicit_package_bases = true
 strict = true
-exclude = "tests"

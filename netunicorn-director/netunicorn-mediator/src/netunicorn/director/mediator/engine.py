@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from uuid import uuid4
 
 import asyncpg.connection
@@ -31,8 +31,7 @@ from .resources import (
     logger,
 )
 
-db_conn_pool: Optional[asyncpg.Pool] = None
-current_tasks = set()
+db_conn_pool: asyncpg.Pool
 
 
 async def open_db_connection() -> None:
@@ -50,7 +49,7 @@ async def close_db_connection() -> None:
     await db_conn_pool.close()
 
 
-async def check_services_availability():
+async def check_services_availability() -> None:
     await db_conn_pool.fetchval("SELECT 1")
 
     for url in [
@@ -109,7 +108,8 @@ async def __filter_locked_nodes(
 async def get_nodes(username: str) -> Result[Nodes, str]:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/nodes/{username}"
     result = req.get(url, timeout=300)
-    result.raise_for_status()
+    if not result.ok:
+        return Failure(str(result.content))
     serialized_nodes = result.json()
     # noinspection PyTypeChecker
     # we know that top is always CountableNodePool
@@ -177,7 +177,7 @@ async def check_sudo_access(experiment: Experiment, username: str) -> Result[Non
 
 
 async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
-    def check_ports_types(ports_mapping: dict) -> bool:
+    def check_ports_types(ports_mapping: dict[int, int]) -> bool:
         for k, v in ports_mapping.items():
             try:
                 int(k), int(v)
@@ -185,7 +185,7 @@ async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
                 return False
         return True
 
-    def check_env_values(env_mapping: dict) -> bool:
+    def check_env_values(env_mapping: dict[str, str]) -> bool:
         for k, v in env_mapping.items():
             if " " in k or " " in v:
                 return False
@@ -232,7 +232,7 @@ async def prepare_experiment_task(
     experiment_name: str, experiment: Experiment, username: str
 ) -> None:
     async def prepare_deployment(
-        _username: str, _deployment: Deployment, _envs: dict
+        _username: str, _deployment: Deployment, _envs: dict[int, str]
     ) -> None:
         _deployment.executor_id = str(uuid4())
         env_def = _deployment.environment_definition
@@ -253,11 +253,13 @@ async def prepare_experiment_task(
         if isinstance(env_def, ShellExecution):
             # nothing to do with shell execution
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished, connector) "
+                "VALUES ($1, $2, $3, $4, FALSE, $5) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.node.name,
                 _deployment.pipeline,
+                _deployment.node["connector"],
             )
             _deployment.prepared = True
             return
@@ -284,11 +286,13 @@ async def prepare_experiment_task(
 
             # if docker image is provided - just provide pipeline
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished) VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished, connector) "
+                "VALUES ($1, $2, $3, $4, FALSE, $5) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.node.name,
                 _deployment.pipeline,
+                _deployment.node["connector"],
             )
             _deployment.prepared = True
             return
@@ -370,8 +374,10 @@ async def prepare_experiment_task(
         return
 
     # get all distinct combinations of environment_definitions and pipelines, and add compilation_request info to experiment items
-    envs = {}  # key: unique compilation request, result: compilation_uid
-    deployments_waiting_for_compilation = []
+    envs: dict[
+        int, str
+    ] = {}  # key: unique compilation request, result: compilation_uid
+    deployments_waiting_for_compilation: List[Deployment] = []
     for deployment in experiment:
         await prepare_deployment(username, deployment, envs)
 
@@ -382,8 +388,12 @@ async def prepare_experiment_task(
         experiment_id,
     )
     await db_conn_pool.executemany(
-        "INSERT INTO executors (experiment_id, executor_id, node_name, finished) VALUES ($1, $2, $3, FALSE) ON CONFLICT DO NOTHING",
-        [(experiment_id, d.executor_id, d.node.name) for d in experiment],
+        "INSERT INTO executors (experiment_id, executor_id, node_name, connector, finished) "
+        "VALUES ($1, $2, $3, $4, FALSE) ON CONFLICT DO NOTHING",
+        [
+            (experiment_id, d.executor_id, d.node.name, d.node["connector"])
+            for d in experiment
+        ],
     )
 
     everything_compiled = False
@@ -425,7 +435,7 @@ async def prepare_experiment_task(
             )
         )
         compilation_result = compilation_results.get(
-            envs.get(key, None), (False, "Compilation result not found")
+            envs.get(key, ""), (False, "Compilation result not found")
         )
         deployment.prepared = compilation_result[0]
         if not compilation_result[0]:
@@ -540,8 +550,7 @@ async def cancel_experiment(experiment_name: str, username: str) -> Result[str, 
         "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id,
     )
-    await cancel_executors_task(username, [x["executor_id"] for x in executors])
-    return Success(f"Experiment {experiment_name} cancellation started")
+    return await cancel_executors_task(username, [x["executor_id"] for x in executors])
 
 
 async def cancel_executors(executors: List[str], username: str) -> Result[str, str]:
@@ -571,10 +580,16 @@ async def cancel_executors(executors: List[str], username: str) -> Result[str, s
             f"Some of executors do not belong to user {username}: \n {other_executors}"
         )
 
-    await cancel_executors_task(username, executors)
-    return Success("Executors cancellation started")
+    return await cancel_executors_task(username, executors)
 
 
-async def cancel_executors_task(username: str, executors: List[str]) -> None:
+async def cancel_executors_task(
+    username: str, executors: List[str]
+) -> Result[str, str]:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/executors/{username}"
-    req.delete(url, json=executors, timeout=30).raise_for_status()
+    result = req.delete(url, json=executors, timeout=30)
+    if not result.ok:
+        error = result.content.decode("utf-8")
+        logger.error(error)
+        return Failure(error)
+    return Success("Executors cancellation started")

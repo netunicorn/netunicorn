@@ -3,10 +3,10 @@ import multiprocessing.pool
 from base64 import b64encode
 from functools import wraps
 from json import JSONEncoder
-from typing import Callable, List, TypeVar, Union
+from typing import Callable, List, TypeVar, Union, Any, Dict
 
 from netunicorn.base.environment_definitions import EnvironmentDefinition
-from returns.result import Any, Failure, Result, Success
+from returns.result import Failure, Result, Success
 
 _ValueType = TypeVar("_ValueType", covariant=True)
 _FailureValueType = TypeVar("_FailureValueType", covariant=True)
@@ -20,7 +20,7 @@ LogType = List[str]
 
 
 def safe(
-    function: _FunctionType,
+    function: _FunctionType,  # type: ignore
 ) -> Union[
     Callable[..., Result[_ValueType, Exception]],
     Callable[..., Result[_ValueType, _FailureValueType]],
@@ -32,7 +32,7 @@ def safe(
     """
 
     @wraps(function)
-    def decorator(*args: Any, **kwargs: Any):
+    def decorator(*args: Any, **kwargs: Any) -> Result[Any, Any]:
         try:
             result = function(*args, **kwargs)
             if result is None:
@@ -57,15 +57,15 @@ def safe(
 # Below is a solution to this problem.
 class NoDaemonProcess(multiprocessing.Process):
     @property
-    def daemon(self):
+    def daemon(self) -> bool:
         return False
 
     @daemon.setter
-    def daemon(self, value):
+    def daemon(self, value: Any) -> None:
         pass
 
 
-class NoDaemonContext(type(multiprocessing.get_context())):
+class NoDaemonContext(type(multiprocessing.get_context())):  # type: ignore
     Process = NoDaemonProcess
 
 
@@ -73,15 +73,15 @@ class NoDaemonContext(type(multiprocessing.get_context())):
 # because the latter is only a wrapper function, not a proper class.
 class NonStablePool(multiprocessing.pool.Pool):
     # noinspection PyArgumentList
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         kwargs["context"] = NoDaemonContext()
         super().__init__(*args, **kwargs)
 
 
 class UnicornEncoder(JSONEncoder):
-    def default(self, obj):
+    def default(self, obj: Any) -> Any:
         if isinstance(obj, Exception):
-            return obj.__reduce__()
+            return str(obj.__reduce__())
         if dataclasses.is_dataclass(obj):
             return dataclasses.asdict(obj)
         if hasattr(obj, "__json__"):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from copy import deepcopy
-from typing import Collection, List, Union
+from typing import Collection, List, Union, Any, Optional
 
 from returns.result import Result
 
@@ -11,7 +11,7 @@ from .task import Task, TaskDispatcher
 
 TaskElement = Union[Task, TaskDispatcher]
 PipelineElement = Union[TaskElement, Collection[TaskElement]]
-PipelineElementResult = Union[Result, Collection[Result]]
+PipelineElementResult = Union[Result[Any, Any], Collection[Result[Any, Any]]]
 PipelineResult = Collection[PipelineElementResult]
 
 
@@ -35,7 +35,7 @@ class Pipeline:
         tasks: Collection[PipelineElement] = (),
         early_stopping: bool = True,
         report_results: bool = True,
-        environment_definition: EnvironmentDefinition = None,
+        environment_definition: Optional[EnvironmentDefinition] = None,
     ):
         """
         Initialize Pipeline with a tuple of Tasks or TaskDispatchers and early_stopping flag.
@@ -76,8 +76,8 @@ class Pipeline:
         """
         return Pipeline(deepcopy(self.tasks), self.early_stopping)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Pipeline({self.name}): {self.tasks}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

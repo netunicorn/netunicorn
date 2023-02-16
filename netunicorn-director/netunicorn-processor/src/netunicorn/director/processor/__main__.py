@@ -18,10 +18,10 @@ from netunicorn.director.base.resources import (
 from netunicorn.director.base.utils import __init_connection
 
 logger = get_logger("netunicorn.director.processor")
-db_conn_pool: Optional[asyncpg.Pool] = None
+db_conn_pool: asyncpg.Pool
 
-locker_task_handler: asyncio.Task
-update_experiments_task_handler: asyncio.Task
+locker_task_handler: asyncio.Task[NoReturn]
+update_experiments_task_handler: asyncio.Task[NoReturn]
 
 
 async def collect_executors_results(experiment_id: str, experiment: Experiment) -> None:
@@ -74,7 +74,7 @@ async def update_experiment_status(
     executor_timeouts = {
         x.executor_id: x.keep_alive_timeout_minutes for x in experiment
     }
-    unfinished_executors = await db_conn_pool.fetchval(
+    unfinished_executors = await db_conn_pool.fetch(
         "SELECT executor_id, keepalive FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id,
     )
@@ -177,7 +177,7 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
         await asyncio.sleep(timeout_sec)
 
 
-async def task_done_callback(fut: asyncio.Future) -> None:
+async def task_done_callback(fut: asyncio.Future[NoReturn]) -> None:
     try:
         locker_task_handler.cancel()
         update_experiments_task_handler.cancel()
@@ -189,7 +189,7 @@ async def task_done_callback(fut: asyncio.Future) -> None:
         raise e
 
 
-async def main():
+async def main() -> None:
     global locker_task_handler, update_experiments_task_handler, db_conn_pool
     db_conn_pool = await asyncpg.create_pool(
         host=DATABASE_ENDPOINT,

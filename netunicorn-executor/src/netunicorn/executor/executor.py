@@ -7,7 +7,7 @@ from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from copy import deepcopy
 from enum import Enum
-from typing import Collection, List, Optional
+from typing import Collection, List, Optional, Any, Type
 
 import cloudpickle
 import requests as req
@@ -30,9 +30,9 @@ class PipelineExecutorState(Enum):
 class PipelineExecutor:
     def __init__(
         self,
-        executor_id: str = None,
-        gateway_endpoint: str = None,
-        experiment_id: str = None,
+        executor_id: Optional[str] = None,
+        gateway_endpoint: Optional[str] = None,
+        experiment_id: Optional[str] = None,
         heartbeat: bool = True,
     ):
         # load up our own ID and the local communicator info
@@ -61,18 +61,20 @@ class PipelineExecutor:
         self.logger.info(f"Current directory: {os.getcwd()}")
 
         # increasing timeout in secs to wait between network requests
-        self.backoff_func = (0.5 * x for x in range(75))  # limit to 1425 secs total, then StopIteration Exception
+        self.backoff_func = (
+            0.5 * x for x in range(75)
+        )  # limit to 1425 secs total, then StopIteration Exception
 
         self.pipeline: Optional[Pipeline] = None
         self.step_results: List[PipelineElementResult] = []
         self.pipeline_results: Optional[Result[PipelineResult, PipelineResult]] = None
         self.state = PipelineExecutorState.LOOKING_FOR_PIPELINE
 
-    async def heartbeat(self):
+    async def heartbeat(self) -> None:
         while self.state == PipelineExecutorState.EXECUTING:
             try:
                 await asyncio.sleep(30)
-                req.get(
+                req.post(
                     f"{self.gateway_endpoint}/api/v1/executor/heartbeat/{self.executor_id}"
                 )
             except Exception as e:
@@ -143,22 +145,22 @@ class PipelineExecutor:
             return
 
         if result.status_code == 200:
-            result = b64decode(result.content)
-            self.pipeline = cloudpickle.loads(result)
+            pipeline = b64decode(result.content)
+            self.pipeline = cloudpickle.loads(pipeline)
             self.state = PipelineExecutorState.EXECUTING
             self.logger.info("Successfully received pipeline.")
         else:
             self.logger.info(
-                f"Failed to receive pipeline. Status code: {result.status_code}, content: {result.content}"
+                f"Failed to receive pipeline. Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
             )
 
     @staticmethod
-    def execute_task(task: bytes) -> None:
-        task = cloudpickle.loads(task)
+    def execute_task(serialized_task: bytes) -> bytes:
+        task = cloudpickle.loads(serialized_task)
         result = safe(task.run)()
-        return cloudpickle.dumps(result)
+        return cloudpickle.dumps(result)  # type: ignore
 
-    def std_redirection(self, *args):
+    def std_redirection(self, *args: Any) -> None:
         _ = args
         sys.stdout = self.print_file
         sys.stderr = self.print_file
@@ -176,7 +178,7 @@ class PipelineExecutor:
             self.pipeline_results = Failure(tuple(self.step_results))
             return
 
-        resulting_type = Success
+        resulting_type: Type[Result[PipelineResult, PipelineResult]] = Success
         for element in self.pipeline.tasks:
 
             if isinstance(element, Task):
@@ -227,17 +229,15 @@ class PipelineExecutor:
         with open(self.logfile_name, "rt") as f:
             current_log = f.readlines()
 
-        results = self.pipeline_results
-
         try:
-            results = cloudpickle.dumps([results, current_log])
+            results = cloudpickle.dumps([self.pipeline_results, current_log])
         except Exception as e:
             results = cloudpickle.dumps([e, current_log])
-        results = b64encode(results).decode()
+        results_data = b64encode(results).decode()
         try:
             result = req.post(
                 f"{self.gateway_endpoint}/api/v1/executor/result",
-                json={"executor_id": self.executor_id, "results": results},
+                json={"executor_id": self.executor_id, "results": results_data},
                 timeout=30,
             )
             self.logger.info("Successfully reported results.")
@@ -250,7 +250,7 @@ class PipelineExecutor:
             self.state = PipelineExecutorState.FINISHED
         else:
             self.logger.warning(
-                f"Failed to report results. Status code: {result.status_code}, content: {result.content}"
+                f"Failed to report results. Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
             )
 
 

@@ -4,10 +4,11 @@ from copy import deepcopy
 
 from itertools import cycle, chain
 from uuid import uuid4
-from typing import Dict, Set, Union, Iterator, Callable, Sequence
+from typing import Dict, Set, Union, Iterator, Callable, Sequence, Any, List
 
 import netunicorn
-from netunicorn.base.architecture import Architecture
+from .architecture import Architecture
+from .types import NodeProperty, NodeRepresentation, NodesRepresentation
 
 from abc import ABC, abstractmethod
 
@@ -16,18 +17,18 @@ class Node:
     def __init__(
         self,
         name: str,
-        properties: Dict[str, Union[str, int, float, Set[str]]],
+        properties: Dict[str, NodeProperty],
         architecture: Architecture = Architecture.UNKNOWN,
     ):
         self.name = name
         self.properties = properties
-        self.additional_properties = {}
+        self.additional_properties: Dict[str, NodeProperty] = {}
         self.architecture = architecture
 
-    def __getitem__(self, item: str) -> Union[str, Set[str], None]:
+    def __getitem__(self, item: str) -> NodeProperty:
         return self.properties.get(item, None)
 
-    def __setitem__(self, key: str, value: Union[str, Set[str]]):
+    def __setitem__(self, key: str, value: NodeProperty) -> None:
         self.properties[key] = value
 
     def __str__(self) -> str:
@@ -36,15 +37,16 @@ class Node:
     def __repr__(self) -> str:
         return self.name
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         return (
-            self.name == other.name
+            isinstance(other, Node)
+            and self.name == other.name
             and self.properties == other.properties
             and self.additional_properties == other.additional_properties
             and self.architecture == other.architecture
         )
 
-    def __json__(self) -> dict:
+    def __json__(self) -> NodeRepresentation:
         return {
             "name": self.name,
             "properties": self.properties,
@@ -53,7 +55,7 @@ class Node:
         }
 
     @classmethod
-    def from_json(cls, data: dict) -> Node:
+    def from_json(cls, data: NodeRepresentation) -> Node:
         instance = cls(
             data["name"], data["properties"], Architecture(data["architecture"])
         )
@@ -67,26 +69,22 @@ class Nodes(ABC):
     """
 
     @abstractmethod
-    def __json__(self) -> dict:
+    def __json__(self) -> NodesRepresentation:
         """
         Returns a JSON representation of the object.
-        Required to have the next structure:
-        {
-            "node_pool_type": self.__class__.__name__,
-            "node_pool_data": { ... }
-        }
         """
         pass
 
     @staticmethod
-    def dispatch_and_deserialize(data: dict) -> Nodes:
-        return getattr(netunicorn.base.nodes, data["node_pool_type"]).from_json(
-            data["node_pool_data"]
-        )
+    def dispatch_and_deserialize(data: NodesRepresentation) -> Nodes:
+        cls: Nodes = getattr(netunicorn.base.nodes, data["node_pool_type"])
+        return cls.from_json(data["node_pool_data"])
 
     @classmethod
     @abstractmethod
-    def from_json(cls, data: dict) -> Nodes:
+    def from_json(
+        cls, data: List[Union[NodeRepresentation, NodesRepresentation]]
+    ) -> Nodes:
         """
         Accepts a JSON representation of the object (from "node_pool_data") and returns an instance of the object.
         """
@@ -104,7 +102,7 @@ class Nodes(ABC):
         pass
 
     @abstractmethod
-    def __getitem__(self, item) -> Node:
+    def __getitem__(self, item: int) -> Union[Node, Nodes]:
         pass
 
     @abstractmethod
@@ -129,7 +127,7 @@ class Nodes(ABC):
         pass
 
     @abstractmethod
-    def set_property(self, name: str, value: Union[str, Set[str]]) -> Nodes:
+    def set_property(self, name: str, value: NodeProperty) -> Nodes:
         pass
 
 
@@ -138,21 +136,24 @@ class CountableNodePool(Nodes):
     Represents a typical pool of nodes.
     """
 
-    def __init__(self, nodes: list[Union[Node, Nodes]]):
+    def __init__(self, nodes: List[Union[Node, Nodes]]):
         self.nodes = nodes
 
-    def __json__(self):
+    def __json__(self) -> NodesRepresentation:
         return {
             "node_pool_type": self.__class__.__name__,
             "node_pool_data": [x.__json__() for x in self.nodes],
         }
 
     @classmethod
-    def from_json(cls, data: list[dict]) -> CountableNodePool:
-        nodes = []
+    def from_json(
+        cls, data: List[Union[NodeRepresentation, NodesRepresentation]]
+    ) -> CountableNodePool:
+        nodes: List[Union[Node, Nodes]] = []
         for element in data:
             if "node_pool_type" in element:
-                nodes.append(Nodes.dispatch_and_deserialize(element))
+                # we know this is a NodesRepresentation
+                nodes.append(Nodes.dispatch_and_deserialize(element))  # type: ignore
             else:
                 nodes.append(Node.from_json(element))
         return cls(nodes)
@@ -163,27 +164,22 @@ class CountableNodePool(Nodes):
     def __len__(self) -> int:
         return len(self.nodes)
 
-    def __getitem__(
-        self, key: int
-    ) -> Union[Node, UncountableNodePool, CountableNodePool]:
+    def __getitem__(self, key: int) -> Union[Node, Nodes]:
         return self.nodes[key]
 
     def __setitem__(
         self, key: int, value: Union[Node, CountableNodePool, UncountableNodePool]
-    ):
+    ) -> None:
         self.nodes[key] = value
 
-    def __iter__(self) -> Iterator[Union[Node, UncountableNodePool, CountableNodePool]]:
-        return iter(self.nodes)
-
-    def pop(self, index: int):
-        self.nodes.pop(index)
+    def pop(self, index: int) -> Union[Node, Nodes]:
+        return self.nodes.pop(index)
 
     def __repr__(self) -> str:
         return str(self.nodes)
 
     def filter(self, function: Callable[[Node], bool]) -> CountableNodePool:
-        nodes = []
+        nodes: List[Union[Node, Nodes]] = []
         for node in self.nodes:
             if isinstance(node, Node):
                 if function(node):
@@ -195,8 +191,8 @@ class CountableNodePool(Nodes):
         return CountableNodePool(nodes)
 
     def take(self, count: int) -> Sequence[Node]:
-        iterator = chain.from_iterable(
-            [x] if isinstance(x, Node) else x for x in self.nodes
+        iterator: Iterator[Node] = chain.from_iterable(
+            [x] if isinstance(x, Node) else x for x in self.nodes  # type: ignore
         )
         nodes = []
         for _ in range(count):
@@ -215,7 +211,7 @@ class CountableNodePool(Nodes):
             return CountableNodePool([])
         return CountableNodePool(self.nodes[count:])
 
-    def set_property(self, name: str, value: Union[str, Set[str]]) -> CountableNodePool:
+    def set_property(self, name: str, value: NodeProperty) -> CountableNodePool:
         for node in self.nodes:
             if isinstance(node, Node):
                 node.properties[name] = value
@@ -230,7 +226,7 @@ class UncountableNodePool(Nodes):
     In the current implementation cannot have Nodes as elements.
     """
 
-    def __init__(self, node_template: list[Node]):
+    def __init__(self, node_template: List[Node]):
         self._node_template = node_template
         self._nodes = cycle(node_template)
 
@@ -242,9 +238,6 @@ class UncountableNodePool(Nodes):
     def __repr__(self) -> str:
         return str(self)
 
-    def __iter__(self):
-        return self
-
     def __next__(self) -> Node:
         node = deepcopy(next(self._nodes))
         node.name += str(uuid4())
@@ -253,7 +246,7 @@ class UncountableNodePool(Nodes):
     def __getitem__(self, key: int) -> Node:
         return self._node_template[key]
 
-    def __setitem__(self, key: int, value: Node):
+    def __setitem__(self, key: int, value: Node) -> None:
         self._node_template[key] = value
 
     def __len__(self) -> int:
@@ -274,7 +267,7 @@ class UncountableNodePool(Nodes):
             next(self._nodes)
         return self
 
-    def __json__(self) -> dict:
+    def __json__(self) -> NodesRepresentation:
         return {
             "node_pool_type": self.__class__.__name__,
             "node_pool_data": [x.__json__() for x in self._node_template],
@@ -282,12 +275,16 @@ class UncountableNodePool(Nodes):
         pass
 
     @classmethod
-    def from_json(cls, data: dict) -> UncountableNodePool:
-        return cls([Node.from_json(x) for x in data])
-
-    def set_property(
-        self, name: str, value: Union[str, Set[str]]
+    def from_json(
+        cls, data: List[Union[NodeRepresentation, NodesRepresentation]]
     ) -> UncountableNodePool:
+        for x in data:
+            if "node_pool_type" in x:
+                raise ValueError("UncountableNodePool cannot have Nodes as elements.")
+        # now we have only NodeRepresentation in the list
+        return cls([Node.from_json(x) for x in data])  # type: ignore
+
+    def set_property(self, name: str, value: NodeProperty) -> UncountableNodePool:
         for node in self._node_template:
             node.properties[name] = value
         return self

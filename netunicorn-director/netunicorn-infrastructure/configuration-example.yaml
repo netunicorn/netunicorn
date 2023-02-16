@@ -1,0 +1,23 @@
+---
+netunicorn.infrastructure.host: '127.0.0.1'
+netunicorn.infrastructure.port: 26514
+netunicorn.infrastructure.log.level: 'debug'
+netunicorn.gateway.endpoint: "https://gateway.local/api/v1"
+netunicorn.database.endpoint: '127.0.0.1'
+netunicorn.database.user: 'netunicorn'  # fake user
+netunicorn.database.password: 'netunicorn'  # fake password
+netunicorn.database.db: 'netunicorndb'  # fake database
+
+netunicorn.infrastructure.connectors:
+  azure-containers:  # unique name
+    enabled: true
+    module: "netunicorn.director.infrastructure.connectors.aci"  # where to import from
+    class: "AzureContainerInstances"  # class name
+    config: "configuration-example.yaml"     # path to configuration file
+
+  another-unique-name:
+    enabled: true
+    module: "netunicorn.director.infrastructure.connectors.dummy"
+    class: "DummyNetunicornConnector"
+    config: ""
+    netunicorn.gateway.endpoint: "https://gateway.local/api/"   # override global config

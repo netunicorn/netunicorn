@@ -1,0 +1,6 @@
+.idea
+**/*.pyc
+**/*.log
+/build/
+/src/netunicorn_director_infrastructure.egg-info/
+.mypy_cache
