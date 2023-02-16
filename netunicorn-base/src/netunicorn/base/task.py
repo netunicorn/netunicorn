@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Any, Collection, List, Union
+from abc import ABC, abstractmethod
 
 from returns.result import Failure, Result, Success
 
@@ -12,7 +13,7 @@ Success = Success
 Failure = Failure
 
 
-class Task:
+class Task(ABC):
     """
     This is a base class for all tasks. All new task classes should inherit from this class.
     The task instance should encapsulate all the logic and data needed to execute the task.
@@ -56,6 +57,7 @@ class Task:
         self.requirements.append(command)
         return self
 
+    @abstractmethod
     def run(self) -> Any:
         """
         ## This method is to be overridden by your implementation. ##
@@ -69,7 +71,7 @@ class Task:
         raise NotImplementedError
 
 
-class TaskDispatcher:
+class TaskDispatcher(ABC):
     """
     This class is a wrapper for several tasks that are designed to implement the same functionality for different
     architectures, platforms, etc. It is designed to be used as a base class for your task dispatcher.
@@ -78,5 +80,6 @@ class TaskDispatcher:
     given node information (such as architecture, platform, etc).
     """
 
+    @abstractmethod
     def dispatch(self, node: Node) -> Task:
         raise NotImplementedError
