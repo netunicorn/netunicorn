@@ -1,11 +1,11 @@
-# This workflow will upload a Python Package for netunicorn-executor using Twine when a release is created
+# This workflow will upload a Python Package for netunicorn-director-infrastructure
 
-name: Release netunicorn-executor
+name: Release netunicorn-director-infrastructure
 
 on:
   push:
     paths:
-      - "netunicorn-executor/pyproject.toml"
+      - "netunicorn-director/netunicorn-infrastructure/pyproject.toml"
     branches: ["main"]
   workflow_dispatch:
 
@@ -24,7 +24,8 @@ jobs:
         id: check-pypi-version
         uses: maybe-hello-world/pyproject-check-version@v1
         with:
-          pyproject-path: "./netunicorn-executor"
+          pyproject-path: "./netunicorn-director/netunicorn-infrastructure"
+
 
   deploy:
     runs-on: ubuntu-latest
@@ -38,7 +39,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
-        python-version: '3.7'
+        python-version: '3.10'
 
     - name: Install dependencies
       run: |
@@ -46,11 +47,23 @@ jobs:
         pip install build
 
     - name: Build package
-      run: cd netunicorn-executor && python -m build
-
+      run: cd netunicorn-base && python -m build
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
-        packages_dir: "netunicorn-executor/dist"
+        packages_dir: "netunicorn-director/netunicorn-infrastructure/dist"
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push
+      uses: docker/build-push-action@v4
+      with:
+        context: netunicorn-director/netunicorn-infrastructure
+        push: true
+        tags: netunicorn/infrastructure:latest

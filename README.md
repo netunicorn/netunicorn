@@ -11,7 +11,7 @@ This platform is close to the Apache Airflow or CI/CD platforms, but instead opt
 - work under the conditions of unstable network
 - reproducibility and easy sharing of tasks and pipelines
 
-Full documentation is available at [architecture](docs/README.md) and in the platform whitepaper (to be published).
+Full documentation is available at [architecture](docs/) and in the platform whitepaper (to be published).
 
 ## Platform user documentation
 Users are able to express arbitrary tasks and pipelines and run them on the already deployed platform.
@@ -32,7 +32,7 @@ To use the platform, administrators of the infrastructure should deploy it and p
 These credentials would be used to work with the platform via RemoteClient.
 
 ### Start of work
-Please, refer to [examples](examples/README.md) to see how to use the platform.
+Please, refer to [examples](examples/) to see how to use the platform.
 
 ## Platform administrator documentation
 Administrators of the platform maintain the particular netunicorn installation and underlying infrastructure.  

@@ -1,11 +1,11 @@
-# This workflow will upload a Python Package for netunicorn-executor using Twine when a release is created
+# This workflow will create and upload a Python Package for netunicorn-library
 
-name: Release netunicorn-executor
+name: Release netunicorn-library
 
 on:
   push:
     paths:
-      - "netunicorn-executor/pyproject.toml"
+      - "netunicorn-library/pyproject.toml"
     branches: ["main"]
   workflow_dispatch:
 
@@ -24,7 +24,8 @@ jobs:
         id: check-pypi-version
         uses: maybe-hello-world/pyproject-check-version@v1
         with:
-          pyproject-path: "./netunicorn-executor"
+          pyproject-path: "./netunicorn-library"
+
 
   deploy:
     runs-on: ubuntu-latest
@@ -34,7 +35,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-
+    - uses: actions/checkout@v3
+      with:
+        repository: netunicorn/netunicorn-library
+        path: temp/netunicorn-library
+        ref: main
+    - name: Copy files
+      run: |
+        cp -r temp/netunicorn-library/pipelines netunicorn-library/src/netunicorn/library/pipelines
+        cp -r temp/netunicorn-library/tasks netunicorn-library/src/netunicorn/library/tasks
+        rm -rf temp
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
@@ -46,11 +56,10 @@ jobs:
         pip install build
 
     - name: Build package
-      run: cd netunicorn-executor && python -m build
-
+      run: cd netunicorn-base && python -m build
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
-        packages_dir: "netunicorn-executor/dist"
+        packages_dir: "netunicorn-library/dist"

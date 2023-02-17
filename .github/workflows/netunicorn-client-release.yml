@@ -1,9 +1,11 @@
-# This workflow will upload a Python Package for netunicorn-base using Twine when a release is created
+# This workflow will upload a Python Package for netunicorn-client using Twine when a release is created
 
 name: Release netunicorn-client
 
 on:
   push:
+    paths:
+      - "netunicorn-client/pyproject.toml"
     branches: ["main"]
   workflow_dispatch:
 
@@ -11,26 +13,44 @@ permissions:
   contents: read
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      local_version_is_higher: ${{ steps.check-pypi-version.outputs.local_version_is_higher }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check if local version newer than PyPI version
+        id: check-pypi-version
+        uses: maybe-hello-world/pyproject-check-version@v1
+        with:
+          pyproject-path: "./netunicorn-client"
+
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    needs: check-version
+    if: ${{ needs.check-version.outputs.local_version_is_higher == 'true' }}
 
     steps:
     - uses: actions/checkout@v3
+
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
         python-version: '3.7'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install build
+
     - name: Build package
       run: cd netunicorn-client && python -m build
+
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
         packages_dir: "netunicorn-client/dist"
-        skip_existing: true
