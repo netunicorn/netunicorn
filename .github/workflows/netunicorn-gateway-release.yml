@@ -1,0 +1,32 @@
+# This workflow will build a netunicorn-director-gateway Docker image and push it to Docker Hub
+
+name: Release netunicorn-director-gateway
+
+on:
+  push:
+    paths:
+      - "netunicorn-director/netunicorn-gateway/pyproject.toml"
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push
+      uses: docker/build-push-action@v4
+      with:
+        context: netunicorn-director/netunicorn-gateway
+        push: true
+        tags: netunicorn/gateway:latest
