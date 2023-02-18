@@ -1,7 +1,5 @@
-# Unicorn architecture design document
-WIP: Outdated
-
-In this document the architectural design of Unicorn project is described and documented.
+# netunicorn architecture design document
+In this document the architectural design of netunicorn project is described and documented.
 
 - [userstory](userstory.md) contains a general description of needed functionality from user's point of view.  
 - Functional and non-functional requirements are listed in [requirements](requirements.md) document.   

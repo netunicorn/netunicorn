@@ -18,4 +18,4 @@ Requirements are sorted by importance.
 - Client should correctly process all *director services* responds, including error information
 - Client should be lightweight and implemented as Python library without additional services or processes
 ## Design
-Client is a single monolithic Python library that provides needed classes for user's needs. Basic abstraction classes (such as Task, DAG, Experiment, etc.) should be reimported from system-common package (that also would be used by *director services*, and *target services*)
+Client is a single monolithic Python library that provides needed classes for user's needs. Basic abstraction classes (such as Task, DAG, Experiment, etc.) should be reimported from system-common package (that also would be used by *core services*, and *executor*)

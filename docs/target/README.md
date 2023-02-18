@@ -13,11 +13,11 @@ A good example of the environment is Docker Image:
 Other examples of the environment are virtual machine images, installation scripts (for bare-metal deployments)
 
 ### Environment creation and usage
-- Environment would be created by *director services*
+- Environment would be created by *core services*
 - Environment would be distributed to devices via network
 - Any *target* device would support at least one environment
-- Pipeline for executor would be provided as part of the environment
-	- It would be a serialized artifact in a specific location on file system
+- Pipeline for executor would be provided as part of the environment or obtained via gateway
+	- In case of presenting in the environment it would be a serialized artifact in a specific location on file system
 - Environment would provide variable information to the executor (unique IDs, etc.) via environment variables set during environment startup
 
 ## Executor
@@ -35,10 +35,11 @@ Requirements are sorted by importance.
 - Executor must load the DAG, execute it, and (potentially) be able to send results of execution to the master
 - Executor must be Python-based and execute DAG tasks via multiprocessing system
 - Executor will receive variable configuration information via environment variables
-- Executor must implement keep-alive ping mechanism to notify *director services* about its status
+- Executor must implement keep-alive ping mechanism to notify *core services* about its status
 - Executor must collect all internal log information (from the executor itself) and stdout/stderr of each executed tasks, combine them into a single log and send to the master together with results of execution
 - Executor must hold a common in-memory storage for tasks. Each task should have read and write access to this storage to be able to put temporary information there for DAG execution purposes
 - Executor must implement event-system to allow tasks to send events to other tasks (locally) or to the system in general (globally). Executor must provide event-system access point to any running tasks. See [event_system](../director/event_system.md) for details.
+
 ### Non-functional requirements
 - Executor should be as stable and reliable as it's possible
 - Executor should minimize inter-task time (time between end of previous task and start of the next available task)

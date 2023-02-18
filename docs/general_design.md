@@ -4,7 +4,7 @@ This document contains a general design of the system. Also take a look at the [
 The [user story](userstory.md) describes user's view on the system. From the user story [requirements](requirements.md) and this architecture are created.
 
 ## Workflow
-1. User defines a DAG of tasks
+1. User defines a Directed Acyclic Graph (DAG) of tasks
     - Each task consists of installation part and execution part
 2. The DAG defines an environment where it should be executed. 
 	- The system creates an environment definition (instructions how to create the environment) using combined installation instructions from each task and pushes it to corresponding nodes
@@ -14,12 +14,13 @@ The [user story](userstory.md) describes user's view on the system. From the use
 6. After results received, the system finalizes the corresponding environment
 
 ## Assumptions
-- Infrastructure has resources (servers/VMs/etc) to host the system ([vocabulary](vocabulary.md): Director infrastructure)
-- Part of director infrastructure is available to users of the system
-- Part of director infrastructure is available to target infrastructure (using IP address and/or DNS resolution)
-- All target infrastructure devices are capable of executing arbitrary Python code (to support arbitrary pipelines)
+- Infrastructure has resources (servers/VMs/etc) to host the netunicorn system services ([vocabulary](vocabulary.md): core services)
+- Public endpoint of some services of director infrastructure is presented to users (mediator service API)
+- Endpoint of gateway service of director infrastructure is available to target (deployment) nodes
+- All target infrastructure devices are capable of executing arbitrary Python code (to support arbitrary pipelines) or docker containers
 	- Target infrastructure devices that are not capable can use [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar)
-- Target infrastructure is controlled by director infrastructre via IT automation software (Ansible, SaltStack, etc.)
+- Target infrastructure is controlled by some deployment system (IT automation software like Ansible, SaltStack, etc.).
+	- netunicorn does not present its own deployment system or infrastructure control, and fully relies on existing system via a specific connector
 
 ## Coarse architecture of the system
 ```mermaid
@@ -28,9 +29,9 @@ flowchart LR
 		fr[System Frontend]
 	end
 	
-	subgraph Director
+	subgraph Core
 		direction TB
-		eng[System Engine]
+		eng[Core Services]
 		ds[Deployment System]
 	end
 	
@@ -55,35 +56,35 @@ As pipelines/DAGs do consists of several steps, these steps execution order shou
 
 Therefore, the system consists of 3 different parts:
 - User-side Frontend
-- System Engine
+- Core services
 - Executor
 
 ### User-side Frontend
 Frontend is a separate module that’s located on a user side. It's a single point of interaction with the system for user.
 Frontend:
 - contains building blocks for tasks/DAGs
-- connects to System Engine to provide users information about available infrastructure
+- connects to Core Services to provide users information about available infrastructure
 - allows user to interact with system (prepare, start, and cancel experiments, receive status, etc.)
 - allows user to attach additional infrastructures to the system
-See [Frontend README](frontend/README.md) for further information.
+See [Frontend documentation](frontend/) for further information.
 
-### System Engine
-The engine is deployed on *system installation location (director).* Usually it would be servers of infrastructure owner (e.g., university, research lab, company) that's relatively close to infrastructure used for experiments (to reduce latency, ensure proper bandwidth, etc.).
+### Core Services
+The core engine is deployed on *system installation location (core).* Usually it would be servers of infrastructure owner (e.g., university, research lab, company) that's relatively close to infrastructure used for experiments (to reduce latency, ensure proper bandwidth, etc.).
 
 The local infrastructure would be controlled by *deployment system*, controlled by administrators. It would be accessible by system engine via a connector.
 
-System Engine is always available by Executors via network.
+One of core services (gateway) is always available to Executors via network.
 
-Engine:
-- interacts with *deployment system* to obtain information about local infrastructure and issue commands (to deploy experiments)
-- prepares environment for user's experiments
-- maintains currently running experiments
-- provides event system for the experiments
+Core services:
+- interact with *deployment system* to obtain information about local infrastructure and issue commands to deploy experiments
+- prepare environment for user's experiments
+- maintain currently running experiments
+- provide event exchange support for the experiments
 - controls preprocessors for experiments
 
-See [README](director/README.md) for additional information.
+See [Director documentation](director/) for additional information.
 
 ### Target infrastructure
 Target infrastructure node would contain environment and executor. Executor works on a node inside the *environment* (usually generated by the engine). It receives a DAG and executes it, reports results, sends and receives events. Executor's lifetime is bounded by the Environment.
 
-See [README](target/README.md) for additional information.
+See [Target documentation](target/) for additional information.

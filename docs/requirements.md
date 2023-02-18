@@ -4,7 +4,7 @@ In this document function and non-functional requirements are listed. Each requi
 ## Functional requirements
 1. The system must provide a way to define tasks, pipelines/DAGs, and map them to nodes to execute.
 2. The system must work with both physical and cloud infrastructures and provide Node (end-host + switch) abstraction to the user.
-3. The system must take user-defined pipeline and pass it to nodes to execute, and collect results and logs afterwards. The system also must provide a way to collect generated artifacts/data.
+3. The system must take user-defined pipeline and pass it to nodes to execute, and collect results and logs afterwards.
 	1. Do not collect data by default, because it's traffic-consuming (therefore can add noise to experiment) and not always needed.
 4. The system must allow to specify different task implementations for different architectures. The resulting pipeline/DAG mapped to a certain host must contain only the instructions for this certain host and architecture.
 5. The system must allow to attach user-specific infrastructure that would be available to the user only, together with system-level infrastructure attached by administrators. 
