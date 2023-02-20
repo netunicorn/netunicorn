@@ -1,7 +1,6 @@
 import json
 
 import asyncpg
-
 from netunicorn.base.utils import UnicornEncoder
 
 

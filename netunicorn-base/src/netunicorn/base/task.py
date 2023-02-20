@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import copy
 import uuid
-from typing import Any, Collection, List, Union
 from abc import ABC, abstractmethod
+from typing import Any, Collection, List, Union
 
 from returns.result import Failure, Result, Success
 

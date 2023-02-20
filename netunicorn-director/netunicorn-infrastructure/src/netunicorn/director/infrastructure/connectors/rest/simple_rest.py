@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
-import aiohttp
-
 from typing import Optional, Tuple
 
+import aiohttp
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import Nodes
 from netunicorn.director.base.utils import UnicornEncoder
-from returns.result import Result, Success, Failure
+from returns.result import Failure, Result, Success
 
 from ..protocol import NetunicornConnectorProtocol
 from ..types import StopExecutorRequest

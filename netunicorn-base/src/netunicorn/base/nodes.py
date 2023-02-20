@@ -1,16 +1,15 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from copy import deepcopy
-
-from itertools import cycle, chain
+from itertools import chain, cycle
+from typing import Any, Callable, Dict, Iterator, List, Sequence, Set, Union
 from uuid import uuid4
-from typing import Dict, Set, Union, Iterator, Callable, Sequence, Any, List
 
 import netunicorn
+
 from .architecture import Architecture
 from .types import NodeProperty, NodeRepresentation, NodesRepresentation
-
-from abc import ABC, abstractmethod
 
 
 class Node:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import sys
 
 if sys.version_info >= (3, 8):
@@ -6,7 +7,7 @@ if sys.version_info >= (3, 8):
 else:
     from typing_extensions import TypedDict
 
-from typing import Dict, Set, Union, List, Optional
+from typing import Dict, List, Optional, Set, Union
 
 NodeProperty = Union[str, float, int, Set[str], None]
 

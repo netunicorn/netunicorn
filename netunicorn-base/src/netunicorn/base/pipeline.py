@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from copy import deepcopy
-from typing import Collection, List, Union, Any, Optional
+from typing import Any, Collection, List, Optional, Union
 
 from returns.result import Result
 

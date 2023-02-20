@@ -3,7 +3,7 @@ import multiprocessing.pool
 from base64 import b64encode
 from functools import wraps
 from json import JSONEncoder
-from typing import Callable, List, TypeVar, Union, Any, Dict
+from typing import Any, Callable, Dict, List, TypeVar, Union
 
 from netunicorn.base.environment_definitions import EnvironmentDefinition
 from returns.result import Failure, Result, Success

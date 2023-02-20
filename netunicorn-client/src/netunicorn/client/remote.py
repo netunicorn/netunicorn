@@ -1,15 +1,14 @@
 import json
-from typing import Iterable, Dict
+from typing import Dict, Iterable
 
 import requests as req
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
 from netunicorn.base.nodes import Nodes
-from netunicorn.base.utils import UnicornEncoder
 from netunicorn.base.types import (
-    NodesRepresentation,
     ExperimentExecutionInformationRepresentation,
+    NodesRepresentation,
 )
-
+from netunicorn.base.utils import UnicornEncoder
 
 from .base import BaseClient
 
