@@ -55,7 +55,9 @@ class Task(ABC):
         :param command:
         :return:
         """
-        self.requirements = copy.deepcopy(self.requirements)  # make it instance-specific
+        self.requirements = copy.deepcopy(
+            self.requirements
+        )  # make it instance-specific
         self.requirements.append(command)
         return self
 

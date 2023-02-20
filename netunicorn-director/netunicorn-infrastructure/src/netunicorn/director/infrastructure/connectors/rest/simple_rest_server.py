@@ -75,7 +75,7 @@ async def stop_executors(
     username: str, requests_list: List[StopExecutorRequest]
 ) -> Dict[str, Optional[str]]:
     # dict values: None if successful, error message otherwise
-    results: Dict[str, Optional[str]] = {x['executor_id']: "meh" for x in requests_list}
+    results: Dict[str, Optional[str]] = {x["executor_id"]: "meh" for x in requests_list}
     return results
 
 
