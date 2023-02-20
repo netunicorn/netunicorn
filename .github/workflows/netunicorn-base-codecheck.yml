@@ -1,0 +1,40 @@
+name: netunicorn-base codechecks
+
+on:
+  pull_request:
+    branches: [ "main", "develop" ]
+  paths:
+    - "netunicorn-base/**"
+
+jobs:
+  codechecks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.7"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black pylint mypy isort
+
+      - name: Run Black
+        run: black --check --diff ./netunicorn-base
+
+      - name: Run isort
+        run: isort --profile black --check --diff ./netunicorn-base
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run MyPy on netunicorn-base
+        uses: jpetrucciani/mypy-check@master
+        with:
+          path: './netunicorn-base'
+          mypy_flags: '--config-file ./netunicorn-base/pyproject.toml'
+          requirements_file: './misc/requirements.dev.txt'
