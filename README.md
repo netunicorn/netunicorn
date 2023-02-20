@@ -17,7 +17,7 @@ This platform is close to the Apache Airflow or CI/CD platforms, but instead opt
 - work under the conditions of unstable network
 - reproducibility and easy sharing of tasks and pipelines
 
-Full documentation is available at [architecture](docs) and in the platform whitepaper (to be published).
+Full documentation is available at [docs](docs) and in the platform whitepaper (to be published).
 
 ## Platform user documentation
 Users are able to express arbitrary tasks and pipelines and run them on the already deployed platform.
