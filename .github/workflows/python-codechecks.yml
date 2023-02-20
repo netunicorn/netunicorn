@@ -30,54 +30,54 @@ jobs:
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-base'
-            mypy_flags: '--config-file ./netunicorn-base/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-base/pyproject.toml --install-types'
 
         - name: Run MyPy on netunicorn-client
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-client'
-            mypy_flags: '--config-file ./netunicorn-client/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-client/pyproject.toml --install-types'
 
         - name: Run MyPy on netunicorn-executor
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-executor'
-            mypy_flags: '--config-file ./netunicorn-executor/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-executor/pyproject.toml --install-types'
 
         - name: Run MyPy on netunicorn-director-authentication
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-director/netunicorn-authentication'
-            mypy_flags: '--config-file ./netunicorn-director/netunicorn-authentication/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-director/netunicorn-authentication/pyproject.toml --install-types'
 
         - name: Run MyPy on netunicorn-director-compilation
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-director/netunicorn-compilation'
-            mypy_flags: '--config-file ./netunicorn-director/netunicorn-compilation/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-director/netunicorn-compilation/pyproject.toml --install-types'
 
         - name: Run MyPy on netunicorn-director-gateway
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-director/netunicorn-gateway'
-            mypy_flags: '--config-file ./netunicorn-director/netunicorn-gateway/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-director/netunicorn-gateway/pyproject.toml --install-types'
 
         - name: Run MyPy on netunicorn-director-infrastructure
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-director/netunicorn-infrastructure'
-            mypy_flags: '--config-file ./netunicorn-director/netunicorn-infrastructure/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-director/netunicorn-infrastructure/pyproject.toml --install-types'
 
         - name: Run MyPy on netunicorn-director-infrastructure
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-director/netunicorn-mediator'
-            mypy_flags: '--config-file ./netunicorn-director/netunicorn-mediator/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-director/netunicorn-mediator/pyproject.toml --install-types'
 
         - name: Run MyPy on netunicorn-director-processor
           uses: jpetrucciani/mypy-check@master
           with:
             path: './netunicorn-director/netunicorn-processor'
-            mypy_flags: '--config-file ./netunicorn-director/netunicorn-processor/pyproject.toml'
+            mypy_flags: '--config-file ./netunicorn-director/netunicorn-processor/pyproject.toml --install-types'
 
 
