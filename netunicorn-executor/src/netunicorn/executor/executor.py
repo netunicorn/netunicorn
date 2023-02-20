@@ -180,7 +180,6 @@ class PipelineExecutor:
 
         resulting_type: Type[Result[PipelineResult, PipelineResult]] = Success
         for element in self.pipeline.tasks:
-
             if isinstance(element, Task):
                 element = [element]
 
