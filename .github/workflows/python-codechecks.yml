@@ -34,7 +34,7 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-base'
-          mypy_flags: '--config-file ./netunicorn-base/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-base/pyproject.toml'
 
   mypy-client:
     runs-on: ubuntu-latest
@@ -44,7 +44,7 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-client'
-          mypy_flags: '--config-file ./netunicorn-client/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-client/pyproject.toml'
 
   mypy-executor:
     runs-on: ubuntu-latest
@@ -54,7 +54,7 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-executor'
-          mypy_flags: '--config-file ./netunicorn-executor/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-executor/pyproject.toml'
 
   mypy-director-authentication:
     runs-on: ubuntu-latest
@@ -64,7 +64,8 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-director/netunicorn-authentication'
-          mypy_flags: '--config-file ./netunicorn-director/netunicorn-authentication/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-authentication/pyproject.toml'
+          requirements_file: './netunicorn-director/types-requirements.txt'
 
   mypy-director-compilation:
     runs-on: ubuntu-latest
@@ -74,7 +75,8 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-director/netunicorn-compilation'
-          mypy_flags: '--config-file ./netunicorn-director/netunicorn-compilation/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-compilation/pyproject.toml'
+          requirements_file: './netunicorn-director/types-requirements.txt'
 
   mypy-director-gateway:
     runs-on: ubuntu-latest
@@ -84,7 +86,8 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-director/netunicorn-gateway'
-          mypy_flags: '--config-file ./netunicorn-director/netunicorn-gateway/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-gateway/pyproject.toml'
+          requirements_file: './netunicorn-director/types-requirements.txt'
 
   mypy-director-infrastructure:
     runs-on: ubuntu-latest
@@ -94,7 +97,8 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-director/netunicorn-infrastructure'
-          mypy_flags: '--config-file ./netunicorn-director/netunicorn-infrastructure/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-infrastructure/pyproject.toml'
+          requirements_file: './netunicorn-director/types-requirements.txt'
 
   mypy-director-mediator:
     runs-on: ubuntu-latest
@@ -104,7 +108,8 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-director/netunicorn-mediator'
-          mypy_flags: '--config-file ./netunicorn-director/netunicorn-mediator/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-mediator/pyproject.toml'
+          requirements_file: './netunicorn-director/types-requirements.txt'
 
   mypy-director-processor:
     runs-on: ubuntu-latest
@@ -114,6 +119,7 @@ jobs:
         uses: jpetrucciani/mypy-check@master
         with:
           path: './netunicorn-director/netunicorn-processor'
-          mypy_flags: '--config-file ./netunicorn-director/netunicorn-processor/pyproject.toml --install-types --non-interactive'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-processor/pyproject.toml'
+          requirements_file: './netunicorn-director/types-requirements.txt'
 
 
