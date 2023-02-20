@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from logging import Logger
-from typing import Protocol, Optional, Tuple
+from typing import Optional, Protocol, Tuple
 
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import Nodes

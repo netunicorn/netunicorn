@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import asyncpg.connection
 import requests as req
-from netunicorn.base.nodes import Nodes, Node, CountableNodePool
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.experiment import (
     Deployment,
@@ -13,6 +12,7 @@ from netunicorn.base.experiment import (
     ExperimentExecutionInformation,
     ExperimentStatus,
 )
+from netunicorn.base.nodes import CountableNodePool, Node, Nodes
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,

@@ -2,11 +2,10 @@ import asyncio
 import re
 import subprocess
 from collections.abc import Iterable
-from typing import Optional, NoReturn
+from typing import NoReturn, Optional
 
 import asyncpg
 import netunicorn.base.environment_definitions as environment_definitions
-from netunicorn.director.base.utils import __init_connection
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,
@@ -14,7 +13,7 @@ from netunicorn.director.base.resources import (
     DATABASE_USER,
     get_logger,
 )
-
+from netunicorn.director.base.utils import __init_connection
 
 logger = get_logger("netunicorn.director.compiler")
 

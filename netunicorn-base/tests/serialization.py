@@ -5,7 +5,7 @@ from base64 import b64encode
 
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.experiment import DeploymentExecutionResult, Experiment
-from netunicorn.base.nodes import Node, CountableNodePool, Nodes
+from netunicorn.base.nodes import CountableNodePool, Node, Nodes
 from netunicorn.base.pipeline import Pipeline
 from netunicorn.base.task import Task
 from netunicorn.base.utils import UnicornEncoder

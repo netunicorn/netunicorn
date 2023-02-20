@@ -1,5 +1,5 @@
 import json
-from typing import List, Any
+from typing import Any, List
 
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI

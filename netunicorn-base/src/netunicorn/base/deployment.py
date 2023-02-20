@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from base64 import b64decode
-from typing import Optional
 from copy import deepcopy
+from typing import Optional
 
 import netunicorn.base.environment_definitions
 
 from .nodes import Node
 from .pipeline import Pipeline
-from .task import TaskDispatcher, Task
-from .utils import SerializedPipelineType
+from .task import TaskDispatcher
 from .types import DeploymentRepresentation
+from .utils import SerializedPipelineType
 
 try:
     import cloudpickle  # it's needed only on client side, but this module is also imported on engine side

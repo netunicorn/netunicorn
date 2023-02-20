@@ -11,6 +11,10 @@ keywords = ["netunicorn"]
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
     "returns",
@@ -28,3 +32,4 @@ ignore_missing_imports = true
 explicit_package_bases = true
 strict = true
 exclude = "tests"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"

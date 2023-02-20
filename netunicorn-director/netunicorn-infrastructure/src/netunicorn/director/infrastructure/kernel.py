@@ -4,7 +4,7 @@ import importlib
 import os
 from collections import defaultdict
 from logging import Logger
-from typing import Union, Any, Tuple, Optional
+from typing import Any, Optional, Tuple, Union
 
 import asyncpg
 import yaml

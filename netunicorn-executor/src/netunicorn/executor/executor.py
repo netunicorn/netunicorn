@@ -7,15 +7,15 @@ from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from copy import deepcopy
 from enum import Enum
-from typing import Collection, List, Optional, Any, Type
+from typing import Any, Collection, List, Optional, Type
 
 import cloudpickle
 import requests as req
 import requests.exceptions
 from netunicorn.base.pipeline import Pipeline, PipelineElementResult, PipelineResult
 from netunicorn.base.task import Task
-from netunicorn.base.utils import safe
 from netunicorn.base.utils import NonStablePool as Pool
+from netunicorn.base.utils import safe
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
 
@@ -180,7 +180,6 @@ class PipelineExecutor:
 
         resulting_type: Type[Result[PipelineResult, PipelineResult]] = Success
         for element in self.pipeline.tasks:
-
             if isinstance(element, Task):
                 element = [element]
 

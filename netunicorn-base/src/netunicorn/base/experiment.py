@@ -4,7 +4,7 @@ import base64
 import copy
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterator, List, Optional, Tuple, Union, Sequence
+from typing import Iterator, List, Optional, Sequence, Tuple, Union
 
 from returns.result import Result
 
@@ -12,9 +12,9 @@ from .deployment import Deployment
 from .nodes import Node, Nodes
 from .pipeline import Pipeline, PipelineResult
 from .types import (
-    ExperimentRepresentation,
     DeploymentExecutionResultRepresentation,
     ExperimentExecutionInformationRepresentation,
+    ExperimentRepresentation,
 )
 from .utils import LogType
 

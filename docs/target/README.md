@@ -38,7 +38,6 @@ Requirements are sorted by importance.
 - Executor must implement keep-alive ping mechanism to notify *core services* about its status
 - Executor must collect all internal log information (from the executor itself) and stdout/stderr of each executed tasks, combine them into a single log and send to the master together with results of execution
 - Executor must hold a common in-memory storage for tasks. Each task should have read and write access to this storage to be able to put temporary information there for DAG execution purposes
-- Executor must implement event-system to allow tasks to send events to other tasks (locally) or to the system in general (globally). Executor must provide event-system access point to any running tasks. See [event_system](../director/event_system.md) for details.
 
 ### Non-functional requirements
 - Executor should be as stable and reliable as it's possible

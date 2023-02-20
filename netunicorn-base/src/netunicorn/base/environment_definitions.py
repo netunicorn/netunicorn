@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import platform
 from dataclasses import dataclass, field
-from typing import Optional, Dict, List
+from typing import Dict, List, Optional
 
 from .types import (
-    RuntimeContextRepresentation,
-    EnvironmentDefinitionRepresentation,
-    ShellExecutionRepresentation,
     BuildContextRepresentation,
     DockerImageRepresentation,
+    EnvironmentDefinitionRepresentation,
+    RuntimeContextRepresentation,
+    ShellExecutionRepresentation,
 )
-
 
 # TODO: make classes frozen to make hash stable
 

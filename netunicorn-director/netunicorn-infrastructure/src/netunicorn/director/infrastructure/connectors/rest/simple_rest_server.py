@@ -1,14 +1,14 @@
 import json
-from typing import List, Optional, Dict, Union, TypedDict
+from typing import Dict, List, Optional, TypedDict, Union
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.openapi.models import Response
-from pydantic import BaseModel
-from netunicorn.base.utils import UnicornEncoder
-from netunicorn.base.types import NodeRepresentation, DeploymentRepresentation
-from netunicorn.base.nodes import CountableNodePool, Node
 from netunicorn.base.deployment import Deployment
+from netunicorn.base.nodes import CountableNodePool, Node
+from netunicorn.base.types import DeploymentRepresentation, NodeRepresentation
+from netunicorn.base.utils import UnicornEncoder
+from pydantic import BaseModel
 
 
 class StopExecutorRequest(TypedDict):
@@ -75,7 +75,7 @@ async def stop_executors(
     username: str, requests_list: List[StopExecutorRequest]
 ) -> Dict[str, Optional[str]]:
     # dict values: None if successful, error message otherwise
-    results: Dict[str, Optional[str]] = {x['executor_id']: "meh" for x in requests_list}
+    results: Dict[str, Optional[str]] = {x["executor_id"]: "meh" for x in requests_list}
     return results
 
 

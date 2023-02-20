@@ -1,0 +1,11 @@
+types-decorator
+types-paramiko
+types-python-dateutil
+types-PyYAML
+types-requests
+types-six
+types-typed-ast
+types-ujson
+types-urllib3
+fastapi
+uvicorn

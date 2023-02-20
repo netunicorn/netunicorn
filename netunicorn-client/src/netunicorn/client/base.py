@@ -1,5 +1,5 @@
-from typing import Iterable, Dict
 from abc import ABC, abstractmethod
+from typing import Dict, Iterable
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
 from netunicorn.base.nodes import Nodes
