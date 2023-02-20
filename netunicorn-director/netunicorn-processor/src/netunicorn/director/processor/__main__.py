@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-from typing import NoReturn, Optional
+from typing import NoReturn
 
 import asyncpg
 from netunicorn.base.experiment import (

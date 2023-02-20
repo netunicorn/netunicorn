@@ -8,7 +8,7 @@ import netunicorn.base.environment_definitions
 
 from .nodes import Node
 from .pipeline import Pipeline
-from .task import Task, TaskDispatcher
+from .task import TaskDispatcher
 from .types import DeploymentRepresentation
 from .utils import SerializedPipelineType
 

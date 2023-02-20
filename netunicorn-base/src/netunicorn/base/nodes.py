@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain, cycle
-from typing import Any, Callable, Dict, Iterator, List, Sequence, Set, Union
+from typing import Callable, Dict, Iterator, List, Sequence, Union
 from uuid import uuid4
 
 import netunicorn
