@@ -29,6 +29,7 @@ jobs:
   mypy-base:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-base
         uses: jpetrucciani/mypy-check@master
         with:
@@ -38,6 +39,7 @@ jobs:
   mypy-client:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-client
         uses: jpetrucciani/mypy-check@master
         with:
@@ -47,6 +49,7 @@ jobs:
   mypy-executor:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-executor
         uses: jpetrucciani/mypy-check@master
         with:
@@ -56,6 +59,7 @@ jobs:
   mypy-director-authentication:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-director-authentication
         uses: jpetrucciani/mypy-check@master
         with:
@@ -65,6 +69,7 @@ jobs:
   mypy-director-compilation:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-director-compilation
         uses: jpetrucciani/mypy-check@master
         with:
@@ -74,6 +79,7 @@ jobs:
   mypy-director-gateway:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-director-gateway
         uses: jpetrucciani/mypy-check@master
         with:
@@ -83,6 +89,7 @@ jobs:
   mypy-director-infrastructure:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-director-infrastructure
         uses: jpetrucciani/mypy-check@master
         with:
@@ -92,6 +99,7 @@ jobs:
   mypy-director-mediator:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-director-mediator
         uses: jpetrucciani/mypy-check@master
         with:
@@ -101,6 +109,7 @@ jobs:
   mypy-director-processor:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-director-processor
         uses: jpetrucciani/mypy-check@master
         with:
