@@ -3,8 +3,8 @@ name: netunicorn-executor codechecks
 on:
   pull_request:
     branches: [ "main", "develop" ]
-  paths:
-    - "netunicorn-executor/**"
+    paths:
+      - "netunicorn-executor/**"
 
 jobs:
   codechecks:

@@ -3,8 +3,8 @@ name: netunicorn-processor codechecks
 on:
   pull_request:
     branches: [ "main", "develop" ]
-  paths:
-    - "netunicorn-processor/**"
+    paths:
+      - "netunicorn-processor/**"
 
 jobs:
   codechecks:

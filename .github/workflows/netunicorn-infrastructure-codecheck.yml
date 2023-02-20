@@ -3,8 +3,8 @@ name: netunicorn-infrastructure codechecks
 on:
   pull_request:
     branches: [ "main", "develop" ]
-  paths:
-    - "netunicorn-infrastructure/**"
+    paths:
+      - "netunicorn-infrastructure/**"
 
 jobs:
   codechecks:

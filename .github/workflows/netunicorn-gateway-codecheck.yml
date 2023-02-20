@@ -3,8 +3,8 @@ name: netunicorn-gateway codechecks
 on:
   pull_request:
     branches: [ "main", "develop" ]
-  paths:
-    - "netunicorn-gateway/**"
+    paths:
+      - "netunicorn-gateway/**"
 
 jobs:
   codechecks:
