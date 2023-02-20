@@ -29,23 +29,23 @@ flowchart LR
 		fr[System Frontend]
 	end
 	
-	subgraph Core
-		direction TB
-		eng[Core Services]
-		ds[Deployment System]
+	subgraph Director Infrastructure
+		core[Core Services]
 	end
+
+	ds[Deployment System]
 	
 	
-	subgraph Node1
-		subgraph env1[Environment]
-			ex1[Executor]
+	subgraph Node
+		subgraph env[Environment]
+			ex[Executor]
 		end
 	end
 	
-	fr --- eng
-	eng --- ds
-	eng ---- ex1
-	ds -..- env1
+	fr --- core
+	core --- ds
+	core --- ex
+	ds -.- Node
 ```
 
 As this system is designed to work close to target infrastructure and with many users, most often it would be constantly online and deployed on server-based machine. At the same time, users need to be able to design experiments and tasks even without connection to installation, and easily migrate experiments between installations, therefore a separate user-side module (*frontend*) is required.
