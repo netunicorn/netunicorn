@@ -28,10 +28,6 @@ jobs:
       - name: Run isort
         run: isort --profile black --check --diff ./netunicorn-infrastructure
 
-  mypy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
       - name: Run MyPy on netunicorn-infrastructure
         uses: jpetrucciani/mypy-check@master
         with:
