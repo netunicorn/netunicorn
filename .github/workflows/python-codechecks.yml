@@ -35,6 +35,7 @@ jobs:
         with:
           path: './netunicorn-base'
           mypy_flags: '--config-file ./netunicorn-base/pyproject.toml'
+          requirements_file: './misc/requirements.dev.txt'
 
   mypy-client:
     runs-on: ubuntu-latest
@@ -45,6 +46,7 @@ jobs:
         with:
           path: './netunicorn-client'
           mypy_flags: '--config-file ./netunicorn-client/pyproject.toml'
+          requirements_file: './misc/requirements.dev.txt'
 
   mypy-executor:
     runs-on: ubuntu-latest
@@ -55,6 +57,7 @@ jobs:
         with:
           path: './netunicorn-executor'
           mypy_flags: '--config-file ./netunicorn-executor/pyproject.toml'
+          requirements_file: './misc/requirements.dev.txt'
 
   mypy-director-authentication:
     runs-on: ubuntu-latest
@@ -65,7 +68,7 @@ jobs:
         with:
           path: './netunicorn-director/netunicorn-authentication'
           mypy_flags: '--config-file ./netunicorn-director/netunicorn-authentication/pyproject.toml'
-          requirements_file: './netunicorn-director/types-requirements.txt'
+          requirements_file: './misc/requirements.dev.txt'
 
   mypy-director-compilation:
     runs-on: ubuntu-latest
@@ -76,7 +79,7 @@ jobs:
         with:
           path: './netunicorn-director/netunicorn-compilation'
           mypy_flags: '--config-file ./netunicorn-director/netunicorn-compilation/pyproject.toml'
-          requirements_file: './netunicorn-director/types-requirements.txt'
+          requirements_file: './misc/requirements.dev.txt'
 
   mypy-director-gateway:
     runs-on: ubuntu-latest
@@ -87,7 +90,7 @@ jobs:
         with:
           path: './netunicorn-director/netunicorn-gateway'
           mypy_flags: '--config-file ./netunicorn-director/netunicorn-gateway/pyproject.toml'
-          requirements_file: './netunicorn-director/types-requirements.txt'
+          requirements_file: './misc/requirements.dev.txt'
 
   mypy-director-infrastructure:
     runs-on: ubuntu-latest
@@ -98,7 +101,7 @@ jobs:
         with:
           path: './netunicorn-director/netunicorn-infrastructure'
           mypy_flags: '--config-file ./netunicorn-director/netunicorn-infrastructure/pyproject.toml'
-          requirements_file: './netunicorn-director/types-requirements.txt'
+          requirements_file: './misc/requirements.dev.txt'
 
   mypy-director-mediator:
     runs-on: ubuntu-latest
@@ -109,7 +112,7 @@ jobs:
         with:
           path: './netunicorn-director/netunicorn-mediator'
           mypy_flags: '--config-file ./netunicorn-director/netunicorn-mediator/pyproject.toml'
-          requirements_file: './netunicorn-director/types-requirements.txt'
+          requirements_file: './misc/requirements.dev.txt'
 
   mypy-director-processor:
     runs-on: ubuntu-latest
@@ -120,6 +123,6 @@ jobs:
         with:
           path: './netunicorn-director/netunicorn-processor'
           mypy_flags: '--config-file ./netunicorn-director/netunicorn-processor/pyproject.toml'
-          requirements_file: './netunicorn-director/types-requirements.txt'
+          requirements_file: './misc/requirements.dev.txt'
 
 
