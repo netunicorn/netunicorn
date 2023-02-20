@@ -1,6 +1,6 @@
 [project]
 name = "netunicorn-library"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
@@ -11,6 +11,10 @@ keywords = ["netunicorn"]
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
     "netunicorn-base >= 0.2.0",
