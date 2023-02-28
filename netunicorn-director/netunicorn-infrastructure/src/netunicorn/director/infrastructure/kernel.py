@@ -172,7 +172,8 @@ async def health() -> Tuple[int, str]:
     except Exception as e:
         statuses.append(("database", False, str(e)))
 
-    for connector_name, connector in connectors.items():
+    for connector_name in set(connectors.keys()):
+        connector = connectors[connector_name]
         try:
             status, description = await connector.health()
         except Exception as e:
@@ -199,7 +200,8 @@ async def shutdown() -> None:
 
 async def get_nodes(username: str) -> Tuple[int, Union[Nodes, str]]:
     pools = []
-    for connector_name, connector in connectors.items():
+    for connector_name in set(connectors.keys()):
+        connector = connectors[connector_name]
         try:
             nodes = await connector.get_nodes(username)
             nodes.set_property("connector", connector_name)
