@@ -7,7 +7,6 @@ from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from collections import defaultdict
 from copy import deepcopy
-from enum import Enum
 from typing import Any, Optional, Tuple, Type
 
 import cloudpickle
@@ -15,18 +14,11 @@ import requests as req
 import requests.exceptions
 from netunicorn.base.pipeline import Pipeline
 from netunicorn.base.task import Task
-from netunicorn.base.types import PipelineResult
+from netunicorn.base.types import PipelineResult, PipelineExecutorState
 from netunicorn.base.utils import NonStablePool as Pool
 from netunicorn.base.utils import safe
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
-
-
-class PipelineExecutorState(Enum):
-    LOOKING_FOR_PIPELINE = 0
-    EXECUTING = 1
-    REPORTING = 2
-    FINISHED = 3
 
 
 class PipelineExecutor:
@@ -239,7 +231,7 @@ class PipelineExecutor:
         try:
             result = req.post(
                 f"{self.gateway_endpoint}/api/v1/executor/result",
-                json={"executor_id": self.executor_id, "results": results_data},
+                json={"executor_id": self.executor_id, "results": results_data, 'state': self.state.value},
                 timeout=30,
             )
             self.logger.info("Successfully reported results.")

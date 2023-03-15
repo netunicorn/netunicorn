@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-
+from enum import IntEnum
 from returns.result import Result
 
 if sys.version_info >= (3, 8):
@@ -85,3 +85,10 @@ class ExperimentExecutionInformationRepresentation(TypedDict):
     status: int
     experiment: Optional[ExperimentRepresentation]
     execution_result: Union[None, str, List[DeploymentExecutionResultRepresentation]]
+
+
+class PipelineExecutorState(IntEnum):
+    LOOKING_FOR_PIPELINE = 0
+    EXECUTING = 1
+    REPORTING = 2
+    FINISHED = 3
