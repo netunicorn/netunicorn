@@ -160,7 +160,7 @@ class PipelineExecutor:
     def execute_task(serialized_task: bytes) -> Tuple[str, bytes]:
         task = cloudpickle.loads(serialized_task)
         result = safe(task.run)()
-        return task.name, cloudpickle.dumps(result)  # type: ignore
+        return task.name, cloudpickle.dumps(result)
 
     def std_redirection(self, *args: Any) -> None:
         _ = args
