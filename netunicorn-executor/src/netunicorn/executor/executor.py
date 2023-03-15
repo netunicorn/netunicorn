@@ -5,17 +5,17 @@ import sys
 import time
 from asyncio import CancelledError
 from base64 import b64decode, b64encode
+from collections import defaultdict
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Optional, Type, Tuple
-from collections import defaultdict
+from typing import Any, Optional, Tuple, Type
 
 import cloudpickle
 import requests as req
 import requests.exceptions
 from netunicorn.base.pipeline import Pipeline
-from netunicorn.base.types import PipelineResult
 from netunicorn.base.task import Task
+from netunicorn.base.types import PipelineResult
 from netunicorn.base.utils import NonStablePool as Pool
 from netunicorn.base.utils import safe
 from returns.pipeline import is_successful
@@ -201,7 +201,10 @@ class PipelineExecutor:
 
                 results = results.get()
 
-            results = tuple((task_name, cloudpickle.loads(result)) for (task_name, result) in results)
+            results = tuple(
+                (task_name, cloudpickle.loads(result))
+                for (task_name, result) in results
+            )
 
             for task_name, result in results:
                 self.step_results[task_name].append(result)

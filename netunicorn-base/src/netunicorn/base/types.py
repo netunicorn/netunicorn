@@ -9,7 +9,7 @@ if sys.version_info >= (3, 8):
 else:
     from typing_extensions import TypedDict
 
-from typing import Dict, List, Optional, Set, Union, Any
+from typing import Any, Dict, List, Optional, Set, Union
 
 NodeProperty = Union[str, float, int, Set[str], None]
 

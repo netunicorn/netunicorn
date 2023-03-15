@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, List, Union, Optional
+from typing import Any, List, Optional, Union
 
 from returns.result import Failure, Success
 

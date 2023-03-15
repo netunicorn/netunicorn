@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import uuid
 from copy import deepcopy
-from typing import Collection, List, Optional, Union, Set
+from typing import Collection, List, Optional, Set, Union
 from warnings import warn
 
 from .environment_definitions import DockerImage, EnvironmentDefinition
 from .task import TaskElement
-
 
 PipelineElement = Union[TaskElement, Collection[TaskElement]]
 
