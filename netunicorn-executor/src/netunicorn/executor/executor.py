@@ -14,7 +14,7 @@ import requests as req
 import requests.exceptions
 from netunicorn.base.pipeline import Pipeline
 from netunicorn.base.task import Task
-from netunicorn.base.types import PipelineResult, PipelineExecutorState
+from netunicorn.base.types import PipelineExecutorState, PipelineResult
 from netunicorn.base.utils import NonStablePool as Pool
 from netunicorn.base.utils import safe
 from returns.pipeline import is_successful
@@ -231,7 +231,11 @@ class PipelineExecutor:
         try:
             result = req.post(
                 f"{self.gateway_endpoint}/api/v1/executor/result",
-                json={"executor_id": self.executor_id, "results": results_data, 'state': self.state.value},
+                json={
+                    "executor_id": self.executor_id,
+                    "results": results_data,
+                    "state": self.state.value,
+                },
                 timeout=30,
             )
             self.logger.info("Successfully reported results.")

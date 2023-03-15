@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from enum import IntEnum
+
 from returns.result import Result
 
 if sys.version_info >= (3, 8):

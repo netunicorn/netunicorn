@@ -81,7 +81,11 @@ async def receive_result(result: PipelineResult) -> None:
     Receives pipeline execution results from executor and stores it in database
     """
     pipeline_results = b64decode(result.results)
-    state = result.state if result.state is not None else PipelineExecutorState.FINISHED.value
+    state = (
+        result.state
+        if result.state is not None
+        else PipelineExecutorState.FINISHED.value
+    )
     finished = state == PipelineExecutorState.FINISHED.value
     await db_conn_pool.execute(
         "UPDATE executors SET result = $1::bytea, finished = $2, state = $3 WHERE executor_id = $4",
