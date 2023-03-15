@@ -43,7 +43,7 @@ class Experiment:
         self.deployment_map.append(Deployment(node, pipeline))
         return self
 
-    def map(self, nodes: Sequence[Node], pipeline: Pipeline) -> Experiment:
+    def map(self, pipeline: Pipeline, nodes: Sequence[Node]) -> Experiment:
         if isinstance(nodes, Nodes):
             raise TypeError("Expected sequence of nodes, got Nodes instead")
 
