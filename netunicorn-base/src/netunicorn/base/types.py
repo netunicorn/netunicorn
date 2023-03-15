@@ -11,9 +11,14 @@ else:
 
 from typing import Any, Dict, List, Optional, Set, Union
 
+if sys.version_info >= (3, 10):
+    from typing import TypeAlias
+else:
+    from typing_extensions import TypeAlias
+
 NodeProperty = Union[str, float, int, Set[str], None]
 
-TaskElementResult = Result[Any, Any]
+TaskElementResult: TypeAlias = Result[Any, Any]
 PipelineResult = Dict[str, List[TaskElementResult]]
 
 
