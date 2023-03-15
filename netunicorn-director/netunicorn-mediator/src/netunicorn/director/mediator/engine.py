@@ -544,7 +544,7 @@ async def cancel_experiment(experiment_name: str, username: str) -> Result[str, 
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
         return Failure(result.failure())
-    experiment_id, status = result.unwrap()
+    experiment_id, _ = result.unwrap()
 
     executors = await db_conn_pool.fetch(
         "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",

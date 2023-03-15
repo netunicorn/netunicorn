@@ -77,7 +77,7 @@ class NonStablePool(multiprocessing.pool.Pool):
 
 
 class UnicornEncoder(JSONEncoder):
-    def default(self, obj: Any) -> Any:
+    def default(self, obj: Any) -> Any:  # pylint: disable=E0202
         if isinstance(obj, Exception):
             return str(obj.__reduce__())
         if dataclasses.is_dataclass(obj):

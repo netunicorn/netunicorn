@@ -22,6 +22,17 @@ TaskElementResult: TypeAlias = Result[Any, Any]
 PipelineResult = Dict[str, List[TaskElementResult]]
 
 
+class NodeRepresentation(TypedDict):
+    name: str
+    properties: Dict[str, NodeProperty]
+    additional_properties: Dict[str, NodeProperty]
+    architecture: str
+
+
+class EnvironmentDefinitionRepresentation(TypedDict):
+    commands: List[str]
+
+
 class DeploymentRepresentation(TypedDict):
     node: NodeRepresentation
     prepared: bool
@@ -33,26 +44,20 @@ class DeploymentRepresentation(TypedDict):
     environment_definition_type: str
 
 
-class NodeRepresentation(TypedDict):
-    name: str
-    properties: Dict[str, NodeProperty]
-    additional_properties: Dict[str, NodeProperty]
-    architecture: str
-
-
 class NodesRepresentation(TypedDict):
     node_pool_type: str
     node_pool_data: List[Union[NodeRepresentation, NodesRepresentation]]
+
+
+class BuildContextRepresentation(TypedDict):
+    python_version: str
+    cloudpickle_version: Optional[str]
 
 
 class RuntimeContextRepresentation(TypedDict):
     ports_mapping: Dict[int, int]
     environment_variables: Dict[str, str]
     additional_arguments: List[str]
-
-
-class EnvironmentDefinitionRepresentation(TypedDict):
-    commands: List[str]
 
 
 class ShellExecutionRepresentation(EnvironmentDefinitionRepresentation):
@@ -63,11 +68,6 @@ class DockerImageRepresentation(EnvironmentDefinitionRepresentation):
     image: Optional[str]
     build_context: BuildContextRepresentation
     runtime_context: RuntimeContextRepresentation
-
-
-class BuildContextRepresentation(TypedDict):
-    python_version: str
-    cloudpickle_version: Optional[str]
 
 
 class ExperimentRepresentation(TypedDict):
