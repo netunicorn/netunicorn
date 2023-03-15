@@ -36,12 +36,10 @@ def safe(
         try:
             result = function(*args, **kwargs)
             if result is None:
-                """
-                Well, ok. The problem is that if we create Success(None) object,
-                cloudpickle serialization somewhere breaks and we receive this error:
-                AttributeError: 'Success' object has no attribute '_inner_value'
-                So, for now - we return 0 instead of None until we find and fix/report the bug.
-                """
+                # Well, ok. The problem is that if we create Success(None) object,
+                # cloudpickle serialization somewhere breaks and we receive this error:
+                # AttributeError: 'Success' object has no attribute '_inner_value'
+                # So, for now - we return 0 instead of None until we find and fix/report the bug.
                 result = 0
             if isinstance(result, Result):
                 return result
