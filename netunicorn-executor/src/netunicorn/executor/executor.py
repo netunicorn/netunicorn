@@ -5,26 +5,20 @@ import sys
 import time
 from asyncio import CancelledError
 from base64 import b64decode, b64encode
+from collections import defaultdict
 from copy import deepcopy
-from enum import Enum
-from typing import Any, Collection, List, Optional, Type
+from typing import Any, Optional, Tuple, Type
 
 import cloudpickle
 import requests as req
 import requests.exceptions
-from netunicorn.base.pipeline import Pipeline, PipelineElementResult, PipelineResult
+from netunicorn.base.pipeline import Pipeline
 from netunicorn.base.task import Task
+from netunicorn.base.types import PipelineExecutorState, PipelineResult
 from netunicorn.base.utils import NonStablePool as Pool
 from netunicorn.base.utils import safe
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
-
-
-class PipelineExecutorState(Enum):
-    LOOKING_FOR_PIPELINE = 0
-    EXECUTING = 1
-    REPORTING = 2
-    FINISHED = 3
 
 
 class PipelineExecutor:
@@ -66,7 +60,7 @@ class PipelineExecutor:
         )  # limit to 1425 secs total, then StopIteration Exception
 
         self.pipeline: Optional[Pipeline] = None
-        self.step_results: List[PipelineElementResult] = []
+        self.step_results: PipelineResult = defaultdict(list)
         self.pipeline_results: Optional[Result[PipelineResult, PipelineResult]] = None
         self.state = PipelineExecutorState.LOOKING_FOR_PIPELINE
 
@@ -155,10 +149,10 @@ class PipelineExecutor:
             )
 
     @staticmethod
-    def execute_task(serialized_task: bytes) -> bytes:
+    def execute_task(serialized_task: bytes) -> Tuple[str, bytes]:
         task = cloudpickle.loads(serialized_task)
         result = safe(task.run)()
-        return cloudpickle.dumps(result)  # type: ignore
+        return task.name, cloudpickle.dumps(result)
 
     def std_redirection(self, *args: Any) -> None:
         _ = args
@@ -175,7 +169,7 @@ class PipelineExecutor:
 
         if not self.pipeline:
             self.logger.error("No pipeline to execute.")
-            self.pipeline_results = Failure(tuple(self.step_results))
+            self.pipeline_results = Failure(self.step_results)
             return
 
         resulting_type: Type[Result[PipelineResult, PipelineResult]] = Success
@@ -199,14 +193,15 @@ class PipelineExecutor:
 
                 results = results.get()
 
-            results = tuple(cloudpickle.loads(result) for result in results)
-            results = results[0] if len(results) == 1 else results
-            self.step_results.append(results)
+            results = tuple(
+                (task_name, cloudpickle.loads(result))
+                for (task_name, result) in results
+            )
 
-            if (isinstance(results, Result) and not is_successful(results)) or (
-                isinstance(results, Collection)
-                and any(not is_successful(result) for result in results)
-            ):
+            for task_name, result in results:
+                self.step_results[task_name].append(result)
+
+            if any(not is_successful(result) for _, result in results):
                 resulting_type = Failure
                 if self.pipeline.early_stopping:
                     break
@@ -214,7 +209,7 @@ class PipelineExecutor:
         # set flag that pipeline is finished
         self.logger.info("Pipeline finished, start reporting results.")
         self.state = PipelineExecutorState.REPORTING
-        self.pipeline_results = resulting_type(tuple(self.step_results))
+        self.pipeline_results = resulting_type(self.step_results)
 
     def report_results(self) -> None:
         """
@@ -236,7 +231,11 @@ class PipelineExecutor:
         try:
             result = req.post(
                 f"{self.gateway_endpoint}/api/v1/executor/result",
-                json={"executor_id": self.executor_id, "results": results_data},
+                json={
+                    "executor_id": self.executor_id,
+                    "results": results_data,
+                    "state": self.state.value,
+                },
                 timeout=30,
             )
             self.logger.info("Successfully reported results.")

@@ -40,7 +40,6 @@ class NetunicornConnectorProtocol(Protocol):
         _ = configuration
         _ = netunicorn_gateway
         _ = logger
-        pass
 
     @abstractmethod
     async def initialize(self) -> None:

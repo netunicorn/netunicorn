@@ -1,15 +1,37 @@
 from __future__ import annotations
 
 import sys
+from enum import IntEnum
+
+from returns.result import Result
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict
 else:
     from typing_extensions import TypedDict
 
-from typing import Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Union
+
+if sys.version_info >= (3, 10):
+    from typing import TypeAlias
+else:
+    from typing_extensions import TypeAlias
 
 NodeProperty = Union[str, float, int, Set[str], None]
+
+TaskElementResult: TypeAlias = Result[Any, Any]
+PipelineResult = Dict[str, List[TaskElementResult]]
+
+
+class NodeRepresentation(TypedDict):
+    name: str
+    properties: Dict[str, NodeProperty]
+    additional_properties: Dict[str, NodeProperty]
+    architecture: str
+
+
+class EnvironmentDefinitionRepresentation(TypedDict):
+    commands: List[str]
 
 
 class DeploymentRepresentation(TypedDict):
@@ -23,26 +45,20 @@ class DeploymentRepresentation(TypedDict):
     environment_definition_type: str
 
 
-class NodeRepresentation(TypedDict):
-    name: str
-    properties: Dict[str, NodeProperty]
-    additional_properties: Dict[str, NodeProperty]
-    architecture: str
-
-
 class NodesRepresentation(TypedDict):
     node_pool_type: str
     node_pool_data: List[Union[NodeRepresentation, NodesRepresentation]]
+
+
+class BuildContextRepresentation(TypedDict):
+    python_version: str
+    cloudpickle_version: Optional[str]
 
 
 class RuntimeContextRepresentation(TypedDict):
     ports_mapping: Dict[int, int]
     environment_variables: Dict[str, str]
     additional_arguments: List[str]
-
-
-class EnvironmentDefinitionRepresentation(TypedDict):
-    commands: List[str]
 
 
 class ShellExecutionRepresentation(EnvironmentDefinitionRepresentation):
@@ -53,11 +69,6 @@ class DockerImageRepresentation(EnvironmentDefinitionRepresentation):
     image: Optional[str]
     build_context: BuildContextRepresentation
     runtime_context: RuntimeContextRepresentation
-
-
-class BuildContextRepresentation(TypedDict):
-    python_version: str
-    cloudpickle_version: Optional[str]
 
 
 class ExperimentRepresentation(TypedDict):
@@ -75,3 +86,10 @@ class ExperimentExecutionInformationRepresentation(TypedDict):
     status: int
     experiment: Optional[ExperimentRepresentation]
     execution_result: Union[None, str, List[DeploymentExecutionResultRepresentation]]
+
+
+class PipelineExecutorState(IntEnum):
+    LOOKING_FOR_PIPELINE = 0
+    EXECUTING = 1
+    REPORTING = 2
+    FINISHED = 3

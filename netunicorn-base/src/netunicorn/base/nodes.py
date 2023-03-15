@@ -271,7 +271,6 @@ class UncountableNodePool(Nodes):
             "node_pool_type": self.__class__.__name__,
             "node_pool_data": [x.__json__() for x in self._node_template],
         }
-        pass
 
     @classmethod
     def from_json(

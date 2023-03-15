@@ -90,7 +90,7 @@ class ShellExecution(EnvironmentDefinition):
 class BuildContext:
     """ """
 
-    python_version: str = field(default_factory=lambda: platform.python_version())
+    python_version: str = field(default_factory=platform.python_version)
     cloudpickle_version: Optional[str] = field(
         default_factory=lambda: BuildContext._get_cloudpickle_version()
     )

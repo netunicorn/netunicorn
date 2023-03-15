@@ -10,7 +10,7 @@ Goal: ability to use the platform for dataset collection based research in the p
 - Task implementation support for different platforms (linux-based amd64, arm64, pisa switches via sidecar)
 - Docker environment generation and usage
 
-## Milestone 0.2
+## Milestone 0.2 -- achieved 02/19/23
 Goal: public availability of the platform (repositories and documentation), ability to deploy infrastructure in other places using cloud connectors
 #### Requirements
 - Stabilize the public API (netunicorn-base, netunicorn-client, public part of netunicorn-mediator)
@@ -27,9 +27,7 @@ Goal: ability to deploy this platform in another universities and provide basic 
 #### Requirements
 - Event-based system for nodes synchronization
 - Easiness of deployment of the system (docker-compose)
-- Basic authentication/authorization
 - AWS and Ansible support
-- Experiment preprocessor and postprocessor attachments
 
 ## Unsorted
 - Adding user-specific infrastructure dynamically
