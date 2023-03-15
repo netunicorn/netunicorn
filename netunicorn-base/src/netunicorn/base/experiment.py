@@ -10,11 +10,12 @@ from returns.result import Result
 
 from .deployment import Deployment
 from .nodes import Node, Nodes
-from .pipeline import Pipeline, PipelineResult
+from .pipeline import Pipeline
 from .types import (
     DeploymentExecutionResultRepresentation,
     ExperimentExecutionInformationRepresentation,
     ExperimentRepresentation,
+    PipelineResult,
 )
 from .utils import LogType
 
