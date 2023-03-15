@@ -2,14 +2,19 @@ from __future__ import annotations
 
 import sys
 
+from returns.result import Result
+
 if sys.version_info >= (3, 8):
     from typing import TypedDict
 else:
     from typing_extensions import TypedDict
 
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Optional, Set, Union, Any
 
 NodeProperty = Union[str, float, int, Set[str], None]
+
+TaskElementResult = Result[Any, Any]
+PipelineResult = Dict[str, List[TaskElementResult]]
 
 
 class DeploymentRepresentation(TypedDict):

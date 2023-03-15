@@ -3,11 +3,12 @@ from __future__ import annotations
 import copy
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Collection, List, Union
+from typing import Any, List, Union, Optional
 
-from returns.result import Failure, Result, Success
+from returns.result import Failure, Success
 
 from .nodes import Node
+from .types import PipelineResult
 
 # Keep classes for export
 Success = Success
@@ -34,20 +35,27 @@ class Task(ABC):
     requirements: List[str] = []
 
     # this variable would be overwritten before task start with results of previous tasks
-    previous_steps: List[Union[Result[Any, Any], Collection[Result[Any, Any]]]] = []
+    # format: {task_name: [Result, Result, ...]}
+    previous_steps: PipelineResult = {}
 
-    def __init__(self) -> None:
+    def __init__(self, name: Optional[str] = None) -> None:
         """
         This is a constructor for the task. Any variables (state) that `run` method should use should be provided here.
         Please, do not forget to call `super().__init__()` in your implementation.
         """
-        self.name = str(uuid.uuid4())  # Each task should have a name
+        self.name = name or str(uuid.uuid4())  # Each task should have a name
 
     def __call__(self) -> Any:
         return self.run()
 
+    def __repr__(self) -> str:
+        type_ = type(self)
+        module = type_.__module__
+        qualname = type_.__qualname__
+        return f"<{module}.{qualname} with name {self.name}>"
+
     def __str__(self) -> str:
-        return self.name
+        return self.__repr__()
 
     def add_requirement(self, command: str) -> Task:
         """
@@ -86,6 +94,14 @@ class TaskDispatcher(ABC):
     Dispatching is done by calling the dispatch method that you should implement.
     """
 
+    def __init__(self, name: Optional[str] = None) -> None:
+        """
+        This is a constructor for the TaskDispatcher. Any variables (state) that `run` method of
+        task implementations should use should be provided here.
+        Please, do not forget to call `super().__init__()` in your implementation.
+        """
+        self.name = name or str(uuid.uuid4())  # Each task should have a name
+
     @abstractmethod
     def dispatch(self, node: Node) -> Task:
         """
@@ -95,3 +111,6 @@ class TaskDispatcher(ABC):
         :return: Task object
         """
         raise NotImplementedError
+
+
+TaskElement = Union[Task, TaskDispatcher]
