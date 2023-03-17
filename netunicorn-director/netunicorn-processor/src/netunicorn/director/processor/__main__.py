@@ -178,6 +178,7 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
 
 
 async def preparing_experiment_watchdog_task(timeout_sec: int = 3600) -> NoReturn:
+    logger.info("Preparing experiment watchdog task started.")
     while True:
         async with db_conn_pool.acquire() as conn:
             async with conn.transaction():
