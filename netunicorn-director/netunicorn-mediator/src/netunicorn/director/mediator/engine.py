@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from datetime import datetime
 from typing import Dict, List, Tuple
 from uuid import uuid4
@@ -149,9 +150,10 @@ async def delete_experiment(experiment_name: str, username: str) -> Result[None,
 
     # actually just rename the user to save experiment in the history
     await db_conn_pool.execute(
-        "UPDATE experiments SET username = $1, status = $2 WHERE experiment_id = $3",
+        "UPDATE experiments SET username = $1, status = $2, experiment_name = $3 WHERE experiment_id = $4",
         f"deleted_{username}",
         ExperimentStatus.FINISHED.value,
+        experiment_name + "_" + str(uuid.uuid4()),
         experiment_id,
     )
     return Success(None)
