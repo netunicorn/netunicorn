@@ -22,6 +22,7 @@ db_conn_pool: asyncpg.Pool
 
 locker_task_handler: asyncio.Task[NoReturn]
 update_experiments_task_handler: asyncio.Task[NoReturn]
+preparing_experiment_watchdog_task_handler: asyncio.Task[NoReturn]
 
 
 async def collect_executors_results(experiment_id: str, experiment: Experiment) -> None:
@@ -176,10 +177,35 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
         await asyncio.sleep(timeout_sec)
 
 
+async def preparing_experiment_watchdog_task(timeout_sec: int = 3600) -> NoReturn:
+    while True:
+        async with db_conn_pool.acquire() as conn:
+            async with conn.transaction():
+                experiment_ids = await conn.fetch(
+                    "SELECT experiment_id, data::jsonb, start_time FROM experiments WHERE status = $1",
+                    ExperimentStatus.PREPARING.value,
+                )
+                for line in experiment_ids:
+                    experiment_id = line["experiment_id"]
+                    creation_time = line["creation_time"]
+                    if datetime.now() - creation_time > timedelta(days=1):
+                        # most likely something went wrong, set status to UNKNOWN
+                        await conn.execute(
+                            "UPDATE experiments SET status = $1 WHERE experiment_id = $2",
+                            ExperimentStatus.UNKNOWN.value,
+                            experiment_id,
+                        )
+                        logger.warning(
+                            f"Experiment {experiment_id} timed out during preparation."
+                        )
+        await asyncio.sleep(timeout_sec)
+
+
 async def task_done_callback(fut: asyncio.Future[NoReturn]) -> None:
     try:
         locker_task_handler.cancel()
         update_experiments_task_handler.cancel()
+        preparing_experiment_watchdog_task_handler.cancel()
         fut.result()
     except asyncio.CancelledError:
         logger.info("Task cancelled.")
@@ -189,7 +215,7 @@ async def task_done_callback(fut: asyncio.Future[NoReturn]) -> None:
 
 
 async def main() -> None:
-    global locker_task_handler, update_experiments_task_handler, db_conn_pool
+    global locker_task_handler, update_experiments_task_handler, db_conn_pool, preparing_experiment_watchdog_task_handler
     db_conn_pool = await asyncpg.create_pool(
         host=DATABASE_ENDPOINT,
         user=DATABASE_USER,
@@ -203,6 +229,11 @@ async def main() -> None:
 
     update_experiments_task_handler = asyncio.create_task(update_experiments_task())
     update_experiments_task_handler.add_done_callback(task_done_callback)
+
+    preparing_experiment_watchdog_task_handler = asyncio.create_task(
+        preparing_experiment_watchdog_task()
+    )
+    preparing_experiment_watchdog_task_handler.add_done_callback(task_done_callback)
 
     await asyncio.gather(locker_task_handler, update_experiments_task_handler)
 
