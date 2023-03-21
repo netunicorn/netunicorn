@@ -20,6 +20,9 @@ class NetunicornConnectorProtocol(Protocol):
 
     If connector raises an exception during the execution of any method,
     it will be removed from the list of available connectors.
+
+    IMPORTANT: all methods of this class have *args and **kwargs to allow
+    adding new parameters without breaking backward compatibility.
     """
 
     @abstractmethod
@@ -29,6 +32,8 @@ class NetunicornConnectorProtocol(Protocol):
         configuration: str | None,
         netunicorn_gateway: str,
         logger: Optional[Logger] = None,
+        *args,
+        **kwargs,
     ):
         """
         Connector constructor.
@@ -42,7 +47,7 @@ class NetunicornConnectorProtocol(Protocol):
         _ = logger
 
     @abstractmethod
-    async def initialize(self) -> None:
+    async def initialize(self, *args, **kwargs) -> None:
         """
         This method is guaranteed to be called immediately after the constructor
         to provide async initialization capabilities.
@@ -51,7 +56,7 @@ class NetunicornConnectorProtocol(Protocol):
         pass
 
     @abstractmethod
-    async def health(self) -> Tuple[bool, str]:
+    async def health(self, *args, **kwargs) -> Tuple[bool, str]:
         """
         Health check of the connector.
         :return: True if connector is healthy, False otherwise, and a description of the health status
@@ -59,14 +64,14 @@ class NetunicornConnectorProtocol(Protocol):
         pass
 
     @abstractmethod
-    async def shutdown(self) -> None:
+    async def shutdown(self, *args, **kwargs) -> None:
         """
         Shutdown the connector. Will be called in the end of the program.
         """
         pass
 
     @abstractmethod
-    async def get_nodes(self, username: str) -> Nodes:
+    async def get_nodes(self, username: str, *args, **kwargs) -> Nodes:
         """
         Get available nodes for the user.
         :param username: username
@@ -76,8 +81,14 @@ class NetunicornConnectorProtocol(Protocol):
 
     @abstractmethod
     async def deploy(
-        self, username: str, experiment_id: str, deployments: list[Deployment]
-    ) -> dict[str, Result[None, str]]:
+        self,
+        username: str,
+        experiment_id: str,
+        deployments: list[Deployment],
+        deployment_context: Optional[dict[str, str]],
+        *args,
+        **kwargs,
+    ) -> dict[str, Result[Optional[str], str]]:
         """
         This method deploys the given list of deployments to the infrastructure.
         See the documentation for available deployment environments for correct deployment implementation.
@@ -85,14 +96,25 @@ class NetunicornConnectorProtocol(Protocol):
         :param username: username of the user who deploys the experiment
         :param experiment_id: ID of the experiment
         :param deployments: list of deployments to deploy
-        :return: dictionary of executor_id (unique, parsed from deployment) -> Result[None, error message]
+        :param deployment_context: optional deployment context provided directly from the user.
+        Can be used to pass additional information to the connector, netunicorn does not modify or validate this field.
+        You can define in the connector's documentation some additional deployment flags and ask user to set them in this field.
+        E.g.: network configuration for virtual deployments (link capacity, etc.)
+        :return: dictionary of executor_id
+        ((unique, parsed from deployment) -> Result[optional success message, error message])
         """
         pass
 
     @abstractmethod
     async def execute(
-        self, username: str, experiment_id: str, deployments: list[Deployment]
-    ) -> dict[str, Result[None, str]]:
+        self,
+        username: str,
+        experiment_id: str,
+        deployments: list[Deployment],
+        execution_context: Optional[dict[str, str]],
+        *args,
+        **kwargs,
+    ) -> dict[str, Result[Optional[str], str]]:
         """
         This method starts execution of the given list of deployments on the infrastructure.
         Usually, that means that connector should run `python3 -m netunicorn.executor` on the node
@@ -104,18 +126,29 @@ class NetunicornConnectorProtocol(Protocol):
         :param username: username of the user who deploys the experiment
         :param experiment_id: ID of the experiment
         :param deployments: list of deployments to start execution
-        :return: dictionary of executor_id (unique, parsed from deployment) -> Result[None, error message]
+        :param execution_context: optional execution context provided directly from the user.
+        Can be used to pass additional information to the connector, netunicorn does not modify or validate this field.
+        You can define in the connector's documentation some additional deployment flags and ask user to set them in this field.
+        :return: dictionary of (executor_id (unique, parsed from deployment) -> Result[optional success message, error message])
         """
         pass
 
     @abstractmethod
     async def stop_executors(
-        self, username: str, requests_list: list[StopExecutorRequest]
-    ) -> dict[str, Result[None, str]]:
+        self,
+        username: str,
+        requests_list: list[StopExecutorRequest],
+        cancellation_context: Optional[dict[str, str]],
+        *args,
+        **kwargs,
+    ) -> dict[str, Result[Optional[str], str]]:
         """
         This method stops execution of the given list of executors on the infrastructure.
         :param username: username of the user
         :param requests_list: list of StopExecutorRequests
-        :return: dictionary of executor_id (unique, parsed from deployment) -> Result[None, error message]
+        :param cancellation_context: optional cancellation context provided directly from the user.
+        User can define arbitrary fields in this dictionary and connector can parse them.
+        E.g.: a stopping reason for the experiment, or soft-kill vs hard-kill.
+        :return: dictionary of executor_id (unique, parsed from deployment) -> Result[optional success message, error message]
         """
         pass

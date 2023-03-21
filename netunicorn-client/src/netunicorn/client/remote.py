@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Optional
 
 import requests as req
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
@@ -82,7 +82,17 @@ class RemoteClient(BaseClient):
             k: ExperimentExecutionInformation.from_json(v) for k, v in result.items()
         }
 
-    def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
+    def prepare_experiment(
+            self,
+            experiment: Experiment,
+            experiment_id: str,
+            deployment_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
+        if deployment_context is not None:
+            if experiment.deployment_context is None:
+                experiment.deployment_context = {}
+            experiment.deployment_context.update(deployment_context)
+
         data = json.dumps(experiment, cls=UnicornEncoder)
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/prepare",
@@ -98,10 +108,14 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
         )
 
-    def start_execution(self, experiment_id: str) -> str:
+    def start_execution(
+            self,
+            experiment_id: str,
+            execution_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/start",
-            auth=(self.login, self.password),
+            auth=(self.login, self.password), json=execution_context
         )
         if result.status_code == 200:
             return str(result.json())
@@ -127,10 +141,14 @@ class RemoteClient(BaseClient):
         result: ExperimentExecutionInformationRepresentation = result_data.json()
         return ExperimentExecutionInformation.from_json(result)
 
-    def cancel_experiment(self, experiment_id: str) -> str:
+    def cancel_experiment(
+            self,
+            experiment_id: str,
+            cancellation_context: Optional[Dict[str, Dict[str, str]]] = None
+    ) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/cancel",
-            auth=(self.login, self.password),
+            auth=(self.login, self.password), json=cancellation_context
         )
         if result.status_code == 200:
             return str(result.json())
@@ -140,11 +158,15 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
         )
 
-    def cancel_executors(self, executors: Iterable[str]) -> str:
+    def cancel_executors(
+            self,
+            executors: Iterable[str],
+            cancellation_context: Optional[Dict[str, Dict[str, str]]] = None
+    ) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/executors/cancel",
             auth=(self.login, self.password),
-            json=executors,
+            json={"executors": list(executors), "cancellation_context": cancellation_context}
         )
         if result.status_code == 200:
             return str(result.json())

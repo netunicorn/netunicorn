@@ -40,32 +40,39 @@ class DummyNetunicornConnector(NetunicornConnectorProtocol):
     async def shutdown(self) -> None:
         self.logger.info("Shutdown called")
 
-    async def get_nodes(self, username: str) -> Nodes:
+    async def get_nodes(self, username: str, *args, **kwargs) -> Nodes:
         self.logger.info(f"Get nodes called with {username=}")
+        self.logger.info(f"Additional args: {args=}, {kwargs=}")
         self.logger.info("Returning dummy node pool")
         return CountableNodePool(nodes=[Node(name="dummy", properties={})])
 
     async def deploy(
-        self, username: str, experiment_id: str, deployments: list[Deployment]
+        self, username: str, experiment_id: str, deployments: list[Deployment],
+            deployment_context: Optional[dict[str, str]],
+            *args,
+            **kwargs,
     ) -> dict[str, Result[None, str]]:
         self.logger.info(
-            f"Deploy called with {username=}, {experiment_id=}, {deployments=}"
+            f"Deploy called with {username=}, {experiment_id=}, {deployments=}, {deployment_context=}, {args=}, {kwargs=}"
         )
         self.logger.info("Returning dummy deployment results")
         return {deployment.executor_id: Success(None) for deployment in deployments}
 
     async def execute(
-        self, username: str, experiment_id: str, deployments: list[Deployment]
+        self, username: str, experiment_id: str, deployments: list[Deployment],
+            execution_context: Optional[dict[str, str]],
+            *args,
+            **kwargs,
     ) -> dict[str, Result[None, str]]:
         self.logger.info(
-            f"Execute called with {username=}, {experiment_id=}, {deployments=}"
+            f"Execute called with {username=}, {experiment_id=}, {deployments=}, {execution_context=}, {args=}, {kwargs=}"
         )
         self.logger.info("Returning dummy execution results")
         return {deployment.executor_id: Success(None) for deployment in deployments}
 
     async def stop_executors(
-        self, username: str, requests_list: list[StopExecutorRequest]
+        self, username: str, requests_list: list[StopExecutorRequest], cancellation_context: Optional[dict[str, str]], *args, **kwargs
     ) -> dict[str, Result[None, str]]:
-        self.logger.info(f"Stop executors called with {username=}, {requests_list=}")
+        self.logger.info(f"Stop executors called with {username=}, {requests_list=}, {cancellation_context=}, {args=}, {kwargs=}")
         self.logger.info("Returning dummy stop executors results")
         return {request["executor_id"]: Success(None) for request in requests_list}

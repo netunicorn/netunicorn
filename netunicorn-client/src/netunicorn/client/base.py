@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Optional
 
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
 from netunicorn.base.nodes import Nodes
@@ -39,7 +39,12 @@ class BaseClient(ABC):
         pass
 
     @abstractmethod
-    def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
+    def prepare_experiment(
+            self,
+            experiment: Experiment,
+            experiment_id: str,
+            deployment_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
         """
         Prepares an Experiment. Server will start compiling and distributing the environment among nodes.
         You can check status of preparation by calling 'get_experiment_status' function and checking if it's in
@@ -49,12 +54,14 @@ class BaseClient(ABC):
         will not create additional deployment processes.
         :param experiment: experiment to prepare
         :param experiment_id: user-wide unique experiment name
+        :param deployment_context: deployment context for connectors (see connectors documentation)
+        Format: {connector_name: {key: value}, ...}
         :return: the same experiment_id if everything's correct
         """
         pass
 
     @abstractmethod
-    def start_execution(self, experiment_id: str) -> str:
+    def start_execution(self, experiment_id: str, execution_context: Optional[Dict[str, Dict[str, str]]] = None) -> str:
         """
         Starts execution of prepared experiment.
         You can check status and results of an experiment by calling 'get_experiment_status' function and checking if it's in
@@ -63,6 +70,8 @@ class BaseClient(ABC):
         This method is network-failure-safe: subsequent calls with the same experiment id
         will not create additional start process.
         :param experiment_id: prepared experiment id
+        :param execution_context: execution context for connectors (see connectors documentation)
+        Format: {connector_name: {key: value}, ...}
         :return: the same experiment_id if execution already in progress or finished
         """
         pass
@@ -81,17 +90,27 @@ class BaseClient(ABC):
         pass
 
     @abstractmethod
-    def cancel_experiment(self, experiment_id: str) -> str:
+    def cancel_experiment(self, experiment_id: str, cancellation_context: Optional[Dict[str, Dict[str, str]]] = None) -> str:
         """
         Cancels experiment execution.
         :param experiment_id: id of the experiment
+        :param cancellation_context: cancellation context for connectors (see connectors documentation)
+        Format: {connector_name: {key: value}, ...}
+        :return: the same experiment_id if everything's correct
         """
         pass
 
     @abstractmethod
-    def cancel_executors(self, executors: Iterable[str]) -> str:
+    def cancel_executors(
+            self,
+            executors: Iterable[str],
+            cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
         """
         Cancels particular executors.
         :param executors: list of executors to cancel
+        :param cancellation_context: cancellation context for connectors (see connectors documentation)
+        Format: {connector_name: {key: value}, ...}
+        :return: the same experiment_id if everything's correct
         """
         pass

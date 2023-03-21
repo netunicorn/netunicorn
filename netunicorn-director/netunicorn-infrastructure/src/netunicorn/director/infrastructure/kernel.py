@@ -248,19 +248,22 @@ async def deploy(
 
     # 4. start background task to deploy
     background_tasks.add_task(
-        background_deploy_task, username, experiment_id, deployments
+        background_deploy_task, username, experiment_id, deployments, experiment.deployment_context
     )
     return 200, f"Deployment of experiment {experiment_id} started"
 
 
 async def background_deploy_task(
-    username: str, experiment_id: str, deployments: dict[str, list[Deployment]]
+    username: str, experiment_id: str, deployments: dict[str, list[Deployment]], deployment_context: Optional[dict[str, dict[str, str]]]
 ) -> None:
     # 5. deploy on each connector
     for connector_name, connector_deployments in deployments.items():
         try:
+            connector_context = None
+            if deployment_context and connector_name in deployment_context:
+                connector_context = deployment_context[connector_name]
             results = await connectors[connector_name].deploy(
-                username, experiment_id, connector_deployments
+                username, experiment_id, connector_deployments, connector_context
             )
         except Exception as e:
             logger.warning(f"Connector {connector_name} raised an exception: {e}")
@@ -301,7 +304,7 @@ async def background_deploy_task(
 
 
 async def execute(
-    username: str, experiment_id: str, background_tasks: BackgroundTasks
+    username: str, experiment_id: str, background_tasks: BackgroundTasks, execution_context: Optional[dict[str, dict[str, str]]] = None,
 ) -> Tuple[int, str]:
     # 1. take experiment information from the database
     experiment_data: Optional[dict[str, Any]] = await db_connection_pool.fetchval(
@@ -355,19 +358,22 @@ async def execute(
 
     # 4. start background task to execute
     background_tasks.add_task(
-        background_execute_task, username, experiment_id, deployments
+        background_execute_task, username, experiment_id, deployments, execution_context
     )
     return 200, f"Execution of experiment {experiment_id} started"
 
 
 async def background_execute_task(
-    username: str, experiment_id: str, deployments: dict[str, list[Deployment]]
+    username: str, experiment_id: str, deployments: dict[str, list[Deployment]], execution_context: Optional[dict[str, dict[str, str]]] = None
 ) -> None:
     # 5. execute on each connector
     for connector_name, connector_deployments in deployments.items():
         try:
+            connector_context = None
+            if execution_context and connector_name in execution_context:
+                connector_context = execution_context[connector_name]
             results = await connectors[connector_name].execute(
-                username, experiment_id, connector_deployments
+                username, experiment_id, connector_deployments, connector_context
             )
         except Exception as e:
             logger.warning(f"Connector {connector_name} raised an exception: {e}")
@@ -403,14 +409,14 @@ async def background_execute_task(
 
 
 async def stop_execution(
-    username: str, experiment_id: str, background_tasks: BackgroundTasks
+    username: str, experiment_id: str, background_tasks: BackgroundTasks, cancellation_context: Optional[dict[str, dict[str, str]]] = None
 ) -> Tuple[int, str]:
     # TODO: implement
     return 500, "Not implemented"
 
 
 async def stop_executors(
-    username: str, executors: list[str], background_tasks: BackgroundTasks
+    username: str, executors: list[str], background_tasks: BackgroundTasks, cancellation_context: Optional[dict[str, dict[str, str]]] = None
 ) -> Tuple[int, str]:
     # find all connectors to ask and give them information about executors to stop
     # 1. find all executors
@@ -437,17 +443,20 @@ async def stop_executors(
             return 500, f"Connector {connector_name} is not available, cannot proceed"
 
     # 4. start background task to stop executors
-    background_tasks.add_task(background_stop_executors_task, username, executors_dict)
+    background_tasks.add_task(background_stop_executors_task, username, executors_dict, cancellation_context)
     return 200, f"Stopping executors {executors_dict} started"
 
 
 async def background_stop_executors_task(
-    username: str, executors: dict[str, list[StopExecutorRequest]]
+    username: str, executors: dict[str, list[StopExecutorRequest]], cancellation_context: Optional[dict[str, dict[str, str]]] = None
 ) -> None:
     for connector_name, executors_list in executors.items():
         try:
+            connector_context = None
+            if cancellation_context and connector_name in cancellation_context:
+                connector_context = cancellation_context[connector_name]
             results = await connectors[connector_name].stop_executors(
-                username, executors_list
+                username, executors_list, connector_context
             )
         except Exception as e:
             logger.warning(f"Connector {connector_name} raised an exception: {e}")

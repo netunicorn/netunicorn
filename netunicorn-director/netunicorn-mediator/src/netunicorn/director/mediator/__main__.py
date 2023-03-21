@@ -1,11 +1,12 @@
 import asyncio
 import json
 import os
-from typing import Any, List, Union
+from typing import Any, List, Union, Optional
 
 import uvicorn
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from pydantic import BaseModel
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
@@ -29,6 +30,12 @@ from .engine import (
     prepare_experiment_task,
     start_experiment,
 )
+
+
+class CancellationRequest(BaseModel):
+    executors: List[str]
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None
+
 
 logger = get_logger("netunicorn.director.mediator")
 
@@ -136,9 +143,9 @@ async def prepare_experiment_handler(
 
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
 async def start_experiment_handler(
-    experiment_name: str, username: str = Depends(check_credentials)
+    experiment_name: str, username: str = Depends(check_credentials), execution_context: Optional[dict[str, dict[str, str]]] = None,
 ) -> Response:
-    result = await start_experiment(experiment_name, username)
+    result = await start_experiment(experiment_name, username, execution_context)
     return result_to_response(result)
 
 
@@ -160,17 +167,17 @@ async def delete_experiment_handler(
 
 @app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
 async def cancel_experiment_handler(
-    experiment_name: str, username: str = Depends(check_credentials)
+    experiment_name: str, username: str = Depends(check_credentials), cancellation_context: Optional[dict[str, dict[str, str]]] = None
 ) -> Response:
-    result = await cancel_experiment(experiment_name, username)
+    result = await cancel_experiment(experiment_name, username, cancellation_context)
     return result_to_response(result)
 
 
 @app.post("/api/v1/executors/cancel", status_code=200)
 async def cancel_executors_handler(
-    executors: List[str], username: str = Depends(check_credentials)
+    data: CancellationRequest, username: str = Depends(check_credentials)
 ) -> Response:
-    result = await cancel_executors(executors, username)
+    result = await cancel_executors(data.executors, username, data.cancellation_context)
     return result_to_response(result)
 
 
