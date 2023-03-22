@@ -19,6 +19,11 @@ except ImportError:
     pass
 
 
+class DummyTask(Task):
+    def run(self):
+        return 0
+
+
 class TestAllJSONSerialization(unittest.TestCase):
     def test_nodes(self):
         node_pool = CountableNodePool(
@@ -39,7 +44,7 @@ class TestAllJSONSerialization(unittest.TestCase):
     def test_deployment(self):
         self.maxDiff = None
         node = Node("node1", {"prop1": "value1", "prop2": "value2"})
-        pipeline = Pipeline().then(Task())
+        pipeline = Pipeline().then(DummyTask())
         deployment = Deployment(node, pipeline)
         deployment.error = Exception("test")
         json_deployment = UnicornEncoder().encode(deployment)
@@ -55,6 +60,7 @@ class TestAllJSONSerialization(unittest.TestCase):
             "executor_id": "",
             "error": "test",
             "pipeline": b64encode(deployment.pipeline).decode("utf-8"),
+            "keep_alive_timeout_minutes": 10,
             "environment_definition": {
                 "commands": [],
                 "image": None,
@@ -86,7 +92,7 @@ class TestAllJSONSerialization(unittest.TestCase):
     def test_experiment(self):
         self.maxDiff = None
         node = Node("node1", {"prop1": "value1", "prop2": "value2"})
-        pipeline = Pipeline().then(Task())
+        pipeline = Pipeline().then(DummyTask())
         experiment = Experiment().append(node, pipeline)
         json_experiment = UnicornEncoder().encode(experiment)
         deserialized_experiment = Experiment.from_json(json.loads(json_experiment))
