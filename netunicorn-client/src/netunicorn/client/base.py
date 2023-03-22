@@ -40,10 +40,10 @@ class BaseClient(ABC):
 
     @abstractmethod
     def prepare_experiment(
-            self,
-            experiment: Experiment,
-            experiment_id: str,
-            deployment_context: Optional[Dict[str, Dict[str, str]]] = None,
+        self,
+        experiment: Experiment,
+        experiment_id: str,
+        deployment_context: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> str:
         """
         Prepares an Experiment. Server will start compiling and distributing the environment among nodes.
@@ -61,7 +61,11 @@ class BaseClient(ABC):
         pass
 
     @abstractmethod
-    def start_execution(self, experiment_id: str, execution_context: Optional[Dict[str, Dict[str, str]]] = None) -> str:
+    def start_execution(
+        self,
+        experiment_id: str,
+        execution_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
         """
         Starts execution of prepared experiment.
         You can check status and results of an experiment by calling 'get_experiment_status' function and checking if it's in
@@ -90,7 +94,11 @@ class BaseClient(ABC):
         pass
 
     @abstractmethod
-    def cancel_experiment(self, experiment_id: str, cancellation_context: Optional[Dict[str, Dict[str, str]]] = None) -> str:
+    def cancel_experiment(
+        self,
+        experiment_id: str,
+        cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
         """
         Cancels experiment execution.
         :param experiment_id: id of the experiment
@@ -102,9 +110,9 @@ class BaseClient(ABC):
 
     @abstractmethod
     def cancel_executors(
-            self,
-            executors: Iterable[str],
-            cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
+        self,
+        executors: Iterable[str],
+        cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> str:
         """
         Cancels particular executors.

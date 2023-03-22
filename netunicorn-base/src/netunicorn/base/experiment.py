@@ -4,7 +4,7 @@ import base64
 import copy
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterator, List, Optional, Sequence, Tuple, Union, Dict
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 from returns.result import Result
 
@@ -36,7 +36,9 @@ class ExperimentStatus(Enum):
 
 
 class Experiment:
-    def __init__(self, deployment_context: Optional[Dict[str, Dict[str, str]]] = None) -> None:
+    def __init__(
+        self, deployment_context: Optional[Dict[str, Dict[str, str]]] = None
+    ) -> None:
         self.deployment_map: List[Deployment] = []
         self.deployment_context = deployment_context
 

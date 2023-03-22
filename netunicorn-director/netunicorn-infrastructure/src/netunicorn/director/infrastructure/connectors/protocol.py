@@ -71,10 +71,11 @@ class NetunicornConnectorProtocol(Protocol):
         pass
 
     @abstractmethod
-    async def get_nodes(self, username: str, *args, **kwargs) -> Nodes:
+    async def get_nodes(self, username: str, authentication_context: Optional[dict[str, str]] = None, *args, **kwargs) -> Nodes:
         """
         Get available nodes for the user.
         :param username: username
+        :param authentication_context: authentication context provided by the user
         :return: Pool of nodes
         """
         pass
@@ -86,6 +87,7 @@ class NetunicornConnectorProtocol(Protocol):
         experiment_id: str,
         deployments: list[Deployment],
         deployment_context: Optional[dict[str, str]],
+        authentication_context: Optional[dict[str, str]] = None,
         *args,
         **kwargs,
     ) -> dict[str, Result[Optional[str], str]]:
@@ -100,6 +102,7 @@ class NetunicornConnectorProtocol(Protocol):
         Can be used to pass additional information to the connector, netunicorn does not modify or validate this field.
         You can define in the connector's documentation some additional deployment flags and ask user to set them in this field.
         E.g.: network configuration for virtual deployments (link capacity, etc.)
+        :param authentication_context: optional authentication context provided by the user
         :return: dictionary of executor_id
         ((unique, parsed from deployment) -> Result[optional success message, error message])
         """
@@ -112,6 +115,7 @@ class NetunicornConnectorProtocol(Protocol):
         experiment_id: str,
         deployments: list[Deployment],
         execution_context: Optional[dict[str, str]],
+        authentication_context: Optional[dict[str, str]] = None,
         *args,
         **kwargs,
     ) -> dict[str, Result[Optional[str], str]]:
@@ -129,6 +133,7 @@ class NetunicornConnectorProtocol(Protocol):
         :param execution_context: optional execution context provided directly from the user.
         Can be used to pass additional information to the connector, netunicorn does not modify or validate this field.
         You can define in the connector's documentation some additional deployment flags and ask user to set them in this field.
+        :param authentication_context: optional authentication context provided by the user
         :return: dictionary of (executor_id (unique, parsed from deployment) -> Result[optional success message, error message])
         """
         pass
@@ -139,6 +144,7 @@ class NetunicornConnectorProtocol(Protocol):
         username: str,
         requests_list: list[StopExecutorRequest],
         cancellation_context: Optional[dict[str, str]],
+        authentication_context: Optional[dict[str, str]] = None,
         *args,
         **kwargs,
     ) -> dict[str, Result[Optional[str], str]]:
@@ -149,6 +155,7 @@ class NetunicornConnectorProtocol(Protocol):
         :param cancellation_context: optional cancellation context provided directly from the user.
         User can define arbitrary fields in this dictionary and connector can parse them.
         E.g.: a stopping reason for the experiment, or soft-kill vs hard-kill.
+        :param authentication_context: optional authentication context provided by the user
         :return: dictionary of executor_id (unique, parsed from deployment) -> Result[optional success message, error message]
         """
         pass

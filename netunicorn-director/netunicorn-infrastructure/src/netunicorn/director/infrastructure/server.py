@@ -1,10 +1,14 @@
 import json
-from typing import Any, List, Optional
+from typing import Annotated, Any, Optional, TypeAlias
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI
+from fastapi import BackgroundTasks, FastAPI, Header
 from fastapi.responses import Response
 from netunicorn.base.utils import UnicornEncoder
+from netunicorn.director.base.types import (
+    ConnectorContext,
+    ExecutorsCancellationRequest,
+)
 
 from .kernel import (
     deploy,
@@ -18,11 +22,7 @@ from .kernel import (
     stop_executors,
 )
 
-
-class ExecutorsCancellationRequest:
-    executors: List[str]
-    cancellation_context: Optional[dict[str, dict[str, str]]] = None
-
+HeaderAuthContext: TypeAlias = Annotated[ConnectorContext, Header()]
 
 app = FastAPI()
 config: dict[str, Any]
@@ -49,8 +49,11 @@ async def shutdown_handler() -> None:
 
 
 @app.get("/nodes/{username}", status_code=200)
-async def get_nodes_handler(username: str) -> Response:
-    code, result = await get_nodes(username)
+async def get_nodes_handler(
+    username: str,
+    netunicorn_authentication_context: HeaderAuthContext = None,
+) -> Response:
+    code, result = await get_nodes(username, netunicorn_authentication_context)
     return Response(
         status_code=code,
         content=json.dumps(result, cls=UnicornEncoder),
@@ -60,9 +63,12 @@ async def get_nodes_handler(username: str) -> Response:
 
 @app.post("/deployment/{username}/{experiment_id}", status_code=200)
 async def deployment_handler(
-    username: str, experiment_id: str, background_tasks: BackgroundTasks
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    netunicorn_authentication_context: HeaderAuthContext = None,
 ) -> Response:
-    code, result = await deploy(username, experiment_id, background_tasks)
+    code, result = await deploy(username, experiment_id, background_tasks, netunicorn_authentication_context)
     return Response(
         status_code=code,
         content=json.dumps(result, cls=UnicornEncoder),
@@ -72,9 +78,15 @@ async def deployment_handler(
 
 @app.post("/execution/{username}/{experiment_id}")
 async def execution_handler(
-    username: str, experiment_id: str, background_tasks: BackgroundTasks, execution_context: Optional[dict[str, dict[str, str]]] = None
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    execution_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: HeaderAuthContext = None,
 ) -> Response:
-    code, result = await execute(username, experiment_id, background_tasks, execution_context)
+    code, result = await execute(
+        username, experiment_id, background_tasks, execution_context, netunicorn_authentication_context
+    )
     return Response(
         status_code=code,
         content=json.dumps(result, cls=UnicornEncoder),
@@ -84,9 +96,15 @@ async def execution_handler(
 
 @app.delete("/execution/{username}/{experiment_id}")
 async def stop_execution_handler(
-    username: str, experiment_id: str, background_tasks: BackgroundTasks, cancellation_context: Optional[dict[str, dict[str, str]]] = None
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: HeaderAuthContext = None,
 ) -> Response:
-    code, result = await stop_execution(username, experiment_id, background_tasks, cancellation_context)
+    code, result = await stop_execution(
+        username, experiment_id, background_tasks, cancellation_context, netunicorn_authentication_context
+    )
     return Response(
         status_code=code,
         content=json.dumps(result, cls=UnicornEncoder),
@@ -96,9 +114,18 @@ async def stop_execution_handler(
 
 @app.delete("/executors/{username}")
 async def stop_executors_handler(
-    username: str, cancellation_request: ExecutorsCancellationRequest, background_tasks: BackgroundTasks
+    username: str,
+    cancellation_request: ExecutorsCancellationRequest,
+    background_tasks: BackgroundTasks,
+    netunicorn_authentication_context: HeaderAuthContext = None
 ) -> Response:
-    code, result = await stop_executors(username, cancellation_request.executors , background_tasks, cancellation_request.cancellation_context)
+    code, result = await stop_executors(
+        username,
+        cancellation_request.executors,
+        background_tasks,
+        cancellation_request.cancellation_context,
+        netunicorn_authentication_context
+    )
     return Response(
         status_code=code,
         content=json.dumps(result, cls=UnicornEncoder),
