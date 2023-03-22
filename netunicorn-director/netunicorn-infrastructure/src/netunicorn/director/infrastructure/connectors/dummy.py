@@ -40,7 +40,13 @@ class DummyNetunicornConnector(NetunicornConnectorProtocol):
     async def shutdown(self) -> None:
         self.logger.info("Shutdown called")
 
-    async def get_nodes(self, username: str, authentication_context: Optional[dict[str, str]] = None, *args, **kwargs) -> Nodes:
+    async def get_nodes(
+        self,
+        username: str,
+        authentication_context: Optional[dict[str, str]] = None,
+        *args,
+        **kwargs,
+    ) -> Nodes:
         self.logger.info(f"Get nodes called with {username=}")
         self.logger.info(f"Authentication context: {authentication_context=}")
         self.logger.info(f"Additional args: {args=}, {kwargs=}")
@@ -86,7 +92,7 @@ class DummyNetunicornConnector(NetunicornConnectorProtocol):
         username: str,
         requests_list: list[StopExecutorRequest],
         cancellation_context: Optional[dict[str, str]],
-            authentication_context: Optional[dict[str, str]] = None,
+        authentication_context: Optional[dict[str, str]] = None,
         *args,
         **kwargs,
     ) -> dict[str, Result[None, str]]:

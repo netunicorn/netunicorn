@@ -71,7 +71,13 @@ class NetunicornConnectorProtocol(Protocol):
         pass
 
     @abstractmethod
-    async def get_nodes(self, username: str, authentication_context: Optional[dict[str, str]] = None, *args, **kwargs) -> Nodes:
+    async def get_nodes(
+        self,
+        username: str,
+        authentication_context: Optional[dict[str, str]] = None,
+        *args,
+        **kwargs,
+    ) -> Nodes:
         """
         Get available nodes for the user.
         :param username: username

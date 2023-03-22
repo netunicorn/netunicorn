@@ -68,7 +68,9 @@ async def deployment_handler(
     background_tasks: BackgroundTasks,
     netunicorn_authentication_context: HeaderAuthContext = None,
 ) -> Response:
-    code, result = await deploy(username, experiment_id, background_tasks, netunicorn_authentication_context)
+    code, result = await deploy(
+        username, experiment_id, background_tasks, netunicorn_authentication_context
+    )
     return Response(
         status_code=code,
         content=json.dumps(result, cls=UnicornEncoder),
@@ -85,7 +87,11 @@ async def execution_handler(
     netunicorn_authentication_context: HeaderAuthContext = None,
 ) -> Response:
     code, result = await execute(
-        username, experiment_id, background_tasks, execution_context, netunicorn_authentication_context
+        username,
+        experiment_id,
+        background_tasks,
+        execution_context,
+        netunicorn_authentication_context,
     )
     return Response(
         status_code=code,
@@ -103,7 +109,11 @@ async def stop_execution_handler(
     netunicorn_authentication_context: HeaderAuthContext = None,
 ) -> Response:
     code, result = await stop_execution(
-        username, experiment_id, background_tasks, cancellation_context, netunicorn_authentication_context
+        username,
+        experiment_id,
+        background_tasks,
+        cancellation_context,
+        netunicorn_authentication_context,
     )
     return Response(
         status_code=code,
@@ -117,14 +127,14 @@ async def stop_executors_handler(
     username: str,
     cancellation_request: ExecutorsCancellationRequest,
     background_tasks: BackgroundTasks,
-    netunicorn_authentication_context: HeaderAuthContext = None
+    netunicorn_authentication_context: HeaderAuthContext = None,
 ) -> Response:
     code, result = await stop_executors(
         username,
         cancellation_request.executors,
         background_tasks,
         cancellation_request.cancellation_context,
-        netunicorn_authentication_context
+        netunicorn_authentication_context,
     )
     return Response(
         status_code=code,

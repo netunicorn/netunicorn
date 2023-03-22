@@ -14,8 +14,8 @@ from netunicorn.base.deployment import Deployment
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.nodes import CountableNodePool, Nodes
 from netunicorn.director.base.resources import LOGGING_LEVELS, get_logger
-from netunicorn.director.base.utils import __init_connection
 from netunicorn.director.base.types import ConnectorContext
+from netunicorn.director.base.utils import __init_connection
 from returns.result import Failure, Success
 
 from .connectors.protocol import NetunicornConnectorProtocol
@@ -27,7 +27,7 @@ connectors: dict[str, NetunicornConnectorProtocol] = {}
 
 
 async def initialize_connector(
-        connector_name: str, config: dict[str, Any], default_gateway: str
+    connector_name: str, config: dict[str, Any], default_gateway: str
 ) -> None:
     if "enabled" in config and not config["enabled"]:
         logger.info(f"Skipping connector {connector_name} as disabled")
@@ -81,9 +81,9 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
     # log level
     config["netunicorn.infrastructure.log.level"] = (
-            os.environ.get("NETUNICORN_INFRASTRUCTURE_LOG_LEVEL", False)
-            or config.get("netunicorn.infrastructure.log.level", False)
-            or "info"
+        os.environ.get("NETUNICORN_INFRASTRUCTURE_LOG_LEVEL", False)
+        or config.get("netunicorn.infrastructure.log.level", False)
+        or "info"
     )
     logger_level = config["netunicorn.infrastructure.log.level"].upper()
     if logger_level not in LOGGING_LEVELS:
@@ -95,15 +95,15 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
     # module host and port
     config["netunicorn.infrastructure.host"] = (
-            os.environ.get("NETUNICORN_INFRASTRUCTURE_HOST", False)
-            or config.get("netunicorn.infrastructure.host", False)
-            or "127.0.0.1"
+        os.environ.get("NETUNICORN_INFRASTRUCTURE_HOST", False)
+        or config.get("netunicorn.infrastructure.host", False)
+        or "127.0.0.1"
     )
     logger.info(f"Host: {config['netunicorn.infrastructure.host']}")
     config["netunicorn.infrastructure.port"] = (
-            int(os.environ.get("NETUNICORN_INFRASTRUCTURE_PORT", False))
-            or int(config.get("netunicorn.infrastructure.port", False))
-            or 26514
+        int(os.environ.get("NETUNICORN_INFRASTRUCTURE_PORT", False))
+        or int(config.get("netunicorn.infrastructure.port", False))
+        or 26514
     )
     logger.info(f"Port: {config['netunicorn.infrastructure.port']}")
 
@@ -111,29 +111,29 @@ def parse_config(filepath: str) -> dict[str, Any]:
     # required, even if separately set for each connector (could be dummy)
     # just to prevent forgetting to set it
     config["netunicorn.gateway.endpoint"] = (
-            os.environ.get("NETUNICORN_GATEWAY_ENDPOINT")
-            or config["netunicorn.gateway.endpoint"]
+        os.environ.get("NETUNICORN_GATEWAY_ENDPOINT")
+        or config["netunicorn.gateway.endpoint"]
     )  # required
     logger.info(f"Gateway endpoint: {config['netunicorn.gateway.endpoint']}")
 
     # netunicorn database
     config["netunicorn.database.endpoint"] = (
-            os.environ.get("NETUNICORN_DATABASE_ENDPOINT", False)
-            or config.get("netunicorn.database.endpoint", False)
-            or "127.0.0.1"
+        os.environ.get("NETUNICORN_DATABASE_ENDPOINT", False)
+        or config.get("netunicorn.database.endpoint", False)
+        or "127.0.0.1"
     )
     config["netunicorn.database.user"] = (
-            os.environ.get("NETUNICORN_DATABASE_USER", False)
-            or config["netunicorn.database.user"]
+        os.environ.get("NETUNICORN_DATABASE_USER", False)
+        or config["netunicorn.database.user"]
     )
     config["netunicorn.database.password"] = (
-            os.environ.get("NETUNICORN_DATABASE_PASSWORD", False)
-            or config["netunicorn.database.password"]
+        os.environ.get("NETUNICORN_DATABASE_PASSWORD", False)
+        or config["netunicorn.database.password"]
     )
     config["netunicorn.database.db"] = (
-            os.environ.get("NETUNICORN_DATABASE_DB", False)
-            or config.get("netunicorn.database.db", False)
-            or "unicorndb"
+        os.environ.get("NETUNICORN_DATABASE_DB", False)
+        or config.get("netunicorn.database.db", False)
+        or "unicorndb"
     )
     logger.info(
         f"Database: {config['netunicorn.database.db']}, user: {config['netunicorn.database.user']}, endpoint: {config['netunicorn.database.endpoint']}"
@@ -200,17 +200,24 @@ async def shutdown() -> None:
 
 
 async def get_nodes(
-        username: str,
-        netunicorn_authentication_context: ConnectorContext = None,
+    username: str,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, Union[Nodes, str]]:
     pools = []
     for connector_name in set(connectors.keys()):
         connector = connectors[connector_name]
         try:
             connector_authentication_context = None
-            if netunicorn_authentication_context and connector_name in netunicorn_authentication_context:
-                connector_authentication_context = netunicorn_authentication_context[connector_name]
-            nodes = await connector.get_nodes(username, connector_authentication_context)
+            if (
+                netunicorn_authentication_context
+                and connector_name in netunicorn_authentication_context
+            ):
+                connector_authentication_context = netunicorn_authentication_context[
+                    connector_name
+                ]
+            nodes = await connector.get_nodes(
+                username, connector_authentication_context
+            )
             nodes.set_property("connector", connector_name)
             pools.append(nodes)
         except Exception as e:
@@ -222,8 +229,10 @@ async def get_nodes(
 
 
 async def deploy(
-        username: str, experiment_id: str, background_tasks: BackgroundTasks,
-        netunicorn_authentication_context: ConnectorContext = None,
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # 1. take experiment information from the database
     experiment_data: Optional[dict[str, Any]] = await db_connection_pool.fetchval(
@@ -261,17 +270,17 @@ async def deploy(
         experiment_id,
         deployments,
         experiment.deployment_context,
-        netunicorn_authentication_context
+        netunicorn_authentication_context,
     )
     return 200, f"Deployment of experiment {experiment_id} started"
 
 
 async def background_deploy_task(
-        username: str,
-        experiment_id: str,
-        deployments: dict[str, list[Deployment]],
-        deployment_context: Optional[dict[str, dict[str, str]]],
-        netunicorn_authentication_context: Optional[dict[str, dict[str, str]]] = None,
+    username: str,
+    experiment_id: str,
+    deployments: dict[str, list[Deployment]],
+    deployment_context: Optional[dict[str, dict[str, str]]],
+    netunicorn_authentication_context: Optional[dict[str, dict[str, str]]] = None,
 ) -> None:
     # 5. deploy on each connector
     for connector_name, connector_deployments in deployments.items():
@@ -280,10 +289,19 @@ async def background_deploy_task(
             if deployment_context and connector_name in deployment_context:
                 connector_deploy_context = deployment_context[connector_name]
             connector_auth_context = None
-            if netunicorn_authentication_context and connector_name in netunicorn_authentication_context:
-                connector_auth_context = netunicorn_authentication_context[connector_name]
+            if (
+                netunicorn_authentication_context
+                and connector_name in netunicorn_authentication_context
+            ):
+                connector_auth_context = netunicorn_authentication_context[
+                    connector_name
+                ]
             results = await connectors[connector_name].deploy(
-                username, experiment_id, connector_deployments, connector_deploy_context, connector_auth_context
+                username,
+                experiment_id,
+                connector_deployments,
+                connector_deploy_context,
+                connector_auth_context,
             )
         except Exception as e:
             logger.warning(f"Connector {connector_name} raised an exception: {e}")
@@ -324,11 +342,11 @@ async def background_deploy_task(
 
 
 async def execute(
-        username: str,
-        experiment_id: str,
-        background_tasks: BackgroundTasks,
-        execution_context: Optional[dict[str, dict[str, str]]] = None,
-        netunicorn_authentication_context: ConnectorContext = None
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    execution_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # 1. take experiment information from the database
     experiment_data: Optional[dict[str, Any]] = await db_connection_pool.fetchval(
@@ -382,18 +400,22 @@ async def execute(
 
     # 4. start background task to execute
     background_tasks.add_task(
-        background_execute_task, username, experiment_id, deployments, execution_context,
-        netunicorn_authentication_context
+        background_execute_task,
+        username,
+        experiment_id,
+        deployments,
+        execution_context,
+        netunicorn_authentication_context,
     )
     return 200, f"Execution of experiment {experiment_id} started"
 
 
 async def background_execute_task(
-        username: str,
-        experiment_id: str,
-        deployments: dict[str, list[Deployment]],
-        execution_context: Optional[dict[str, dict[str, str]]] = None,
-        netunicorn_authentication_context: ConnectorContext = None
+    username: str,
+    experiment_id: str,
+    deployments: dict[str, list[Deployment]],
+    execution_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> None:
     # 5. execute on each connector
     for connector_name, connector_deployments in deployments.items():
@@ -402,10 +424,19 @@ async def background_execute_task(
             if execution_context and connector_name in execution_context:
                 connector_execution_context = execution_context[connector_name]
             connector_auth_context = None
-            if netunicorn_authentication_context and connector_name in netunicorn_authentication_context:
-                connector_auth_context = netunicorn_authentication_context[connector_name]
+            if (
+                netunicorn_authentication_context
+                and connector_name in netunicorn_authentication_context
+            ):
+                connector_auth_context = netunicorn_authentication_context[
+                    connector_name
+                ]
             results = await connectors[connector_name].execute(
-                username, experiment_id, connector_deployments, connector_execution_context, connector_auth_context
+                username,
+                experiment_id,
+                connector_deployments,
+                connector_execution_context,
+                connector_auth_context,
             )
         except Exception as e:
             logger.warning(f"Connector {connector_name} raised an exception: {e}")
@@ -441,22 +472,22 @@ async def background_execute_task(
 
 
 async def stop_execution(
-        username: str,
-        experiment_id: str,
-        background_tasks: BackgroundTasks,
-        cancellation_context: Optional[dict[str, dict[str, str]]] = None,
-        netunicorn_authentication_context: ConnectorContext = None
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # TODO: implement
     return 500, "Not implemented"
 
 
 async def stop_executors(
-        username: str,
-        executors: list[str],
-        background_tasks: BackgroundTasks,
-        cancellation_context: Optional[dict[str, dict[str, str]]] = None,
-        netunicorn_authentication_context: ConnectorContext = None
+    username: str,
+    executors: list[str],
+    background_tasks: BackgroundTasks,
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # find all connectors to ask and give them information about executors to stop
     # 1. find all executors
@@ -484,16 +515,20 @@ async def stop_executors(
 
     # 4. start background task to stop executors
     background_tasks.add_task(
-        background_stop_executors_task, username, executors_dict, cancellation_context, netunicorn_authentication_context
+        background_stop_executors_task,
+        username,
+        executors_dict,
+        cancellation_context,
+        netunicorn_authentication_context,
     )
     return 200, f"Stopping executors {executors_dict} started"
 
 
 async def background_stop_executors_task(
-        username: str,
-        executors: dict[str, list[StopExecutorRequest]],
-        cancellation_context: Optional[dict[str, dict[str, str]]] = None,
-        netunicorn_authentication_context: ConnectorContext = None
+    username: str,
+    executors: dict[str, list[StopExecutorRequest]],
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> None:
     for connector_name, executors_list in executors.items():
         try:
@@ -501,10 +536,18 @@ async def background_stop_executors_task(
             if cancellation_context and connector_name in cancellation_context:
                 connector_cancellation_context = cancellation_context[connector_name]
             connector_auth_context = None
-            if netunicorn_authentication_context and connector_name in netunicorn_authentication_context:
-                connector_auth_context = netunicorn_authentication_context[connector_name]
+            if (
+                netunicorn_authentication_context
+                and connector_name in netunicorn_authentication_context
+            ):
+                connector_auth_context = netunicorn_authentication_context[
+                    connector_name
+                ]
             results = await connectors[connector_name].stop_executors(
-                username, executors_list, connector_cancellation_context, connector_auth_context
+                username,
+                executors_list,
+                connector_cancellation_context,
+                connector_auth_context,
             )
         except Exception as e:
             logger.warning(f"Connector {connector_name} raised an exception: {e}")
