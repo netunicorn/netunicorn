@@ -2,7 +2,7 @@ import json
 from typing import Annotated, Any, Optional, TypeAlias
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, Header
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
 from fastapi.responses import Response
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.types import (
@@ -22,10 +22,22 @@ from .kernel import (
     stop_executors,
 )
 
-HeaderAuthContext: TypeAlias = Annotated[ConnectorContext, Header()]
+HeaderAuthContext: TypeAlias = Annotated[Optional[str], Header()]
 
 app = FastAPI()
 config: dict[str, Any]
+
+
+async def parse_context(json_str: Optional[str]) -> ConnectorContext:
+    if not json_str or json_str == "null":
+        return None
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Couldn't parse the context: {e}",
+        )
 
 
 @app.get("/health")
@@ -51,9 +63,10 @@ async def shutdown_handler() -> None:
 @app.get("/nodes/{username}", status_code=200)
 async def get_nodes_handler(
     username: str,
-    netunicorn_authentication_context: HeaderAuthContext = None,
+    netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
-    code, result = await get_nodes(username, netunicorn_authentication_context)
+    netunicorn_auth_context = await parse_context(netunicorn_auth_context)
+    code, result = await get_nodes(username, netunicorn_auth_context)
     return Response(
         status_code=code,
         content=json.dumps(result, cls=UnicornEncoder),
@@ -66,10 +79,11 @@ async def deployment_handler(
     username: str,
     experiment_id: str,
     background_tasks: BackgroundTasks,
-    netunicorn_authentication_context: HeaderAuthContext = None,
+    netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
+    netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await deploy(
-        username, experiment_id, background_tasks, netunicorn_authentication_context
+        username, experiment_id, background_tasks, netunicorn_auth_context
     )
     return Response(
         status_code=code,
@@ -84,14 +98,15 @@ async def execution_handler(
     experiment_id: str,
     background_tasks: BackgroundTasks,
     execution_context: Optional[dict[str, dict[str, str]]] = None,
-    netunicorn_authentication_context: HeaderAuthContext = None,
+    netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
+    netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await execute(
         username,
         experiment_id,
         background_tasks,
         execution_context,
-        netunicorn_authentication_context,
+        netunicorn_auth_context,
     )
     return Response(
         status_code=code,
@@ -106,14 +121,15 @@ async def stop_execution_handler(
     experiment_id: str,
     background_tasks: BackgroundTasks,
     cancellation_context: Optional[dict[str, dict[str, str]]] = None,
-    netunicorn_authentication_context: HeaderAuthContext = None,
+    netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
+    netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await stop_execution(
         username,
         experiment_id,
         background_tasks,
         cancellation_context,
-        netunicorn_authentication_context,
+        netunicorn_auth_context,
     )
     return Response(
         status_code=code,
@@ -127,14 +143,15 @@ async def stop_executors_handler(
     username: str,
     cancellation_request: ExecutorsCancellationRequest,
     background_tasks: BackgroundTasks,
-    netunicorn_authentication_context: HeaderAuthContext = None,
+    netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
+    netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await stop_executors(
         username,
         cancellation_request.executors,
         background_tasks,
         cancellation_request.cancellation_context,
-        netunicorn_authentication_context,
+        netunicorn_auth_context,
     )
     return Response(
         status_code=code,

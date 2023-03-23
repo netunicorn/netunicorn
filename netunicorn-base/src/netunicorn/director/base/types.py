@@ -1,8 +1,15 @@
-from typing import Optional, TypeAlias
+import sys
+from typing import Dict, List, Optional
 
-ConnectorContext: TypeAlias = Optional[dict[str, dict[str, str]]]
+if sys.version_info >= (3, 9):
+    from typing import TypeAlias
+else:
+    from typing_extensions import TypeAlias
+
+
+ConnectorContext: TypeAlias = Optional[Dict[str, Dict[str, str]]]
 
 
 class ExecutorsCancellationRequest:
-    executors: list[str]
-    cancellation_context: Optional[dict[str, dict[str, str]]] = None
+    executors: List[str]
+    cancellation_context: ConnectorContext = None

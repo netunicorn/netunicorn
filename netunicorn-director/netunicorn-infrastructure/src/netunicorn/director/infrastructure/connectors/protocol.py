@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from logging import Logger
-from typing import Optional, Protocol, Tuple
+from typing import Any, Optional, Protocol, Tuple
 
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import Nodes
@@ -32,8 +32,8 @@ class NetunicornConnectorProtocol(Protocol):
         configuration: str | None,
         netunicorn_gateway: str,
         logger: Optional[Logger] = None,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ):
         """
         Connector constructor.
@@ -47,7 +47,7 @@ class NetunicornConnectorProtocol(Protocol):
         _ = logger
 
     @abstractmethod
-    async def initialize(self, *args, **kwargs) -> None:
+    async def initialize(self, *args: Any, **kwargs: Any) -> None:
         """
         This method is guaranteed to be called immediately after the constructor
         to provide async initialization capabilities.
@@ -56,7 +56,7 @@ class NetunicornConnectorProtocol(Protocol):
         pass
 
     @abstractmethod
-    async def health(self, *args, **kwargs) -> Tuple[bool, str]:
+    async def health(self, *args: Any, **kwargs: Any) -> Tuple[bool, str]:
         """
         Health check of the connector.
         :return: True if connector is healthy, False otherwise, and a description of the health status
@@ -64,7 +64,7 @@ class NetunicornConnectorProtocol(Protocol):
         pass
 
     @abstractmethod
-    async def shutdown(self, *args, **kwargs) -> None:
+    async def shutdown(self, *args: Any, **kwargs: Any) -> None:
         """
         Shutdown the connector. Will be called in the end of the program.
         """
@@ -75,8 +75,8 @@ class NetunicornConnectorProtocol(Protocol):
         self,
         username: str,
         authentication_context: Optional[dict[str, str]] = None,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> Nodes:
         """
         Get available nodes for the user.
@@ -94,8 +94,8 @@ class NetunicornConnectorProtocol(Protocol):
         deployments: list[Deployment],
         deployment_context: Optional[dict[str, str]],
         authentication_context: Optional[dict[str, str]] = None,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> dict[str, Result[Optional[str], str]]:
         """
         This method deploys the given list of deployments to the infrastructure.
@@ -122,8 +122,8 @@ class NetunicornConnectorProtocol(Protocol):
         deployments: list[Deployment],
         execution_context: Optional[dict[str, str]],
         authentication_context: Optional[dict[str, str]] = None,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> dict[str, Result[Optional[str], str]]:
         """
         This method starts execution of the given list of deployments on the infrastructure.
@@ -151,8 +151,8 @@ class NetunicornConnectorProtocol(Protocol):
         requests_list: list[StopExecutorRequest],
         cancellation_context: Optional[dict[str, str]],
         authentication_context: Optional[dict[str, str]] = None,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> dict[str, Result[Optional[str], str]]:
         """
         This method stops execution of the given list of executors on the infrastructure.

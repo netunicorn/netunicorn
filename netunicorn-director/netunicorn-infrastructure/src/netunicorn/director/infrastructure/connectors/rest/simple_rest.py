@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import aiohttp
 from netunicorn.base.deployment import Deployment
@@ -57,59 +57,119 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
             async with session.post(f"{self.url}/shutdown") as response:
                 response.raise_for_status()
 
-    async def get_nodes(self, username: str) -> Nodes:
+    async def get_nodes(
+        self,
+        username: str,
+        authentication_context: Optional[dict[str, str]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Nodes:
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder)
         ) as session:
-            async with session.get(f"{self.url}/nodes/{username}") as response:
+            async with session.get(
+                f"{self.url}/nodes/{username}",
+                headers={
+                    "netunicorn-authentication-context": json.dumps(
+                        authentication_context
+                    )
+                },
+            ) as response:
                 response.raise_for_status()
                 nodes = await response.json()
                 return Nodes.dispatch_and_deserialize(nodes)
 
     async def deploy(
-        self, username: str, experiment_id: str, deployments: list[Deployment]
-    ) -> dict[str, Result[None, str]]:
+        self,
+        username: str,
+        experiment_id: str,
+        deployments: list[Deployment],
+        deployment_context: Optional[dict[str, str]],
+        authentication_context: Optional[dict[str, str]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Result[Optional[str], str]]:
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder)
         ) as session:
             async with session.post(
-                f"{self.url}/deploy/{username}/{experiment_id}", json=deployments
+                f"{self.url}/deploy/{username}/{experiment_id}",
+                json=deployments,
+                headers={
+                    "netunicorn-authentication-context": json.dumps(
+                        authentication_context
+                    ),
+                    "netunicorn-deployment-context": json.dumps(deployment_context),
+                },
             ) as response:
                 response.raise_for_status()
                 result = await response.json()
                 return {
-                    x: Success(None) if y is None else Failure(y)
+                    x: Success(y["data"])
+                    if y["type"] == "success"
+                    else Failure(y["data"])
                     for x, y in result.items()
                 }
 
     async def execute(
-        self, username: str, experiment_id: str, deployments: list[Deployment]
-    ) -> dict[str, Result[None, str]]:
+        self,
+        username: str,
+        experiment_id: str,
+        deployments: list[Deployment],
+        execution_context: Optional[dict[str, str]],
+        authentication_context: Optional[dict[str, str]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Result[Optional[str], str]]:
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder)
         ) as session:
             async with session.post(
-                f"{self.url}/execute/{username}/{experiment_id}", json=deployments
+                f"{self.url}/execute/{username}/{experiment_id}",
+                json=deployments,
+                headers={
+                    "netunicorn-authentication-context": json.dumps(
+                        authentication_context
+                    ),
+                    "netunicorn-execution-context": json.dumps(execution_context),
+                },
             ) as response:
                 response.raise_for_status()
                 result = await response.json()
                 return {
-                    x: Success(None) if y is None else Failure(y)
+                    x: Success(y["data"])
+                    if y["type"] == "success"
+                    else Failure(y["data"])
                     for x, y in result.items()
                 }
 
     async def stop_executors(
-        self, username: str, requests_list: list[StopExecutorRequest]
-    ) -> dict[str, Result[None, str]]:
+        self,
+        username: str,
+        requests_list: list[StopExecutorRequest],
+        cancellation_context: Optional[dict[str, str]],
+        authentication_context: Optional[dict[str, str]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Result[Optional[str], str]]:
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder)
         ) as session:
             async with session.post(
-                f"{self.url}/stop_executors/{username}", json=requests_list
+                f"{self.url}/stop_executors/{username}",
+                json=requests_list,
+                headers={
+                    "netunicorn-authentication-context": json.dumps(
+                        authentication_context
+                    ),
+                    "netunicorn-cancellation-context": json.dumps(cancellation_context),
+                },
             ) as response:
                 response.raise_for_status()
                 result = await response.json()
                 return {
-                    x: Success(None) if y is None else Failure(y)
+                    x: Success(y["data"])
+                    if y["type"] == "success"
+                    else Failure(y["data"])
                     for x, y in result.items()
                 }

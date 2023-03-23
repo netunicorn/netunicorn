@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import CountableNodePool, Node, Nodes
@@ -44,8 +44,8 @@ class DummyNetunicornConnector(NetunicornConnectorProtocol):
         self,
         username: str,
         authentication_context: Optional[dict[str, str]] = None,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> Nodes:
         self.logger.info(f"Get nodes called with {username=}")
         self.logger.info(f"Authentication context: {authentication_context=}")
@@ -60,9 +60,9 @@ class DummyNetunicornConnector(NetunicornConnectorProtocol):
         deployments: list[Deployment],
         deployment_context: Optional[dict[str, str]],
         authentication_context: Optional[dict[str, str]] = None,
-        *args,
-        **kwargs,
-    ) -> dict[str, Result[None, str]]:
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Result[Optional[str], str]]:
         self.logger.info(
             f"Deploy called with {username=}, {experiment_id=}, {deployments=}, {deployment_context=},"
             f" {authentication_context=}, {args=}, {kwargs=}"
@@ -77,9 +77,9 @@ class DummyNetunicornConnector(NetunicornConnectorProtocol):
         deployments: list[Deployment],
         execution_context: Optional[dict[str, str]],
         authentication_context: Optional[dict[str, str]] = None,
-        *args,
-        **kwargs,
-    ) -> dict[str, Result[None, str]]:
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Result[Optional[str], str]]:
         self.logger.info(
             f"Execute called with {username=}, {experiment_id=}, {deployments=}, {execution_context=},"
             f" {authentication_context=}, {args=}, {kwargs=}"
@@ -93,9 +93,9 @@ class DummyNetunicornConnector(NetunicornConnectorProtocol):
         requests_list: list[StopExecutorRequest],
         cancellation_context: Optional[dict[str, str]],
         authentication_context: Optional[dict[str, str]] = None,
-        *args,
-        **kwargs,
-    ) -> dict[str, Result[None, str]]:
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Result[Optional[str], str]]:
         self.logger.info(
             f"Stop executors called with {username=}, {requests_list=}, {cancellation_context=},"
             f" {authentication_context=}, {args=}, {kwargs=}"
