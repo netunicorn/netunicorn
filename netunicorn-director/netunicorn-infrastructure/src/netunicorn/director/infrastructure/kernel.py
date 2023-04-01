@@ -94,8 +94,8 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
     # module host and port
     config["netunicorn.infrastructure.host"] = (
-        os.environ.get("NETUNICORN_INFRASTRUCTURE_HOST", False)
-        or config.get("netunicorn.infrastructure.host", False)
+        os.environ.get("NETUNICORN_INFRASTRUCTURE_IP", False)
+        or config.get("netunicorn.infrastructure.ip", False)
         or "127.0.0.1"
     )
     logger.info(f"Host: {config['netunicorn.infrastructure.host']}")
