@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 import asyncpg
@@ -62,4 +63,7 @@ async def auth(data: AuthenticationRequest) -> None:
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=26516)
+    ip = os.environ.get("NETUNICORN_AUTHENTICATION_IP", "127.0.0.1")
+    port = int(os.environ.get("NETUNICORN_AUTHENTICATION_PORT", "26512"))
+    logger.info(f"Starting gateway on {ip}:{port}")
+    uvicorn.run(app, host=ip, port=port)
