@@ -82,6 +82,7 @@ def parse_config(filepath: str) -> dict[str, Any]:
     config["netunicorn.infrastructure.log.level"] = (
         os.environ.get("NETUNICORN_INFRASTRUCTURE_LOG_LEVEL", False)
         or config.get("netunicorn.infrastructure.log.level", False)
+        or os.environ.get("NETUNICORN_LOG_LEVEL", False)
         or "info"
     )
     logger_level = config["netunicorn.infrastructure.log.level"].upper()
