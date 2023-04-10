@@ -1,0 +1,7 @@
+---
+netunicorn.infrastructure.connectors:
+  defaultdocker:
+    enabled: true
+    module: "netunicorn.director.infrastructure.connectors.docker_connector"  # where to import from
+    class: "DockerConnector"  # class name
+    config: "unix://var/run/docker.sock"     # path to configuration file

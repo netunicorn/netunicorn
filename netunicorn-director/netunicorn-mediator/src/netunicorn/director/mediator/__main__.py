@@ -248,7 +248,7 @@ async def cancel_executors_handler(
 
 
 if __name__ == "__main__":
-    IP = os.environ.get("NETUNICORN_MEDIATOR_IP", "127.0.0.1")
+    IP = os.environ.get("NETUNICORN_MEDIATOR_IP", "0.0.0.0")
     PORT = int(os.environ.get("NETUNICORN_MEDIATOR_PORT", "26511"))
     logger.info(f"Starting mediator on {IP}:{PORT}")
     uvicorn.run(app, host=IP, port=PORT)

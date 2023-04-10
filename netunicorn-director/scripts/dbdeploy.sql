@@ -47,5 +47,6 @@ CREATE TABLE IF NOT EXISTS Executors (
     keepalive TIMESTAMP,
     error TEXT,
     finished BOOLEAN NOT NULL,
+    state INT,
     PRIMARY KEY (experiment_id, executor_id)
 );
