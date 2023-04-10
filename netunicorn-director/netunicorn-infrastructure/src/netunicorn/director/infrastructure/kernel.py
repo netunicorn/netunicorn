@@ -83,8 +83,9 @@ def parse_config(filepath: str) -> dict[str, Any]:
     config["netunicorn.infrastructure.log.level"] = (
         os.environ.get("NETUNICORN_INFRASTRUCTURE_LOG_LEVEL", False)
         or config.get("netunicorn.infrastructure.log.level", False)
+        or os.environ.get("NETUNICORN_LOG_LEVEL", False)
         or "info"
-    )
+    ).lower()
     logger_level = config["netunicorn.infrastructure.log.level"].upper()
     if logger_level not in LOGGING_LEVELS:
         raise ValueError(f"Invalid log level {logger_level}")
@@ -95,8 +96,8 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
     # module host and port
     config["netunicorn.infrastructure.host"] = (
-        os.environ.get("NETUNICORN_INFRASTRUCTURE_HOST", False)
-        or config.get("netunicorn.infrastructure.host", False)
+        os.environ.get("NETUNICORN_INFRASTRUCTURE_IP", False)
+        or config.get("netunicorn.infrastructure.ip", False)
         or "0.0.0.0"
     )
     logger.info(f"Host: {config['netunicorn.infrastructure.host']}")
@@ -179,7 +180,7 @@ async def health() -> Tuple[int, str]:
             status, description = await connector.health()
         except Exception as e:
             status, description = False, str(e)
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
         statuses.append((connector_name, status, description))
@@ -196,7 +197,7 @@ async def shutdown() -> None:
         try:
             await connector.shutdown()
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
 
 
 async def get_nodes(
@@ -221,7 +222,7 @@ async def get_nodes(
             nodes.set_property("connector", connector_name)
             pools.append(nodes)
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
     pools = CountableNodePool(nodes=pools)
@@ -304,7 +305,7 @@ async def background_deploy_task(
                 connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and deployment couldn't be completed"
@@ -439,7 +440,7 @@ async def background_execute_task(
                 connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and execution couldn't be completed"
@@ -550,7 +551,7 @@ async def background_stop_executors_task(
                 connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and execution couldn't be completed"

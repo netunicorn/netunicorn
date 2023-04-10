@@ -94,7 +94,7 @@ async def __filter_locked_nodes(
                 nodes.pop(i)
             else:
                 nodes[i] = new_pool
-        if isinstance(nodes[i], Node):
+        elif isinstance(nodes[i], Node):
             node_name = nodes[i].name
             current_lock = await db_conn_pool.fetchval(
                 "SELECT username FROM locks WHERE node_name = $1 AND connector = $2",

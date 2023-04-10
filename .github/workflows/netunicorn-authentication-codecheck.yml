@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ "main", "develop" ]
     paths:
-      - "netunicorn-authentication/**"
+      - "netunicorn-director/netunicorn-authentication/**"
 
 jobs:
   codechecks:
@@ -23,14 +23,14 @@ jobs:
           pip install black pylint mypy isort
 
       - name: Run Black
-        run: black --check --diff ./netunicorn-authentication
+        run: black --check --diff ./netunicorn-director/netunicorn-authentication
 
       - name: Run isort
-        run: isort --profile black --check --diff ./netunicorn-authentication
+        run: isort --profile black --check --diff ./netunicorn-director/netunicorn-authentication
 
       - name: Run MyPy on netunicorn-authentication
         uses: jpetrucciani/mypy-check@master
         with:
-          path: './netunicorn-authentication'
-          mypy_flags: '--config-file ./netunicorn-authentication/pyproject.toml'
+          path: './netunicorn-director/netunicorn-authentication'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-authentication/pyproject.toml'
           requirements_file: './misc/requirements.dev.txt'

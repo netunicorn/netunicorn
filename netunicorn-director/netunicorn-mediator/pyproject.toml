@@ -18,6 +18,7 @@ dependencies = [
     "uvicorn",
     "asyncpg",
     "returns",
+    "requests",
 ]
 
 [tool.setuptools.packages.find]

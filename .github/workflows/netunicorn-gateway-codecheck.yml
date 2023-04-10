@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ "main", "develop" ]
     paths:
-      - "netunicorn-gateway/**"
+      - "netunicorn-director/netunicorn-gateway/**"
 
 jobs:
   codechecks:
@@ -23,14 +23,14 @@ jobs:
           pip install black pylint mypy isort
 
       - name: Run Black
-        run: black --check --diff ./netunicorn-gateway
+        run: black --check --diff ./netunicorn-director/netunicorn-gateway
 
       - name: Run isort
-        run: isort --profile black --check --diff ./netunicorn-gateway
+        run: isort --profile black --check --diff ./netunicorn-director/netunicorn-gateway
 
       - name: Run MyPy on netunicorn-gateway
         uses: jpetrucciani/mypy-check@master
         with:
-          path: './netunicorn-gateway'
-          mypy_flags: '--config-file ./netunicorn-gateway/pyproject.toml'
+          path: './netunicorn-director/netunicorn-gateway'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-gateway/pyproject.toml'
           requirements_file: './misc/requirements.dev.txt'

@@ -1,10 +1,10 @@
-name: netunicorn-mediator codechecks
+name: netunicorn-compilation codechecks
 
 on:
   pull_request:
     branches: [ "main", "develop" ]
     paths:
-      - "netunicorn-director/netunicorn-mediator/**"
+      - "netunicorn-director/netunicorn-compilation/**"
 
 jobs:
   codechecks:
@@ -23,14 +23,14 @@ jobs:
           pip install black pylint mypy isort
 
       - name: Run Black
-        run: black --check --diff ./netunicorn-director/netunicorn-mediator
+        run: black --check --diff ./netunicorn-director/netunicorn-compilation
 
       - name: Run isort
-        run: isort --profile black --check --diff ./netunicorn-director/netunicorn-mediator
+        run: isort --profile black --check --diff ./netunicorn-director/netunicorn-compilation
 
-      - name: Run MyPy on netunicorn-mediator
+      - name: Run MyPy on netunicorn-compilation
         uses: jpetrucciani/mypy-check@master
         with:
-          path: './netunicorn-director/netunicorn-mediator'
-          mypy_flags: '--config-file ./netunicorn-director/netunicorn-mediator/pyproject.toml'
+          path: './netunicorn-director/netunicorn-compilation'
+          mypy_flags: '--config-file ./netunicorn-director/netunicorn-compilation/pyproject.toml'
           requirements_file: './misc/requirements.dev.txt'
