@@ -27,7 +27,7 @@ class Node:
     def __getitem__(self, item: str) -> NodeProperty:
         return self.properties.get(item, None)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[NodeProperty]:
         raise TypeError("Node is not iterable")
 
     def __setitem__(self, key: str, value: NodeProperty) -> None:
@@ -138,7 +138,7 @@ class CountableNodePool(Nodes):
     Represents a typical pool of nodes.
     """
 
-    def __init__(self, nodes: Sequence[Union[Node, Nodes]]):
+    def __init__(self, nodes: List[Union[Node, Nodes]]):
         self.nodes = nodes
 
     def __json__(self) -> NodesRepresentation:
