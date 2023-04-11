@@ -24,6 +24,9 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+netunicorn = ["py.typed"]
+
 [tool.mypy]
 python_version = "3.7"
 ignore_missing_imports = true
