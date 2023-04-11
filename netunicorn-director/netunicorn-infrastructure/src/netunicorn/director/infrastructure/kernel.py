@@ -56,7 +56,7 @@ async def initialize_connector(
         connectors[connector_name] = connector
         logger.info(f"Connector {connector_name} initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize connector {connector_name}: {e}")
+        logger.exception(f"Failed to initialize connector {connector_name}: {e}")
     return
 
 

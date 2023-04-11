@@ -12,4 +12,4 @@ ConnectorContext: TypeAlias = Optional[Dict[str, Dict[str, str]]]
 
 class ExecutorsCancellationRequest(TypedDict):
     executors: List[str]
-    cancellation_context: ConnectorContext = None
+    cancellation_context: ConnectorContext
