@@ -13,13 +13,14 @@ from fastapi import BackgroundTasks
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.nodes import CountableNodePool, Nodes
+from netunicorn.base.types import ExperimentRepresentation
 from netunicorn.director.base.resources import LOGGING_LEVELS, get_logger
 from netunicorn.director.base.types import ConnectorContext
 from netunicorn.director.base.utils import __init_connection
 from returns.result import Failure, Success
 
-from .connectors.protocol import NetunicornConnectorProtocol
-from .connectors.types import StopExecutorRequest
+from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
+from netunicorn.director.base.connectors.types import StopExecutorRequest
 
 logger: Logger
 db_connection_pool: asyncpg.pool.Pool
@@ -81,9 +82,9 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
     # log level
     config["netunicorn.infrastructure.log.level"] = (
-        os.environ.get("NETUNICORN_INFRASTRUCTURE_LOG_LEVEL", False)
-        or config.get("netunicorn.infrastructure.log.level", False)
-        or os.environ.get("NETUNICORN_LOG_LEVEL", False)
+        os.environ.get("NETUNICORN_INFRASTRUCTURE_LOG_LEVEL", None)
+        or config.get("netunicorn.infrastructure.log.level", None)
+        or os.environ.get("NETUNICORN_LOG_LEVEL", None)
         or "info"
     ).lower()
     logger_level = config["netunicorn.infrastructure.log.level"].upper()
@@ -231,8 +232,7 @@ async def get_nodes(
             )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
-    pools = CountableNodePool(nodes=pools)
-    return 200, pools
+    return 200, CountableNodePool(nodes=pools)
 
 
 async def deploy(
@@ -242,7 +242,7 @@ async def deploy(
     netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # 1. take experiment information from the database
-    experiment_data: Optional[dict[str, Any]] = await db_connection_pool.fetchval(
+    experiment_data: ExperimentRepresentation = await db_connection_pool.fetchval(
         "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
         experiment_id,
     )
@@ -260,7 +260,7 @@ async def deploy(
                 f"Skipping deployment of not prepared executor {deployment.executor_id}, node {deployment.node}"
             )
             continue
-        deployments[deployment.node["connector"]].append(deployment)
+        deployments[str(deployment.node["connector"])].append(deployment)
 
     # 3. check that all connectors are available
     for connector_name in deployments.keys():
@@ -358,7 +358,7 @@ async def execute(
     netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # 1. take experiment information from the database
-    experiment_data: Optional[dict[str, Any]] = await db_connection_pool.fetchval(
+    experiment_data: ExperimentRepresentation = await db_connection_pool.fetchval(
         "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
         experiment_id,
     )
@@ -397,7 +397,7 @@ async def execute(
     # 2. find all prepared deployments per each connector
     deployments: dict[str, list[Deployment]] = defaultdict(list)
     for deployment in deployment_map:
-        deployments[deployment.node["connector"]].append(deployment)
+        deployments[str(deployment.node["connector"])].append(deployment)
 
     # 3. check that all connectors are available
     for connector_name in deployments.keys():

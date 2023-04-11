@@ -7,8 +7,8 @@ from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import CountableNodePool, Node, Nodes
 from returns.result import Result, Success
 
-from .protocol import NetunicornConnectorProtocol
-from .types import StopExecutorRequest
+from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
+from netunicorn.director.base.connectors.types import StopExecutorRequest
 
 
 class DummyNetunicornConnector(NetunicornConnectorProtocol):

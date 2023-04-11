@@ -138,7 +138,7 @@ class CountableNodePool(Nodes):
     Represents a typical pool of nodes.
     """
 
-    def __init__(self, nodes: List[Union[Node, Nodes]]):
+    def __init__(self, nodes: Sequence[Union[Node, Nodes]]):
         self.nodes = nodes
 
     def __json__(self) -> NodesRepresentation:

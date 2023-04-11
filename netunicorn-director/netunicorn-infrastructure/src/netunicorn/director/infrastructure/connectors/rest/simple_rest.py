@@ -7,11 +7,11 @@ from typing import Any, Optional, Tuple
 import aiohttp
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import Nodes
-from netunicorn.director.base.utils import UnicornEncoder
+from netunicorn.base.utils import UnicornEncoder
 from returns.result import Failure, Result, Success
 
-from ..protocol import NetunicornConnectorProtocol
-from ..types import StopExecutorRequest
+from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
+from netunicorn.director.base.connectors.types import StopExecutorRequest
 
 
 class SimpleRESTConnector(NetunicornConnectorProtocol):
