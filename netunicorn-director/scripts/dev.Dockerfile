@@ -70,6 +70,7 @@ RUN pip install .
 # connectors
 RUN pip install netunicorn-connector-aci
 RUN pip install netunicorn-connector-salt
+RUN pip install netunicorn-connector-docker
 
 WORKDIR /app
 

@@ -16,7 +16,7 @@ networks:
 
 services:
   registry:
-    container_name: netunicorn-dev-registry
+    container_name: netunicorn-registry
     image: registry:2
     restart: unless-stopped
     ports:
@@ -25,7 +25,7 @@ services:
       - netunicorn-network
 
   postgres:
-    container_name: netunicorn-dev-database
+    container_name: netunicorn-database
     image: postgres
     restart: unless-stopped
     environment:
@@ -41,13 +41,9 @@ services:
       - netunicorn-network
 
   authentication:
-    image: netunicorn-dev-image
-    command: -m netunicorn.director.authentication
+    image: netunicorn/authentication
     restart: unless-stopped
-    build:
-      context: ..
-      dockerfile: ./netunicorn-director/scripts/dev.Dockerfile
-    container_name: netunicorn-dev-authentication
+    container_name: netunicorn-authentication
     environment:
       <<: *common-variables
       NETUNICORN_AUTHENTICATION_IP: "0.0.0.0"
@@ -57,8 +53,7 @@ services:
       - netunicorn-network
 
   compilation:
-    image: netunicorn-dev-image
-    command: -m netunicorn.director.compilation
+    image: netunicorn/compilation
     restart: unless-stopped
     container_name: netunicorn-dev-compilation
     environment: *common-variables
@@ -70,13 +65,14 @@ services:
       - netunicorn-network
 
   gateway:
-    image: netunicorn-dev-image
-    command: -m netunicorn.director.gateway
+    image: netunicorn/gateway
     restart: unless-stopped
-    container_name: netunicorn-dev-gateway
+    container_name: netunicorn-gateway
     environment:
       <<: *common-variables
       NETUNICORN_GATEWAY_IP: "0.0.0.0"
+    # don't forget that this container should have port published to the host
+    # if any external nodes would be used as workers
     expose:
       - "26512"
     depends_on:
@@ -85,10 +81,9 @@ services:
       - netunicorn-network
 
   processor:
-    image: netunicorn-dev-image
-    command: -m netunicorn.director.processor
+    image: netunicorn/processor
     restart: unless-stopped
-    container_name: netunicorn-dev-processor
+    container_name: netunicorn-processor
     environment: *common-variables
     depends_on:
       - postgres
@@ -96,10 +91,9 @@ services:
       - netunicorn-network
 
   infrastructure:
-    image: netunicorn-dev-image
-    entrypoint: ""
-    command: ["python3", "-m", "netunicorn.director.infrastructure", "-f", "/app/infrastructure-example-config.yaml"]
-    container_name: netunicorn-dev-infrastructure
+    image: netunicorn/infrastructure
+    command: ["-f", "/app/infrastructure-example-config.yaml"]
+    container_name: netunicorn-infrastructure
     restart: unless-stopped
     depends_on:
       - postgres
@@ -113,9 +107,7 @@ services:
       - netunicorn-network
 
   mediator:
-    image: netunicorn-dev-image
-    entrypoint: ""
-    command: [ "python3", "-m", "netunicorn.director.mediator" ]
+    image: netunicorn/mediator
     restart: unless-stopped
     container_name: netunicorn-dev-mediator
     environment:
