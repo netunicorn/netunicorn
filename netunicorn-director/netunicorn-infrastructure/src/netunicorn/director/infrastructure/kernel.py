@@ -27,7 +27,7 @@ from .tasks import cleanup_watchdog_task
 logger: Logger
 db_connection_pool: asyncpg.pool.Pool
 connectors: dict[str, NetunicornConnectorProtocol] = {}
-tasks: dict[str, asyncio.Task[NoReturn]] = {}
+tasks: dict[str, asyncio.Task[NoReturn]] = {}  # type: ignore
 
 
 async def initialize_connector(
@@ -241,7 +241,7 @@ async def get_nodes(
             )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
-    return 200, CountableNodePool(nodes=pools)
+    return 200, CountableNodePool(nodes=pools)  # type: ignore
 
 
 async def deploy(
