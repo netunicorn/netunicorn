@@ -135,7 +135,7 @@ async def return_nodes(
         Node(name="node1", properties={"a": 1}),
         Node(name="node2", properties={"b": 2}),
     ]
-    dummy_node_pool = CountableNodePool(nodes=dummy_nodes)
+    dummy_node_pool = CountableNodePool(nodes=dummy_nodes)  # type: ignore
 
     # or use json.dumps(x, cls=UnicornEncoder)
     json_str = json.dumps(dummy_node_pool, cls=UnicornEncoder)

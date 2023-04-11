@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS Experiments (
     execution_results jsonb[],
     creation_time TIMESTAMP NOT NULL,
     start_time TIMESTAMP,
+    cleaned_up bool default FALSE,
     PRIMARY KEY (experiment_id),
     UNIQUE (username, experiment_name)
 );

@@ -61,6 +61,7 @@ class TestAllJSONSerialization(unittest.TestCase):
             "error": "test",
             "pipeline": b64encode(deployment.pipeline).decode("utf-8"),
             "keep_alive_timeout_minutes": 10,
+            "cleanup": True,
             "environment_definition": {
                 "commands": [],
                 "image": None,

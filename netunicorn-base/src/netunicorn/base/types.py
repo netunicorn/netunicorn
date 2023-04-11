@@ -41,6 +41,7 @@ class DeploymentRepresentation(TypedDict):
     error: Optional[str]
     pipeline: bytes
     keep_alive_timeout_minutes: int
+    cleanup: bool
     environment_definition: EnvironmentDefinitionRepresentation
     environment_definition_type: str
 

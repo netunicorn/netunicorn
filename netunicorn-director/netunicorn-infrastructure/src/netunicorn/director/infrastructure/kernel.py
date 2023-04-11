@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 import os
 from collections import defaultdict
 from logging import Logger
-from typing import Any, Optional, Tuple, Union
+from typing import Any, NoReturn, Optional, Tuple, Union
 
 import asyncpg
 import yaml
@@ -21,9 +22,12 @@ from netunicorn.director.base.types import ConnectorContext
 from netunicorn.director.base.utils import __init_connection
 from returns.result import Failure, Success
 
+from .tasks import cleanup_watchdog_task
+
 logger: Logger
 db_connection_pool: asyncpg.pool.Pool
 connectors: dict[str, NetunicornConnectorProtocol] = {}
+tasks: dict[str, asyncio.Task[NoReturn]] = {}  # type: ignore
 
 
 async def initialize_connector(
@@ -143,7 +147,7 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
 
 async def initialize(config: dict[str, Any]) -> None:
-    global db_connection_pool, connectors
+    global db_connection_pool, connectors, tasks
 
     db_connection_pool = await asyncpg.create_pool(
         host=config["netunicorn.database.endpoint"],
@@ -162,6 +166,12 @@ async def initialize(config: dict[str, Any]) -> None:
         await initialize_connector(
             connector_name, connector_config, config["netunicorn.gateway.endpoint"]
         )
+
+    tasks["cleanup"] = asyncio.create_task(
+        cleanup_watchdog_task(
+            connectors=connectors, db_conn_pool=db_connection_pool, logger=logger
+        )
+    )
 
     return
 
@@ -231,7 +241,7 @@ async def get_nodes(
             )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
-    return 200, CountableNodePool(nodes=pools)
+    return 200, CountableNodePool(nodes=pools)  # type: ignore
 
 
 async def deploy(
