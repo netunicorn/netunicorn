@@ -8,8 +8,8 @@ from uuid import uuid4
 import asyncpg.connection
 import requests as req
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
+from netunicorn.base.deployment import Deployment
 from netunicorn.base.experiment import (
-    Deployment,
     Experiment,
     ExperimentExecutionInformation,
     ExperimentStatus,
@@ -89,17 +89,17 @@ async def __filter_locked_nodes(
     for i in reversed(range(len(nodes))):
         if isinstance(nodes[i], CountableNodePool):
             # noinspection PyTypeChecker
-            new_pool = await __filter_locked_nodes(username, nodes[i])
+            new_pool = await __filter_locked_nodes(username, nodes[i])  # type: ignore
             if len(new_pool) == 0:
                 nodes.pop(i)
             else:
                 nodes[i] = new_pool
         elif isinstance(nodes[i], Node):
-            node_name = nodes[i].name
+            node_name = nodes[i].name  # type: ignore
             current_lock = await db_conn_pool.fetchval(
                 "SELECT username FROM locks WHERE node_name = $1 AND connector = $2",
                 node_name,
-                nodes[i]["connector"],
+                nodes[i]["connector"],  # type: ignore
             )
             if current_lock is not None and current_lock != username:
                 nodes.pop(i)
@@ -124,9 +124,8 @@ async def get_nodes(
     serialized_nodes = result.json()
     # noinspection PyTypeChecker
     # we know that top is always CountableNodePool
-    nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)
-    result = await __filter_locked_nodes(username, nodes)
-    return Success(result)
+    nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)  # type: ignore
+    return Success(await __filter_locked_nodes(username, nodes))
 
 
 async def get_experiments(
@@ -289,7 +288,7 @@ async def prepare_experiment_task(
 
         if (
             isinstance(env_def, DockerImage)
-            and _deployment.environment_definition.image is not None
+            and _deployment.environment_definition.image is not None  # type: ignore
         ):
             # specific case: if key is in the _envs, that means that we need to wait this deployment too
             # description: that happens when 2 deployments have the same environment definition object in memory,
@@ -314,7 +313,7 @@ async def prepare_experiment_task(
 
         if (
             isinstance(env_def, DockerImage)
-            and _deployment.environment_definition.image is None
+            and _deployment.environment_definition.image is None  # type: ignore
         ):
             deployments_waiting_for_compilation.append(_deployment)
 
@@ -327,7 +326,7 @@ async def prepare_experiment_task(
 
             # if not - we create a new compilation request
             compilation_uid = str(uuid4())
-            _deployment.environment_definition.image = (
+            _deployment.environment_definition.image = (  # type: ignore
                 f"{DOCKER_REGISTRY_URL}/{compilation_uid}:latest"
             )
 

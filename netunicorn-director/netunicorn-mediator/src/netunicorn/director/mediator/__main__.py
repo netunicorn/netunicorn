@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from typing import Annotated, Any, List, Optional, TypeAlias, Union
+from typing import Annotated, Any, List, Optional, Union
 
 import uvicorn
 from fastapi import (
@@ -17,7 +17,6 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
-from netunicorn.director.base.types import ConnectorContext
 from pydantic import BaseModel
 from returns.pipeline import is_successful
 from returns.result import Result
@@ -80,7 +79,7 @@ async def check_credentials(
     return current_username
 
 
-async def parse_context(json_str: Optional[str]) -> ConnectorContext:
+async def parse_context(json_str: Optional[str]) -> Any:
     if not json_str or json_str == "null":
         return None
     try:
