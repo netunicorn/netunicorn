@@ -165,3 +165,23 @@ class NetunicornConnectorProtocol(Protocol):
         :return: dictionary of executor_id (unique, parsed from deployment) -> Result[optional success message, error message]
         """
         pass
+
+    async def cleanup(
+            self,
+            experiment_id: str,
+            deployments: list[Deployment],
+            *args: Any,
+            **kwargs: Any
+    ) -> None:
+        """
+        This method is called after the experiment is finished.
+        It is used to clean up the infrastructure after the experiment.
+        E.g., delete Docker containers, images, etc.
+        Experiment is always marked as cleaned up, even if this method fails,
+        and this method should not return any result.
+
+        :param experiment_id: ID of the experiment
+        :param deployments: list of deployments to use for cleanup
+        :return: None
+        """
+        pass
