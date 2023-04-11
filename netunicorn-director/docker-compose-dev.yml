@@ -1,3 +1,4 @@
+# run me with a context of main netunicorn directory!
 version: "3.9"
 
 x-common-variables: &common-variables
@@ -25,31 +26,40 @@ services:
       POSTGRES_PASSWORD: development
       POSTGRES_DB: development
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     volumes:
       - ./scripts/dbdeploy.sql:/docker-entrypoint-initdb.d/0_dbdeploy.sql
       - ./scripts/dev-users.sql:/docker-entrypoint-initdb.d/1_dev_users.sql
 
   authentication:
-    build: ./netunicorn-authentication
-    # image: netunicorn/authentication:latest
+    image: netunicorn-dev-image
+    command: -m netunicorn.director.authentication
+    build:
+        context: ..
+        dockerfile: ./netunicorn-director/scripts/dev.Dockerfile
     container_name: netunicorn-dev-authentication
     restart: unless-stopped
     environment:
       <<: *common-variables
       NETUNICORN_AUTHENTICATION_IP: "0.0.0.0"
+    depends_on:
+      - postgres
 
   compilation:
-    build: ./netunicorn-compilation
-    # image: netunicorn/compilation:latest
+    image: netunicorn-dev-image
+    command: -m netunicorn.director.compilation
     container_name: netunicorn-dev-compilation
     restart: always
     environment: *common-variables
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - postgres
 
   gateway:
-    build: ./netunicorn-gateway
-    # image: netunicorn/gateway:latest
+    image: netunicorn-dev-image
+    command: -m netunicorn.director.gateway
     container_name: netunicorn-dev-gateway
     restart: always
     environment:
@@ -57,20 +67,25 @@ services:
       NETUNICORN_GATEWAY_IP: "0.0.0.0"
     ports:
       - "0.0.0.0:26612:26512"
+    depends_on:
+      - postgres
 
   processor:
-    build: ./netunicorn-processor
-    # image: netunicorn/processor:latest
+    image: netunicorn-dev-image
+    command: -m netunicorn.director.processor
     container_name: netunicorn-dev-processor
     restart: always
     environment: *common-variables
+    depends_on:
+      - postgres
 
   infrastructure:
-    build: ./netunicorn-infrastructure
-    # image: netunicorn/infrastructure:latest
+    image: netunicorn-dev-image
+    command: -m netunicorn.director.infrastructure -f /app/infrastructure-example-config.yaml
     container_name: netunicorn-example-infrastructure
     restart: always
-    command: -f infrastructure-example-config.yaml
+    depends_on:
+      - postgres
     environment:
       <<: *common-variables
       NETUNICORN_INFRASTRUCTURE_IP: "0.0.0.0"
@@ -79,8 +94,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   mediator:
-    build: ./netunicorn-mediator
-    # image: netunicorn/mediator:latest
+    image: netunicorn-dev-image
+    command: -m netunicorn.director.mediator
     container_name: netunicorn-dev-mediator
     restart: always
     environment:
