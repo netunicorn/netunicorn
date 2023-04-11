@@ -52,9 +52,7 @@ class Experiment:
 
         for node in nodes:
             if not isinstance(node, Node):
-                raise TypeError(
-                    f"Expected sequence of nodes, got {type(node)} instead"
-                )
+                raise TypeError(f"Expected sequence of nodes, got {type(node)} instead")
             self.append(node, pipeline)
         return self
 

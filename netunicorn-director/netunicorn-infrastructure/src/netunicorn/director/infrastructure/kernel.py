@@ -180,7 +180,9 @@ async def health() -> Tuple[int, str]:
             status, description = await connector.health()
         except Exception as e:
             status, description = False, str(e)
-            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
         statuses.append((connector_name, status, description))
@@ -197,7 +199,9 @@ async def shutdown() -> None:
         try:
             await connector.shutdown()
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
 
 
 async def get_nodes(
@@ -222,7 +226,9 @@ async def get_nodes(
             nodes.set_property("connector", connector_name)
             pools.append(nodes)
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
     pools = CountableNodePool(nodes=pools)
@@ -305,7 +311,9 @@ async def background_deploy_task(
                 connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and deployment couldn't be completed"
@@ -440,7 +448,9 @@ async def background_execute_task(
                 connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and execution couldn't be completed"
@@ -551,7 +561,9 @@ async def background_stop_executors_task(
                 connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and execution couldn't be completed"

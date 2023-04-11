@@ -67,7 +67,7 @@ def result_to_response(result: Result[Any, Any]) -> Response:
 
 
 async def check_credentials(
-        credentials: HTTPBasicCredentials = Depends(security),
+    credentials: HTTPBasicCredentials = Depends(security),
 ) -> str:
     current_username = credentials.username
     current_token = credentials.password
@@ -119,8 +119,8 @@ async def on_shutdown() -> None:
 
 @app.get("/api/v1/nodes", status_code=200)
 async def nodes_handler(
-        username: str = Depends(check_credentials),
-        netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     return result_to_response(
         await get_nodes(username, await parse_context(netunicorn_auth_context))
@@ -129,8 +129,8 @@ async def nodes_handler(
 
 @app.get("/api/v1/experiment", status_code=200)
 async def get_experiments_handler(
-        username: str = Depends(check_credentials),
-        netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
     return result_to_response(await get_experiments(username))
@@ -140,11 +140,11 @@ async def get_experiments_handler(
     "/api/v1/experiment/{experiment_name}/prepare", status_code=200, response_model=None
 )
 async def prepare_experiment_handler(
-        experiment_name: str,
-        request: Request,
-        background_tasks: BackgroundTasks,
-        username: str = Depends(check_credentials),
-        netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+    experiment_name: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Union[Response, str]:
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
     try:
@@ -178,10 +178,10 @@ async def prepare_experiment_handler(
 
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
 async def start_experiment_handler(
-        experiment_name: str,
-        username: str = Depends(check_credentials),
-        execution_context: Optional[dict[str, dict[str, str]]] = None,
-        netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+    experiment_name: str,
+    username: str = Depends(check_credentials),
+    execution_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
     result = await start_experiment(
@@ -192,9 +192,9 @@ async def start_experiment_handler(
 
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(
-        experiment_name: str,
-        username: str = Depends(check_credentials),
-        netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+    experiment_name: str,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
     result = await get_experiment_status(experiment_name, username)
@@ -203,9 +203,9 @@ async def experiment_status_handler(
 
 @app.delete("/api/v1/experiment/{experiment_name}", status_code=200)
 async def delete_experiment_handler(
-        experiment_name: str,
-        username: str = Depends(check_credentials),
-        netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+    experiment_name: str,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
     result = await delete_experiment(experiment_name, username)
@@ -214,10 +214,10 @@ async def delete_experiment_handler(
 
 @app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
 async def cancel_experiment_handler(
-        experiment_name: str,
-        username: str = Depends(check_credentials),
-        cancellation_context: Optional[dict[str, dict[str, str]]] = None,
-        netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+    experiment_name: str,
+    username: str = Depends(check_credentials),
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
     result = await cancel_experiment(
@@ -231,9 +231,9 @@ async def cancel_experiment_handler(
 
 @app.post("/api/v1/executors/cancel", status_code=200)
 async def cancel_executors_handler(
-        data: CancellationRequest,
-        username: str = Depends(check_credentials),
-        netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+    data: CancellationRequest,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
     result = await cancel_executors(

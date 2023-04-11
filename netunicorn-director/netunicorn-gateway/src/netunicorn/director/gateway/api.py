@@ -86,7 +86,10 @@ async def receive_result(result: PipelineResult) -> None:
         if result.state is not None
         else PipelineExecutorState.FINISHED.value
     )
-    finished = state in {PipelineExecutorState.FINISHED.value, PipelineExecutorState.REPORTING.value}
+    finished = state in {
+        PipelineExecutorState.FINISHED.value,
+        PipelineExecutorState.REPORTING.value,
+    }
     await db_conn_pool.execute(
         "UPDATE executors SET result = $1::bytea, finished = $2, state = $3 WHERE executor_id = $4",
         pipeline_results,
