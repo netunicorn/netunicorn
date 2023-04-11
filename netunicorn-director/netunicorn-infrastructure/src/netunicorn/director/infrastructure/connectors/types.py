@@ -1,6 +1,1 @@
-from typing import TypedDict
-
-
-class StopExecutorRequest(TypedDict):
-    executor_id: str
-    node_name: str
+from netunicorn.director.base.connectors.types import StopExecutorRequest

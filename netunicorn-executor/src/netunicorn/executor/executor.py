@@ -87,7 +87,6 @@ class PipelineExecutor:
         This method is the main loop of the executor.
         :return: None
         """
-        # TODO: add keepalive in the background that will send current state
         while True:
             try:
                 if self.state == PipelineExecutorState.LOOKING_FOR_PIPELINE:

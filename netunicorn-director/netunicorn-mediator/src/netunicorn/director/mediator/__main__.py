@@ -1,14 +1,23 @@
 import asyncio
 import json
 import os
-from typing import Any, List, Union
+from typing import Annotated, Any, List, Optional, Union
 
 import uvicorn
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+)
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
+from pydantic import BaseModel
 from returns.pipeline import is_successful
 from returns.result import Result
 
@@ -29,6 +38,12 @@ from .engine import (
     prepare_experiment_task,
     start_experiment,
 )
+
+
+class CancellationRequest(BaseModel):
+    executors: List[str]
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None
+
 
 logger = get_logger("netunicorn.director.mediator")
 
@@ -64,6 +79,19 @@ async def check_credentials(
     return current_username
 
 
+async def parse_context(json_str: Optional[str]) -> Any:
+    if not json_str or json_str == "null":
+        return None
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        logger.exception(e)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Couldn't parse the context: {e}",
+        )
+
+
 @app.exception_handler(Exception)
 async def unicorn_exception_handler(_: Request, exc: Exception) -> Response:
     logger.exception(exc)
@@ -89,14 +117,21 @@ async def on_shutdown() -> None:
 
 
 @app.get("/api/v1/nodes", status_code=200)
-async def nodes_handler(username: str = Depends(check_credentials)) -> Response:
-    return result_to_response(await get_nodes(username))
+async def nodes_handler(
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+) -> Response:
+    return result_to_response(
+        await get_nodes(username, await parse_context(netunicorn_auth_context))
+    )
 
 
 @app.get("/api/v1/experiment", status_code=200)
 async def get_experiments_handler(
     username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
+    _ = netunicorn_auth_context  # unused
     return result_to_response(await get_experiments(username))
 
 
@@ -108,7 +143,9 @@ async def prepare_experiment_handler(
     request: Request,
     background_tasks: BackgroundTasks,
     username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Union[Response, str]:
+    netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
     try:
         data = await request.json()
         experiment = Experiment.from_json(data)
@@ -129,53 +166,86 @@ async def prepare_experiment_handler(
             return result_to_response(result)
 
     background_tasks.add_task(
-        prepare_experiment_task, experiment_name, experiment, username
+        prepare_experiment_task,
+        experiment_name,
+        experiment,
+        username,
+        netunicorn_auth_context_parsed,
     )
     return experiment_name
 
 
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
 async def start_experiment_handler(
-    experiment_name: str, username: str = Depends(check_credentials)
+    experiment_name: str,
+    username: str = Depends(check_credentials),
+    execution_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
-    result = await start_experiment(experiment_name, username)
+    netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
+    result = await start_experiment(
+        experiment_name, username, execution_context, netunicorn_auth_context_parsed
+    )
     return result_to_response(result)
 
 
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(
-    experiment_name: str, username: str = Depends(check_credentials)
+    experiment_name: str,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
+    _ = netunicorn_auth_context  # unused
     result = await get_experiment_status(experiment_name, username)
     return result_to_response(result)
 
 
 @app.delete("/api/v1/experiment/{experiment_name}", status_code=200)
 async def delete_experiment_handler(
-    experiment_name: str, username: str = Depends(check_credentials)
+    experiment_name: str,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
+    _ = netunicorn_auth_context  # unused
     result = await delete_experiment(experiment_name, username)
     return result_to_response(result)
 
 
 @app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
 async def cancel_experiment_handler(
-    experiment_name: str, username: str = Depends(check_credentials)
+    experiment_name: str,
+    username: str = Depends(check_credentials),
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
-    result = await cancel_experiment(experiment_name, username)
+    netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
+    result = await cancel_experiment(
+        experiment_name,
+        username,
+        cancellation_context,
+        netunicorn_auth_context_parsed,
+    )
     return result_to_response(result)
 
 
 @app.post("/api/v1/executors/cancel", status_code=200)
 async def cancel_executors_handler(
-    executors: List[str], username: str = Depends(check_credentials)
+    data: CancellationRequest,
+    username: str = Depends(check_credentials),
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
-    result = await cancel_executors(executors, username)
+    netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
+    result = await cancel_executors(
+        data.executors,
+        username,
+        data.cancellation_context,
+        netunicorn_auth_context_parsed,
+    )
     return result_to_response(result)
 
 
 if __name__ == "__main__":
-    IP = os.environ.get("NETUNICORN_MEDIATOR_IP", "127.0.0.1")
+    IP = os.environ.get("NETUNICORN_MEDIATOR_IP", "0.0.0.0")
     PORT = int(os.environ.get("NETUNICORN_MEDIATOR_PORT", "26511"))
     logger.info(f"Starting mediator on {IP}:{PORT}")
     uvicorn.run(app, host=IP, port=PORT)

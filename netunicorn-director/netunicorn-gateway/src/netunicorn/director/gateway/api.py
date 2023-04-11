@@ -19,7 +19,7 @@ from netunicorn.director.base.resources import (
 from .api_types import PipelineResult
 
 logger = get_logger("netunicorn.director.gateway")
-GATEWAY_IP = os.environ.get("NETUNICORN_GATEWAY_IP", "127.0.0.1")
+GATEWAY_IP = os.environ.get("NETUNICORN_GATEWAY_IP", "0.0.0.0")
 GATEWAY_PORT = int(os.environ.get("NETUNICORN_GATEWAY_PORT", "26512"))
 logger.info(f"Starting gateway on {GATEWAY_IP}:{GATEWAY_PORT}")
 
@@ -86,7 +86,10 @@ async def receive_result(result: PipelineResult) -> None:
         if result.state is not None
         else PipelineExecutorState.FINISHED.value
     )
-    finished = state in {PipelineExecutorState.FINISHED.value, PipelineExecutorState.REPORTING.value}
+    finished = state in {
+        PipelineExecutorState.FINISHED.value,
+        PipelineExecutorState.REPORTING.value,
+    }
     await db_conn_pool.execute(
         "UPDATE executors SET result = $1::bytea, finished = $2, state = $3 WHERE executor_id = $4",
         pipeline_results,

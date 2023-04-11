@@ -4,7 +4,7 @@ import base64
 import copy
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 from returns.result import Result
 
@@ -36,8 +36,11 @@ class ExperimentStatus(Enum):
 
 
 class Experiment:
-    def __init__(self) -> None:
+    def __init__(
+        self, deployment_context: Optional[Dict[str, Dict[str, str]]] = None
+    ) -> None:
         self.deployment_map: List[Deployment] = []
+        self.deployment_context = deployment_context
 
     def append(self, node: Node, pipeline: Pipeline) -> Experiment:
         self.deployment_map.append(Deployment(node, pipeline))
@@ -49,15 +52,14 @@ class Experiment:
 
         for node in nodes:
             if not isinstance(node, Node):
-                raise TypeError(
-                    f"Expected sequence of nodes, got {type(node)} instead"
-                )
+                raise TypeError(f"Expected sequence of nodes, got {type(node)} instead")
             self.append(node, pipeline)
         return self
 
     def __json__(self) -> ExperimentRepresentation:
         return {
             "deployment_map": [x.__json__() for x in self.deployment_map],
+            "deployment_context": self.deployment_context,
         }
 
     @classmethod
@@ -66,6 +68,7 @@ class Experiment:
         instance.deployment_map = [
             Deployment.from_json(x) for x in data["deployment_map"]
         ]
+        instance.deployment_context = data.get("deployment_context")
         return instance
 
     def __getitem__(self, item: int) -> Deployment:
@@ -86,6 +89,10 @@ class Experiment:
     def __add__(self, other: Experiment) -> Experiment:
         new_map = copy.deepcopy(self)
         new_map.deployment_map.extend(other.deployment_map)
+        if other.deployment_context:
+            if new_map.deployment_context is None:
+                new_map.deployment_context = {}
+            new_map.deployment_context.update(other.deployment_context)
         return new_map
 
 

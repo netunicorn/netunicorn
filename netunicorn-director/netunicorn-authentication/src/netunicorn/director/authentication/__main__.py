@@ -63,7 +63,7 @@ async def auth(data: AuthenticationRequest) -> None:
 
 
 if __name__ == "__main__":
-    ip = os.environ.get("NETUNICORN_AUTHENTICATION_IP", "127.0.0.1")
+    ip = os.environ.get("NETUNICORN_AUTHENTICATION_IP", "0.0.0.0")
     port = int(os.environ.get("NETUNICORN_AUTHENTICATION_PORT", "26516"))
     logger.info(f"Starting gateway on {ip}:{port}")
     uvicorn.run(app, host=ip, port=port)

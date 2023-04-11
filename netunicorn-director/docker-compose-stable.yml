@@ -1,0 +1,131 @@
+# run me with a context of main netunicorn directory!
+version: "3.9"
+
+x-common-variables: &common-variables
+  NETUNICORN_LOG_LEVEL: "DEBUG"
+  NETUNICORN_DATABASE_ENDPOINT: "postgres"
+  NETUNICORN_DATABASE_DB: "development"
+  NETUNICORN_DATABASE_USER: "development"
+  NETUNICORN_DATABASE_PASSWORD: "development"
+  NETUNICORN_GATEWAY_ENDPOINT: "http://gateway:26512"
+
+networks:
+  netunicorn-network:
+    name: netunicorn-network
+
+
+services:
+  registry:
+    container_name: netunicorn-registry
+    image: registry:2
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:5000:5000"
+    networks:
+      - netunicorn-network
+
+  postgres:
+    container_name: netunicorn-database
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: development
+      POSTGRES_PASSWORD: development
+      POSTGRES_DB: development
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./scripts/dbdeploy.sql:/docker-entrypoint-initdb.d/0_dbdeploy.sql
+      - ./scripts/dev-users.sql:/docker-entrypoint-initdb.d/1_dev_users.sql
+    networks:
+      - netunicorn-network
+
+  authentication:
+    image: netunicorn/authentication
+    restart: unless-stopped
+    container_name: netunicorn-authentication
+    environment:
+      <<: *common-variables
+      NETUNICORN_AUTHENTICATION_IP: "0.0.0.0"
+    depends_on:
+      - postgres
+    networks:
+      - netunicorn-network
+
+  compilation:
+    image: netunicorn/compilation
+    restart: unless-stopped
+    container_name: netunicorn-dev-compilation
+    environment: *common-variables
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - postgres
+    networks:
+      - netunicorn-network
+
+  gateway:
+    image: netunicorn/gateway
+    restart: unless-stopped
+    container_name: netunicorn-gateway
+    environment:
+      <<: *common-variables
+      NETUNICORN_GATEWAY_IP: "0.0.0.0"
+    # don't forget that this container should have port published to the host
+    # if any external nodes would be used as workers
+    expose:
+      - "26512"
+    depends_on:
+      - postgres
+    networks:
+      - netunicorn-network
+
+  processor:
+    image: netunicorn/processor
+    restart: unless-stopped
+    container_name: netunicorn-processor
+    environment: *common-variables
+    depends_on:
+      - postgres
+    networks:
+      - netunicorn-network
+
+  infrastructure:
+    image: netunicorn/infrastructure
+    command: ["-f", "/app/infrastructure-example-config.yaml"]
+    container_name: netunicorn-infrastructure
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      <<: *common-variables
+      NETUNICORN_INFRASTRUCTURE_IP: "0.0.0.0"
+    volumes:
+      - ./scripts/infrastructure-example-config.yaml:/app/infrastructure-example-config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - netunicorn-network
+
+  mediator:
+    image: netunicorn/mediator
+    restart: unless-stopped
+    container_name: netunicorn-dev-mediator
+    environment:
+      <<: *common-variables
+      NETUNICORN_MEDIATOR_IP: "0.0.0.0"
+      NETUNICORN_MEDIATOR_PORT: "26511"
+      NETUNICORN_INFRASTRUCTURE_ENDPOINT: "http://infrastructure:26514"
+      NETUNICORN_AUTH_ENDPOINT: "http://authentication:26516"
+      NETUNICORN_DOCKER_REGISTRY_URL: "localhost:5000"
+    ports:
+      - "0.0.0.0:26611:26511"
+    networks:
+      - netunicorn-network
+    depends_on:
+      - authentication
+      - gateway
+      - processor
+      - infrastructure
+      - compilation
+      - postgres
+      - registry

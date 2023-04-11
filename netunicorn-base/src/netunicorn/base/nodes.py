@@ -27,7 +27,7 @@ class Node:
     def __getitem__(self, item: str) -> NodeProperty:
         return self.properties.get(item, None)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[NodeProperty]:
         raise TypeError("Node is not iterable")
 
     def __setitem__(self, key: str, value: NodeProperty) -> None:

@@ -1,14 +1,15 @@
 import asyncio
+import json
 import uuid
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import asyncpg.connection
 import requests as req
+from netunicorn.base.deployment import Deployment
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.experiment import (
-    Deployment,
     Experiment,
     ExperimentExecutionInformation,
     ExperimentStatus,
@@ -87,17 +88,18 @@ async def __filter_locked_nodes(
     # and create a new pool with the same name, but without the locked nodes
     for i in reversed(range(len(nodes))):
         if isinstance(nodes[i], CountableNodePool):
-            new_pool = await __filter_locked_nodes(username, nodes[i])
+            # noinspection PyTypeChecker
+            new_pool = await __filter_locked_nodes(username, nodes[i])  # type: ignore
             if len(new_pool) == 0:
                 nodes.pop(i)
             else:
                 nodes[i] = new_pool
         elif isinstance(nodes[i], Node):
-            node_name = nodes[i].name
+            node_name = nodes[i].name  # type: ignore
             current_lock = await db_conn_pool.fetchval(
                 "SELECT username FROM locks WHERE node_name = $1 AND connector = $2",
                 node_name,
-                nodes[i]["connector"],
+                nodes[i]["connector"],  # type: ignore
             )
             if current_lock is not None and current_lock != username:
                 nodes.pop(i)
@@ -106,17 +108,24 @@ async def __filter_locked_nodes(
     return nodes
 
 
-async def get_nodes(username: str) -> Result[Nodes, str]:
+async def get_nodes(
+    username: str, authentication_context: Optional[dict[str, dict[str, str]]] = None
+) -> Result[Nodes, str]:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/nodes/{username}"
-    result = req.get(url, timeout=300)
+    result = req.get(
+        url,
+        timeout=300,
+        headers={
+            "netunicorn-authentication-context": json.dumps(authentication_context)
+        },
+    )
     if not result.ok:
         return Failure(str(result.content))
     serialized_nodes = result.json()
     # noinspection PyTypeChecker
     # we know that top is always CountableNodePool
-    nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)
-    result = await __filter_locked_nodes(username, nodes)
-    return Success(result)
+    nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)  # type: ignore
+    return Success(await __filter_locked_nodes(username, nodes))
 
 
 async def get_experiments(
@@ -231,7 +240,10 @@ async def experiment_precheck(experiment: Experiment) -> Result[None, str]:
 
 
 async def prepare_experiment_task(
-    experiment_name: str, experiment: Experiment, username: str
+    experiment_name: str,
+    experiment: Experiment,
+    username: str,
+    netunicorn_authentication_context: Optional[dict[str, dict[str, str]]] = None,
 ) -> None:
     async def prepare_deployment(
         _username: str, _deployment: Deployment, _envs: dict[int, str]
@@ -276,7 +288,7 @@ async def prepare_experiment_task(
 
         if (
             isinstance(env_def, DockerImage)
-            and _deployment.environment_definition.image is not None
+            and _deployment.environment_definition.image is not None  # type: ignore
         ):
             # specific case: if key is in the _envs, that means that we need to wait this deployment too
             # description: that happens when 2 deployments have the same environment definition object in memory,
@@ -301,7 +313,7 @@ async def prepare_experiment_task(
 
         if (
             isinstance(env_def, DockerImage)
-            and _deployment.environment_definition.image is None
+            and _deployment.environment_definition.image is None  # type: ignore
         ):
             deployments_waiting_for_compilation.append(_deployment)
 
@@ -314,7 +326,7 @@ async def prepare_experiment_task(
 
             # if not - we create a new compilation request
             compilation_uid = str(uuid4())
-            _deployment.environment_definition.image = (
+            _deployment.environment_definition.image = (  # type: ignore
                 f"{DOCKER_REGISTRY_URL}/{compilation_uid}:latest"
             )
 
@@ -452,7 +464,15 @@ async def prepare_experiment_task(
     # start deployment of environments
     try:
         url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/deployment/{username}/{experiment_id}"
-        req.post(url, timeout=30).raise_for_status()
+        req.post(
+            url,
+            timeout=30,
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    netunicorn_authentication_context
+                )
+            },
+        ).raise_for_status()
     except Exception as e:
         logger.exception(e)
         error = (
@@ -494,7 +514,12 @@ async def get_experiment_status(
     )
 
 
-async def start_experiment(experiment_name: str, username: str) -> Result[str, str]:
+async def start_experiment(
+    experiment_name: str,
+    username: str,
+    execution_context: Optional[Dict[str, Dict[str, str]]] = None,
+    netunicorn_authentication_context: Optional[Dict[str, str]] = None,
+) -> Result[str, str]:
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
         return Failure(result.failure())
@@ -513,7 +538,16 @@ async def start_experiment(experiment_name: str, username: str) -> Result[str, s
 
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/execution/{username}/{experiment_id}"
     try:
-        req.post(url, timeout=30).raise_for_status()
+        req.post(
+            url,
+            json=execution_context,
+            timeout=30,
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    netunicorn_authentication_context
+                )
+            },
+        ).raise_for_status()
     except Exception as e:
         logger.exception(e)
         await db_conn_pool.execute(
@@ -542,7 +576,12 @@ async def credentials_check(username: str, token: str) -> bool:
         return False
 
 
-async def cancel_experiment(experiment_name: str, username: str) -> Result[str, str]:
+async def cancel_experiment(
+    experiment_name: str,
+    username: str,
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: Optional[Dict[str, str]] = None,
+) -> Result[str, str]:
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
         return Failure(result.failure())
@@ -552,10 +591,20 @@ async def cancel_experiment(experiment_name: str, username: str) -> Result[str, 
         "SELECT executor_id FROM executors WHERE experiment_id = $1 AND finished = FALSE",
         experiment_id,
     )
-    return await cancel_executors_task(username, [x["executor_id"] for x in executors])
+    return await cancel_executors_task(
+        username,
+        [x["executor_id"] for x in executors],
+        cancellation_context,
+        netunicorn_authentication_context,
+    )
 
 
-async def cancel_executors(executors: List[str], username: str) -> Result[str, str]:
+async def cancel_executors(
+    executors: List[str],
+    username: str,
+    cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
+    netunicorn_authentication_context: Optional[Dict[str, str]] = None,
+) -> Result[str, str]:
     # check data format
     for executor in executors:
         if not isinstance(executor, str):
@@ -582,14 +631,28 @@ async def cancel_executors(executors: List[str], username: str) -> Result[str, s
             f"Some of executors do not belong to user {username}: \n {other_executors}"
         )
 
-    return await cancel_executors_task(username, executors)
+    return await cancel_executors_task(
+        username, executors, cancellation_context, netunicorn_authentication_context
+    )
 
 
 async def cancel_executors_task(
-    username: str, executors: List[str]
+    username: str,
+    executors: List[str],
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: Optional[Dict[str, str]] = None,
 ) -> Result[str, str]:
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/executors/{username}"
-    result = req.delete(url, json=executors, timeout=30)
+    result = req.delete(
+        url,
+        json={"executors": executors, "cancellation_context": cancellation_context},
+        timeout=30,
+        headers={
+            "netunicorn-authentication-context": json.dumps(
+                netunicorn_authentication_context
+            )
+        },
+    )
     if not result.ok:
         error = result.content.decode("utf-8")
         logger.error(error)

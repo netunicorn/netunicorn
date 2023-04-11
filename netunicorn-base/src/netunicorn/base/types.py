@@ -73,6 +73,7 @@ class DockerImageRepresentation(EnvironmentDefinitionRepresentation):
 
 class ExperimentRepresentation(TypedDict):
     deployment_map: List[DeploymentRepresentation]
+    deployment_context: Optional[Dict[str, Dict[str, str]]]
 
 
 class DeploymentExecutionResultRepresentation(TypedDict):

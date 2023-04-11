@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Optional
 
 import requests as req
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
@@ -18,18 +18,28 @@ class RemoteClientException(Exception):
 
 
 class RemoteClient(BaseClient):
-    def __init__(self, endpoint: str, login: str, password: str):
+    def __init__(
+        self,
+        endpoint: str,
+        login: str,
+        password: str,
+        authentication_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ):
         """
         Remote client for Unicorn.
         :param endpoint: Unicorn installation endpoint.
         :param login: Unicorn installation login.
         :param password: Unicorn installation password.
+        :param authentication_context: Authentication context for connectors.
+        E.g., if a connector A requires users to provide additional security token, it could be specified here.
+        Format: {connector_name: {key: value}}
         """
         if endpoint.endswith("/"):
             endpoint = endpoint[:-1]
         self.endpoint = endpoint
         self.login = login
         self.password = password
+        self.authentication_context = authentication_context or {}
 
     def healthcheck(self) -> bool:
         result = req.get(f"{self.endpoint}/health")
@@ -43,7 +53,13 @@ class RemoteClient(BaseClient):
 
     def get_nodes(self) -> Nodes:
         result = req.get(
-            f"{self.endpoint}/api/v1/nodes", auth=(self.login, self.password)
+            f"{self.endpoint}/api/v1/nodes",
+            auth=(self.login, self.password),
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    self.authentication_context
+                )
+            },
         )
         nodes: NodesRepresentation = result.json()
         if result.status_code == 200:
@@ -58,6 +74,11 @@ class RemoteClient(BaseClient):
         result_data = req.delete(
             f"{self.endpoint}/api/v1/experiment/{experiment_name}",
             auth=(self.login, self.password),
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    self.authentication_context
+                )
+            },
         )
         if result_data.status_code != 200:
             raise RemoteClientException(
@@ -69,6 +90,11 @@ class RemoteClient(BaseClient):
         result_data = req.get(
             f"{self.endpoint}/api/v1/experiment",
             auth=(self.login, self.password),
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    self.authentication_context
+                )
+            },
         )
         if result_data.status_code != 200:
             raise RemoteClientException(
@@ -82,13 +108,28 @@ class RemoteClient(BaseClient):
             k: ExperimentExecutionInformation.from_json(v) for k, v in result.items()
         }
 
-    def prepare_experiment(self, experiment: Experiment, experiment_id: str) -> str:
+    def prepare_experiment(
+        self,
+        experiment: Experiment,
+        experiment_id: str,
+        deployment_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
+        if deployment_context is not None:
+            if experiment.deployment_context is None:
+                experiment.deployment_context = {}
+            experiment.deployment_context.update(deployment_context)
+
         data = json.dumps(experiment, cls=UnicornEncoder)
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/prepare",
             auth=(self.login, self.password),
             data=data,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "netunicorn-authentication-context": json.dumps(
+                    self.authentication_context
+                ),
+            },
         )
         if result.status_code == 200:
             return str(result.json())
@@ -98,10 +139,20 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
         )
 
-    def start_execution(self, experiment_id: str) -> str:
+    def start_execution(
+        self,
+        experiment_id: str,
+        execution_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/start",
             auth=(self.login, self.password),
+            json=execution_context,
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    self.authentication_context
+                )
+            },
         )
         if result.status_code == 200:
             return str(result.json())
@@ -117,6 +168,11 @@ class RemoteClient(BaseClient):
         result_data = req.get(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}",
             auth=(self.login, self.password),
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    self.authentication_context
+                )
+            },
         )
         if result_data.status_code != 200:
             raise RemoteClientException(
@@ -127,10 +183,20 @@ class RemoteClient(BaseClient):
         result: ExperimentExecutionInformationRepresentation = result_data.json()
         return ExperimentExecutionInformation.from_json(result)
 
-    def cancel_experiment(self, experiment_id: str) -> str:
+    def cancel_experiment(
+        self,
+        experiment_id: str,
+        cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/cancel",
             auth=(self.login, self.password),
+            json=cancellation_context,
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    self.authentication_context
+                )
+            },
         )
         if result.status_code == 200:
             return str(result.json())
@@ -140,11 +206,23 @@ class RemoteClient(BaseClient):
             f"Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
         )
 
-    def cancel_executors(self, executors: Iterable[str]) -> str:
+    def cancel_executors(
+        self,
+        executors: Iterable[str],
+        cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/executors/cancel",
             auth=(self.login, self.password),
-            json=executors,
+            json={
+                "executors": list(executors),
+                "cancellation_context": cancellation_context,
+            },
+            headers={
+                "netunicorn-authentication-context": json.dumps(
+                    self.authentication_context
+                )
+            },
         )
         if result.status_code == 200:
             return str(result.json())
