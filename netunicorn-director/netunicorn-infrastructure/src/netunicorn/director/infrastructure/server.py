@@ -4,6 +4,8 @@ from typing import Annotated, Any, Optional, TypeAlias
 import uvicorn
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
 from fastapi.responses import Response
+from pydantic import BaseModel
+
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.types import (
     ConnectorContext,
@@ -22,7 +24,10 @@ from .kernel import (
     stop_executors,
 )
 
-HeaderAuthContext: TypeAlias = Annotated[Optional[str], Header()]
+
+class HeaderAuthContext(BaseModel):
+    __root__: Annotated[Optional[str], Header()]
+
 
 app = FastAPI()
 config: dict[str, Any]
@@ -62,8 +67,8 @@ async def shutdown_handler() -> None:
 
 @app.get("/nodes/{username}", status_code=200)
 async def get_nodes_handler(
-    username: str,
-    netunicorn_auth_context: HeaderAuthContext = None,
+        username: str,
+        netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
     netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await get_nodes(username, netunicorn_auth_context)
@@ -76,10 +81,10 @@ async def get_nodes_handler(
 
 @app.post("/deployment/{username}/{experiment_id}", status_code=200)
 async def deployment_handler(
-    username: str,
-    experiment_id: str,
-    background_tasks: BackgroundTasks,
-    netunicorn_auth_context: HeaderAuthContext = None,
+        username: str,
+        experiment_id: str,
+        background_tasks: BackgroundTasks,
+        netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
     netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await deploy(
@@ -94,11 +99,11 @@ async def deployment_handler(
 
 @app.post("/execution/{username}/{experiment_id}")
 async def execution_handler(
-    username: str,
-    experiment_id: str,
-    background_tasks: BackgroundTasks,
-    execution_context: Optional[dict[str, dict[str, str]]] = None,
-    netunicorn_auth_context: HeaderAuthContext = None,
+        username: str,
+        experiment_id: str,
+        background_tasks: BackgroundTasks,
+        execution_context: Optional[dict[str, dict[str, str]]] = None,
+        netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
     netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await execute(
@@ -117,11 +122,11 @@ async def execution_handler(
 
 @app.delete("/execution/{username}/{experiment_id}")
 async def stop_execution_handler(
-    username: str,
-    experiment_id: str,
-    background_tasks: BackgroundTasks,
-    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
-    netunicorn_auth_context: HeaderAuthContext = None,
+        username: str,
+        experiment_id: str,
+        background_tasks: BackgroundTasks,
+        cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+        netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
     netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await stop_execution(
@@ -140,10 +145,10 @@ async def stop_execution_handler(
 
 @app.delete("/executors/{username}")
 async def stop_executors_handler(
-    username: str,
-    cancellation_request: ExecutorsCancellationRequest,
-    background_tasks: BackgroundTasks,
-    netunicorn_auth_context: HeaderAuthContext = None,
+        username: str,
+        cancellation_request: ExecutorsCancellationRequest,
+        background_tasks: BackgroundTasks,
+        netunicorn_auth_context: HeaderAuthContext = None,
 ) -> Response:
     netunicorn_auth_context = await parse_context(netunicorn_auth_context)
     code, result = await stop_executors(
