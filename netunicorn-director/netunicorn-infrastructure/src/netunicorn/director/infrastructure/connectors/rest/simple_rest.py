@@ -8,10 +8,9 @@ import aiohttp
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import Nodes
 from netunicorn.base.utils import UnicornEncoder
-from returns.result import Failure, Result, Success
-
 from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
 from netunicorn.director.base.connectors.types import StopExecutorRequest
+from returns.result import Failure, Result, Success
 
 
 class SimpleRESTConnector(NetunicornConnectorProtocol):

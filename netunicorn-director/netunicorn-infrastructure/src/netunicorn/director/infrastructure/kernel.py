@@ -14,13 +14,12 @@ from netunicorn.base.deployment import Deployment
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.nodes import CountableNodePool, Nodes
 from netunicorn.base.types import ExperimentRepresentation
+from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
+from netunicorn.director.base.connectors.types import StopExecutorRequest
 from netunicorn.director.base.resources import LOGGING_LEVELS, get_logger
 from netunicorn.director.base.types import ConnectorContext
 from netunicorn.director.base.utils import __init_connection
 from returns.result import Failure, Success
-
-from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
-from netunicorn.director.base.connectors.types import StopExecutorRequest
 
 logger: Logger
 db_connection_pool: asyncpg.pool.Pool

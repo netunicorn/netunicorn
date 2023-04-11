@@ -7,8 +7,8 @@ from uuid import uuid4
 
 import asyncpg.connection
 import requests as req
-from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.deployment import Deployment
+from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.experiment import (
     Experiment,
     ExperimentExecutionInformation,

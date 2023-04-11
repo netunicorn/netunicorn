@@ -5,10 +5,9 @@ from typing import Any, Optional, Tuple
 
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import CountableNodePool, Node, Nodes
-from returns.result import Result, Success
-
 from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
 from netunicorn.director.base.connectors.types import StopExecutorRequest
+from returns.result import Result, Success
 
 
 class DummyNetunicornConnector(NetunicornConnectorProtocol):
