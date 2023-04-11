@@ -3,19 +3,18 @@ import logging
 from collections import defaultdict
 from typing import NoReturn
 
-from netunicorn.base import ExperimentStatus, Experiment
+import asyncpg
+from netunicorn.base import Experiment, ExperimentStatus
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.types import ExperimentRepresentation
 from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
 
-import asyncpg
-
 
 async def cleanup_watchdog_task(
-        connectors: dict[str, NetunicornConnectorProtocol],
-        db_conn_pool: asyncpg.pool.Pool,
-        logger: logging.Logger,
-        timeout_sec: int = 300
+    connectors: dict[str, NetunicornConnectorProtocol],
+    db_conn_pool: asyncpg.pool.Pool,
+    logger: logging.Logger,
+    timeout_sec: int = 300,
 ) -> NoReturn:
     logger.info("Cleanup watchdog task started.")
     while True:
@@ -50,14 +49,18 @@ async def cleanup_watchdog_task(
                     deployments: dict[str, list[Deployment]] = defaultdict(list)
                     for deployment in experiment.deployment_map:
                         if deployment.cleanup:
-                            deployments[str(deployment.node["connector"])].append(deployment)
+                            deployments[str(deployment.node["connector"])].append(
+                                deployment
+                            )
 
                     for connector_name in connectors:
                         if connector_name not in deployments:
                             continue
                         connector = connectors[connector_name]
                         try:
-                            await connector.cleanup(row["experiment_id"], deployments[connector_name])
+                            await connector.cleanup(
+                                row["experiment_id"], deployments[connector_name]
+                            )
                         except Exception as e:
                             logger.exception(
                                 f"Cleanup watchdog task: error while cleaning up experiment {row['experiment_id']}.",
@@ -66,7 +69,7 @@ async def cleanup_watchdog_task(
                             logger.warning(
                                 f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
                             )
-                            logger.warning(f"Connector {connector_name} moved to unavailable status.")
+                            logger.warning(
+                                f"Connector {connector_name} moved to unavailable status."
+                            )
                             connectors.pop(connector_name)
-
-

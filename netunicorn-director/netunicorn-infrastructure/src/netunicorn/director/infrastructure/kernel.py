@@ -5,7 +5,7 @@ import importlib
 import os
 from collections import defaultdict
 from logging import Logger
-from typing import Any, Optional, Tuple, Union, NoReturn
+from typing import Any, NoReturn, Optional, Tuple, Union
 
 import asyncpg
 import yaml
@@ -167,11 +167,11 @@ async def initialize(config: dict[str, Any]) -> None:
             connector_name, connector_config, config["netunicorn.gateway.endpoint"]
         )
 
-    tasks['cleanup'] = asyncio.create_task(cleanup_watchdog_task(
-        connectors=connectors,
-        db_conn_pool=db_connection_pool,
-        logger=logger
-    ))
+    tasks["cleanup"] = asyncio.create_task(
+        cleanup_watchdog_task(
+            connectors=connectors, db_conn_pool=db_connection_pool, logger=logger
+        )
+    )
 
     return
 

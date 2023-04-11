@@ -23,7 +23,11 @@ except ImportError:
 
 class Deployment:
     def __init__(
-        self, node: Node, pipeline: Pipeline, keep_alive_timeout_minutes: int = 10, cleanup: bool = True
+        self,
+        node: Node,
+        pipeline: Pipeline,
+        keep_alive_timeout_minutes: int = 10,
+        cleanup: bool = True,
     ):
         self.node = node
         self.prepared = False

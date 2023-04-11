@@ -167,11 +167,11 @@ class NetunicornConnectorProtocol(Protocol):
         pass
 
     async def cleanup(
-            self,
-            experiment_id: str,
-            deployments: list[Deployment],
-            *args: Any,
-            **kwargs: Any
+        self,
+        experiment_id: str,
+        deployments: list[Deployment],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         """
         This method is called after the experiment is finished.
