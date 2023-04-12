@@ -248,7 +248,7 @@ class RemoteClient(BaseClient):
 
     def set_flag_values(
         self, experiment_id: str, flag_name: str, flag_values: FlagValues
-    ):
+    ) -> None:
         if flag_values.int_value is None and flag_values.text_value is None:
             raise RemoteClientException(
                 "One of int_value or text_value must be provided."

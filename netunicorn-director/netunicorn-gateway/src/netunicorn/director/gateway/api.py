@@ -159,9 +159,9 @@ async def set_flag_value(
 
 
 @app.post(
-    "/api/v1/experiment/{experiment_id}/flag/{flag_name}/increment", status_code=204
+    "/api/v1/experiment/{experiment_id}/flag/{flag_name}/increment", status_code=200
 )
-async def increment_int_flag_value(experiment_id: str, flag_name: str):
+async def increment_int_flag_value(experiment_id: str, flag_name: str) -> None:
     """
     Increments int flag value for a given experiment
     """
@@ -174,9 +174,9 @@ async def increment_int_flag_value(experiment_id: str, flag_name: str):
 
 
 @app.post(
-    "/api/v1/experiment/{experiment_id}/flag/{flag_name}/decrement", status_code=204
+    "/api/v1/experiment/{experiment_id}/flag/{flag_name}/decrement", status_code=200
 )
-async def decrement_int_flag_value(experiment_id: str, flag_name: str):
+async def decrement_int_flag_value(experiment_id: str, flag_name: str) -> None:
     """
     Decrements int flag value for a given experiment
     """
