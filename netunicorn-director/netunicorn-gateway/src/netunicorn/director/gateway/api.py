@@ -113,7 +113,9 @@ async def receive_heartbeat(executor_id: str) -> None:
 
 
 @app.get("/api/v1/experiment/{experiment_id}/flag/{flag_name}")
-async def get_flag_value(experiment_id: str, flag_name: str, response: Response) -> FlagValues | None:
+async def get_flag_value(
+    experiment_id: str, flag_name: str, response: Response
+) -> FlagValues | None:
     """
     Returns flag values for a given experiment
     """
@@ -156,7 +158,9 @@ async def set_flag_value(
     return None
 
 
-@app.post("/api/v1/experiment/{experiment_id}/flag/{flag_name}/increment", status_code=204)
+@app.post(
+    "/api/v1/experiment/{experiment_id}/flag/{flag_name}/increment", status_code=204
+)
 async def increment_int_flag_value(experiment_id: str, flag_name: str):
     """
     Increments int flag value for a given experiment
@@ -169,7 +173,9 @@ async def increment_int_flag_value(experiment_id: str, flag_name: str):
     )
 
 
-@app.post("/api/v1/experiment/{experiment_id}/flag/{flag_name}/decrement", status_code=204)
+@app.post(
+    "/api/v1/experiment/{experiment_id}/flag/{flag_name}/decrement", status_code=204
+)
 async def decrement_int_flag_value(experiment_id: str, flag_name: str):
     """
     Decrements int flag value for a given experiment
