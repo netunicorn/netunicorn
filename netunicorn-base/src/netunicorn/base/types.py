@@ -94,4 +94,4 @@ class PipelineExecutorState(IntEnum):
 
 class FlagValues(BaseModel):
     text_value: Optional[str] = None
-    int_value: Optional[int] = None
+    int_value: int = 0
