@@ -255,7 +255,7 @@ async def get_experiment_flag_handler(
     username: str = Depends(check_credentials),
 ) -> Response:
     result = await get_experiment_flag(username, experiment_id, flag_name)
-    return result_to_response(result)
+    return result_to_response(result.map(lambda x: x.dict()))
 
 
 @app.post("/api/v1/experiment/{experiment_id}/flag/{flag_name}", status_code=204)

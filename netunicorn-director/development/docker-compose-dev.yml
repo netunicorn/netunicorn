@@ -20,7 +20,7 @@ services:
     image: registry:2
     restart: unless-stopped
     ports:
-      - "0.0.0.0:5000:5000"
+      - "5000:5000"
     networks:
       - netunicorn-network
 
@@ -79,6 +79,8 @@ services:
       NETUNICORN_GATEWAY_IP: "0.0.0.0"
     expose:
       - "26512"
+    ports:
+      - "26612:26512"
     depends_on:
       - postgres
     networks:
@@ -126,7 +128,7 @@ services:
       NETUNICORN_AUTH_ENDPOINT: "http://authentication:26516"
       NETUNICORN_DOCKER_REGISTRY_URL: "localhost:5000"
     ports:
-      - "0.0.0.0:26611:26511"
+      - "26611:26511"
     networks:
       - netunicorn-network
     depends_on:

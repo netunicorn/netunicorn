@@ -257,7 +257,7 @@ class RemoteClient(BaseClient):
         result_data = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/flag/{flag_name}",
             auth=(self.login, self.password),
-            json=flag_values.json(),
+            json=flag_values.dict(),
         )
         if result_data.status_code >= 400:
             raise RemoteClientException(

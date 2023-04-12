@@ -662,11 +662,11 @@ async def cancel_executors_task(
 
 
 async def get_experiment_flag(
-    username: str, experiment_id: str, key: str
+    username: str, experiment_name: str, key: str
 ) -> Result[FlagValues, str]:
-    result = await get_experiment_id_and_status(experiment_id, username)
+    result = await get_experiment_id_and_status(experiment_name, username)
 
-    if result.is_failure():
+    if not is_successful(result):
         return Failure(result.failure())
     experiment_id, _ = result.unwrap()
 
@@ -676,7 +676,7 @@ async def get_experiment_flag(
         key,
     )
     if not flag_values_row:
-        return Failure(f"Flag {key} not found for experiment {experiment_id}")
+        return Failure(f"Flag {key} not found for experiment {experiment_name}")
     flag_values_row = flag_values_row[0]
     return Success(
         FlagValues(
@@ -696,7 +696,7 @@ async def set_experiment_flag(
         values.int_value = 0
 
     result = await get_experiment_id_and_status(experiment_id, username)
-    if result.is_failure():
+    if not is_successful(result):
         return Failure(result.failure())
     experiment_id, _ = result.unwrap()
 
