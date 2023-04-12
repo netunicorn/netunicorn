@@ -35,8 +35,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./scripts/dbdeploy.sql:/docker-entrypoint-initdb.d/0_dbdeploy.sql
-      - ./scripts/dev-users.sql:/docker-entrypoint-initdb.d/1_dev_users.sql
+      - ../scripts/dbdeploy.sql:/docker-entrypoint-initdb.d/0_dbdeploy.sql
+      - ./users.sql:/docker-entrypoint-initdb.d/1_dev_users.sql
     networks:
       - netunicorn-network
 
@@ -45,8 +45,8 @@ services:
     command: -m netunicorn.director.authentication
     restart: unless-stopped
     build:
-      context: ..
-      dockerfile: ./netunicorn-director/scripts/dev.Dockerfile
+      context: ../..
+      dockerfile: ./netunicorn-director/development/dev.Dockerfile
     container_name: netunicorn-dev-authentication
     environment:
       <<: *common-variables
@@ -107,7 +107,7 @@ services:
       <<: *common-variables
       NETUNICORN_INFRASTRUCTURE_IP: "0.0.0.0"
     volumes:
-      - ./scripts/infrastructure-example-config.yaml:/app/infrastructure-example-config.yaml
+      - ../scripts/infrastructure-example-config.yaml:/app/infrastructure-example-config.yaml
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - netunicorn-network
