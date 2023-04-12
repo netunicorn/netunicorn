@@ -6,6 +6,7 @@ from typing import Annotated, Any, List, Optional, Union
 import uvicorn
 from fastapi import (
     BackgroundTasks,
+    Body,
     Depends,
     FastAPI,
     Header,
@@ -15,6 +16,7 @@ from fastapi import (
 )
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from netunicorn.base.experiment import Experiment
+from netunicorn.base.types import FlagValues
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
 from pydantic import BaseModel
@@ -31,11 +33,13 @@ from .engine import (
     credentials_check,
     delete_experiment,
     experiment_precheck,
+    get_experiment_flag,
     get_experiment_status,
     get_experiments,
     get_nodes,
     open_db_connection,
     prepare_experiment_task,
+    set_experiment_flag,
     start_experiment,
 )
 
@@ -241,6 +245,27 @@ async def cancel_executors_handler(
         data.cancellation_context,
         netunicorn_auth_context_parsed,
     )
+    return result_to_response(result)
+
+
+@app.get("/api/v1/experiment/{experiment_id}/flag/{flag_name}", status_code=200)
+async def get_experiment_flag_handler(
+    experiment_id: str,
+    flag_name: str,
+    username: str = Depends(check_credentials),
+) -> Response:
+    result = await get_experiment_flag(username, experiment_id, flag_name)
+    return result_to_response(result)
+
+
+@app.post("/api/v1/experiment/{experiment_id}/flag/{flag_name}", status_code=204)
+async def set_experiment_flag_handler(
+    experiment_id: str,
+    flag_name: str,
+    username: str = Depends(check_credentials),
+    values: FlagValues = Body(...),
+) -> Response:
+    result = await set_experiment_flag(username, experiment_id, flag_name, values)
     return result_to_response(result)
 
 

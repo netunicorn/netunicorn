@@ -19,6 +19,7 @@ classifiers = [
 dependencies = [
     "returns",
     "typing-extensions",
+    "pydantic",
 ]
 
 [tool.setuptools.packages.find]

@@ -15,6 +15,7 @@ from netunicorn.base.experiment import (
     ExperimentStatus,
 )
 from netunicorn.base.nodes import CountableNodePool, Node, Nodes
+from netunicorn.base.types import FlagValues
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,
@@ -658,3 +659,54 @@ async def cancel_executors_task(
         logger.error(error)
         return Failure(error)
     return Success("Executors cancellation started")
+
+
+async def get_experiment_flag(
+    username: str, experiment_id: str, key: str
+) -> Result[FlagValues, str]:
+    result = await get_experiment_id_and_status(experiment_id, username)
+
+    if result.is_failure():
+        return Failure(result.failure())
+    experiment_id, _ = result.unwrap()
+
+    flag_values_row = await db_conn_pool.fetch(
+        "SELECT text_value, int_value FROM flags WHERE experiment_id = $1 AND key = $2 LIMIT 1",
+        experiment_id,
+        key,
+    )
+    if not flag_values_row:
+        return Failure(f"Flag {key} not found for experiment {experiment_id}")
+    flag_values_row = flag_values_row[0]
+    return Success(
+        FlagValues(
+            text_value=flag_values_row["text_value"],
+            int_value=flag_values_row["int_value"],
+        )
+    )
+
+
+async def set_experiment_flag(
+    username: str, experiment_id: str, key: str, values: FlagValues
+) -> Result[None, str]:
+    if values.text_value is None and values.int_value is None:
+        return Failure("Flag values cannot be both None")
+
+    if values.int_value is None:
+        values.int_value = 0
+
+    result = await get_experiment_id_and_status(experiment_id, username)
+    if result.is_failure():
+        return Failure(result.failure())
+    experiment_id, _ = result.unwrap()
+
+    await db_conn_pool.execute(
+        "INSERT INTO flags (experiment_id, key, text_value, int_value) VALUES ($1, $2, $3, $4) "
+        "ON CONFLICT (experiment_id, key) DO UPDATE SET text_value = $3, int_value = $4",
+        experiment_id,
+        key,
+        values.text_value,
+        values.int_value,
+    )
+
+    return Success(None)

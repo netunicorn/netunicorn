@@ -2,15 +2,10 @@ from __future__ import annotations
 
 import sys
 from enum import IntEnum
+from typing import Any, Dict, List, Optional, Set, TypedDict, Union
 
+from pydantic import BaseModel
 from returns.result import Result
-
-if sys.version_info >= (3, 8):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
-
-from typing import Any, Dict, List, Optional, Set, Union
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -95,3 +90,8 @@ class PipelineExecutorState(IntEnum):
     EXECUTING = 1
     REPORTING = 2
     FINISHED = 3
+
+
+class FlagValues(BaseModel):
+    text_value: Optional[str] = None
+    int_value: Optional[int] = None

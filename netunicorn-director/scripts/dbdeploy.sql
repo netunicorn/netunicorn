@@ -51,3 +51,11 @@ CREATE TABLE IF NOT EXISTS Executors (
     state INT,
     PRIMARY KEY (experiment_id, executor_id)
 );
+
+CREATE TABLE IF NOT EXISTS Flags (
+    experiment_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    text_value TEXT,
+    int_value INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (experiment_id, key)
+)
