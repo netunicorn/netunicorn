@@ -113,7 +113,7 @@ async def receive_heartbeat(executor_id: str) -> None:
 
 
 @app.get("/api/v1/experiment/{experiment_id}/flag/{flag_name}")
-async def get_flag_value(experiment_id: str, flag_name: str) -> Response | FlagValues:
+async def get_flag_value(experiment_id: str, flag_name: str, response: Response) -> FlagValues | None:
     """
     Returns flag values for a given experiment
     """
@@ -123,7 +123,8 @@ async def get_flag_value(experiment_id: str, flag_name: str) -> Response | FlagV
         flag_name,
     )
     if len(flag_value) == 0:
-        return Response(status_code=404, content="Flag not found")
+        response.status_code = 404
+        return None
 
     return FlagValues(
         text_value=flag_value[0]["text_value"],
@@ -131,17 +132,16 @@ async def get_flag_value(experiment_id: str, flag_name: str) -> Response | FlagV
     )
 
 
-@app.post("/api/v1/flags/{experiment_id}/{flag_name}")
+@app.post("/api/v1/flags/{experiment_id}/{flag_name}", status_code=200)
 async def set_flag_value(
-    experiment_id: str, flag_name: str, flag_value: FlagValues
-) -> Response:
+    experiment_id: str, flag_name: str, flag_value: FlagValues, response: Response
+) -> Optional[str]:
     """
     Sets flag values for a given experiment
     """
     if flag_value.text_value is None and flag_value.int_value is None:
-        return Response(
-            status_code=400, content="Either text_value or int_value must be set"
-        )
+        response.status_code = 400
+        return "Either text_value or int_value must be set"
 
     if flag_value.int_value is None:
         flag_value.int_value = 0
@@ -153,11 +153,11 @@ async def set_flag_value(
         flag_value.text_value,
         flag_value.int_value,
     )
-    return Response(status_code=204)
+    return None
 
 
 @app.post("/api/v1/flags/{experiment_id}/{flag_name}/increment", status_code=204)
-async def increment_int_flag_value(experiment_id: str, flag_name: str) -> None:
+async def increment_int_flag_value(experiment_id: str, flag_name: str):
     """
     Increments int flag value for a given experiment
     """
@@ -167,11 +167,10 @@ async def increment_int_flag_value(experiment_id: str, flag_name: str) -> None:
         experiment_id,
         flag_name,
     )
-    return None
 
 
 @app.post("/api/v1/flags/{experiment_id}/{flag_name}/decrement", status_code=204)
-async def decrement_int_flag_value(experiment_id: str, flag_name: str) -> None:
+async def decrement_int_flag_value(experiment_id: str, flag_name: str):
     """
     Decrements int flag value for a given experiment
     """
@@ -181,4 +180,3 @@ async def decrement_int_flag_value(experiment_id: str, flag_name: str) -> None:
         experiment_id,
         flag_name,
     )
-    return None
