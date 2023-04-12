@@ -6,6 +6,7 @@ from netunicorn.base.experiment import Experiment, ExperimentExecutionInformatio
 from netunicorn.base.nodes import Nodes
 from netunicorn.base.types import (
     ExperimentExecutionInformationRepresentation,
+    FlagValues,
     NodesRepresentation,
 )
 from netunicorn.base.utils import UnicornEncoder
@@ -231,3 +232,35 @@ class RemoteClient(BaseClient):
             "Failed to cancel provided executors. "
             f"Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
         )
+
+    def get_flag_values(self, experiment_id: str, flag_name: str) -> FlagValues:
+        result_data = req.get(
+            f"{self.endpoint}/api/v1/experiment/{experiment_id}/flag/{flag_name}",
+            auth=(self.login, self.password),
+        )
+        if result_data.status_code >= 400:
+            raise RemoteClientException(
+                "Failed to get flag value. "
+                f"Status code: {result_data.status_code}, content: {result_data.content.decode('utf-8')}"
+            )
+
+        return FlagValues(**(result_data.json()))
+
+    def set_flag_values(
+        self, experiment_id: str, flag_name: str, flag_values: FlagValues
+    ) -> None:
+        if flag_values.int_value is None and flag_values.text_value is None:
+            raise RemoteClientException(
+                "One of int_value or text_value must be provided."
+            )
+
+        result_data = req.post(
+            f"{self.endpoint}/api/v1/experiment/{experiment_id}/flag/{flag_name}",
+            auth=(self.login, self.password),
+            json=flag_values.dict(),
+        )
+        if result_data.status_code >= 400:
+            raise RemoteClientException(
+                "Failed to set flag value. "
+                f"Status code: {result_data.status_code}, content: {result_data.content.decode('utf-8')}"
+            )
