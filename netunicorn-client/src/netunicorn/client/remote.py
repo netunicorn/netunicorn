@@ -1,9 +1,9 @@
 import json
-from typing import Dict, Iterable, Optional
 import warnings
+from typing import Dict, Iterable, Optional
+from urllib.parse import quote_plus
 
 import requests as req
-from urllib.parse import quote_plus
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
 from netunicorn.base.nodes import Nodes
 from netunicorn.base.types import (
@@ -22,11 +22,11 @@ class RemoteClientException(Exception):
 
 class RemoteClient(BaseClient):
     def __init__(
-            self,
-            endpoint: str,
-            login: str,
-            password: str,
-            authentication_context: Optional[Dict[str, Dict[str, str]]] = None,
+        self,
+        endpoint: str,
+        login: str,
+        password: str,
+        authentication_context: Optional[Dict[str, Dict[str, str]]] = None,
     ):
         """
         Remote client for Unicorn.
@@ -124,10 +124,10 @@ class RemoteClient(BaseClient):
         }
 
     def prepare_experiment(
-            self,
-            experiment: Experiment,
-            experiment_id: str,
-            deployment_context: Optional[Dict[str, Dict[str, str]]] = None,
+        self,
+        experiment: Experiment,
+        experiment_id: str,
+        deployment_context: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> str:
         if deployment_context is not None:
             if experiment.deployment_context is None:
@@ -156,9 +156,9 @@ class RemoteClient(BaseClient):
         )
 
     def start_execution(
-            self,
-            experiment_id: str,
-            execution_context: Optional[Dict[str, Dict[str, str]]] = None,
+        self,
+        experiment_id: str,
+        execution_context: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> str:
         experiment_id = self.quote_plus_and_warn(experiment_id)
         result = req.post(
@@ -180,7 +180,7 @@ class RemoteClient(BaseClient):
         )
 
     def get_experiment_status(
-            self, experiment_id: str
+        self, experiment_id: str
     ) -> ExperimentExecutionInformation:
         experiment_id = self.quote_plus_and_warn(experiment_id)
         result_data = req.get(
@@ -202,9 +202,9 @@ class RemoteClient(BaseClient):
         return ExperimentExecutionInformation.from_json(result)
 
     def cancel_experiment(
-            self,
-            experiment_id: str,
-            cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
+        self,
+        experiment_id: str,
+        cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> str:
         experiment_id = self.quote_plus_and_warn(experiment_id)
         result = req.post(
@@ -226,9 +226,9 @@ class RemoteClient(BaseClient):
         )
 
     def cancel_executors(
-            self,
-            executors: Iterable[str],
-            cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
+        self,
+        executors: Iterable[str],
+        cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> str:
         result = req.post(
             f"{self.endpoint}/api/v1/executors/cancel",
@@ -267,7 +267,7 @@ class RemoteClient(BaseClient):
         return FlagValues(**(result_data.json()))
 
     def set_flag_values(
-            self, experiment_id: str, flag_name: str, flag_values: FlagValues
+        self, experiment_id: str, flag_name: str, flag_values: FlagValues
     ) -> None:
         experiment_id = self.quote_plus_and_warn(experiment_id)
         flag_name = self.quote_plus_and_warn(flag_name)
