@@ -75,8 +75,8 @@ class RemoteClient(BaseClient):
                 )
             },
         )
-        nodes: NodesRepresentation = result.json()
         if result.status_code == 200:
+            nodes: NodesRepresentation = result.json()
             return Nodes.dispatch_and_deserialize(nodes)
 
         raise RemoteClientException(
