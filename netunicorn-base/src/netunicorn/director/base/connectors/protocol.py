@@ -166,6 +166,7 @@ class NetunicornConnectorProtocol(Protocol):
         """
         pass
 
+    @abstractmethod
     async def cleanup(
         self,
         experiment_id: str,
