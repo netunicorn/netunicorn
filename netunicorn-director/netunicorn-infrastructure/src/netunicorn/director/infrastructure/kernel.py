@@ -147,7 +147,7 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
 
 async def initialize(config: dict[str, Any]) -> None:
-    global db_connection_pool, connectors, tasks
+    global db_connection_pool, tasks
 
     db_connection_pool = await asyncpg.create_pool(
         host=config["netunicorn.database.endpoint"],
