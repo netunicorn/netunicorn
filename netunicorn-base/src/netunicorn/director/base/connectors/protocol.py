@@ -4,9 +4,10 @@ from abc import abstractmethod
 from logging import Logger
 from typing import Any, Optional, Protocol, Tuple
 
+from returns.result import Result
+
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import Nodes
-from returns.result import Result
 
 from .types import StopExecutorRequest
 

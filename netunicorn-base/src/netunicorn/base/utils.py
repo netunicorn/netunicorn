@@ -5,8 +5,9 @@ from functools import wraps
 from json import JSONEncoder
 from typing import Any, Callable, List, TypeVar, Union
 
-from netunicorn.base.environment_definitions import EnvironmentDefinition
 from returns.result import Failure, Result, Success
+
+from netunicorn.base.environment_definitions import EnvironmentDefinition
 
 _ValueType = TypeVar("_ValueType", covariant=True)
 _FailureValueType = TypeVar("_FailureValueType", covariant=True)
