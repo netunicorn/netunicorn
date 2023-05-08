@@ -7,9 +7,13 @@ COPY pyproject.toml ./pyproject.toml
 COPY src ./src
 RUN pip install .
 
-# add some connectors that can work in container without problems
-# like cloud connectors
-RUN pip install netunicorn-connector-aci
-RUN pip install netunicorn-connector-salt
+# add connectors
+RUN pip install --no-cache-dir \
+    netunicorn-connector-aci  \
+    netunicorn-connector-salt \
+    netunicorn-connector-ssh \
+    netunicorn-connector-kubernetes \
+    netunicorn-connector-aws \
+    netunicorn-connector-docker
 
 ENTRYPOINT ["python3", "-m", "netunicorn.director.infrastructure"]
