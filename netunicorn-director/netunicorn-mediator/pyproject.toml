@@ -1,6 +1,6 @@
 [project]
 name = "netunicorn-director-mediator"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "netunicorn-base >= 0.2.0",
+    "netunicorn-base >= 0.3.0",
     "fastapi",
     "uvicorn",
     "asyncpg",
