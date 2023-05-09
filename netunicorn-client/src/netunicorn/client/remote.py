@@ -42,7 +42,7 @@ class RemoteClient(BaseClient):
         self.endpoint = endpoint
         self.login = login
         self.password = password
-        self.authentication_context = authentication_context or {}
+        self._authentication_context = authentication_context or {}
 
     @staticmethod
     def quote_plus_and_warn(string: str) -> str:
@@ -71,7 +71,7 @@ class RemoteClient(BaseClient):
             auth=(self.login, self.password),
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self.authentication_context
+                    self._authentication_context
                 )
             },
         )
@@ -91,7 +91,7 @@ class RemoteClient(BaseClient):
             auth=(self.login, self.password),
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self.authentication_context
+                    self._authentication_context
                 )
             },
         )
@@ -107,7 +107,7 @@ class RemoteClient(BaseClient):
             auth=(self.login, self.password),
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self.authentication_context
+                    self._authentication_context
                 )
             },
         )
@@ -143,7 +143,7 @@ class RemoteClient(BaseClient):
             headers={
                 "Content-Type": "application/json",
                 "netunicorn-authentication-context": json.dumps(
-                    self.authentication_context
+                    self._authentication_context
                 ),
             },
         )
@@ -167,7 +167,7 @@ class RemoteClient(BaseClient):
             json=execution_context,
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self.authentication_context
+                    self._authentication_context
                 )
             },
         )
@@ -188,7 +188,7 @@ class RemoteClient(BaseClient):
             auth=(self.login, self.password),
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self.authentication_context
+                    self._authentication_context
                 )
             },
         )
@@ -213,7 +213,7 @@ class RemoteClient(BaseClient):
             json=cancellation_context,
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self.authentication_context
+                    self._authentication_context
                 )
             },
         )
@@ -239,7 +239,7 @@ class RemoteClient(BaseClient):
             },
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self.authentication_context
+                    self._authentication_context
                 )
             },
         )
