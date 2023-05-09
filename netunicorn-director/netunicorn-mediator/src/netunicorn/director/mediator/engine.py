@@ -413,7 +413,7 @@ async def prepare_experiment_task(
 
     everything_compiled = False
     while not everything_compiled:
-        await asyncio.sleep(5)
+        await asyncio.sleep(20)
         logger.debug(f"Waiting for compilation of {compilation_ids}")
         compilation_statuses = await db_conn_pool.fetch(
             "SELECT status IS NOT NULL AS result FROM compilations WHERE experiment_id = $1 AND compilation_id = ANY($2)",

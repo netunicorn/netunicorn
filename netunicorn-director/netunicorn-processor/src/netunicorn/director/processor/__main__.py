@@ -97,7 +97,7 @@ async def update_experiment_status(
                     experiment_id,
                     executor_id,
                 )
-                logger.debug(f"Executor {executor_id} timed out")
+                logger.warning(f"Executor {executor_id} timed out")
             else:
                 alive_executor_exists = True
 
@@ -109,7 +109,7 @@ async def update_experiment_status(
             experiment_id,
         )
         await collect_executors_results(experiment_id, experiment)
-        logger.debug(f"Experiment {experiment_id} finished")
+        logger.info(f"Experiment {experiment_id} finished")
 
 
 async def update_experiments_task(timeout_sec: int = 30) -> NoReturn:

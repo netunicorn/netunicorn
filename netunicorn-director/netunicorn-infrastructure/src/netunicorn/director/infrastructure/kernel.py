@@ -259,13 +259,13 @@ async def deploy(
         return 404, f"Experiment {experiment_id} not found"
 
     experiment: Experiment = Experiment.from_json(experiment_data)
-    logger.debug(f"Starting deployment of experiment {experiment_id}")
+    logger.info(f"Starting deployment of experiment {experiment_id}")
 
     # 2. find all prepared deployments per each connector
     deployments: dict[str, list[Deployment]] = defaultdict(list)
     for deployment in experiment.deployment_map:
         if not deployment.prepared:
-            logger.debug(
+            logger.info(
                 f"Skipping deployment of not prepared executor {deployment.executor_id}, node {deployment.node}"
             )
             continue
@@ -335,7 +335,7 @@ async def background_deploy_task(
         # noinspection DuplicatedCode
         for executor_id, result in results.items():
             if isinstance(result, Success):
-                logger.debug(
+                logger.info(
                     f"Deployment of executor {executor_id} on connector {connector_name} succeeded"
                 )
                 continue
@@ -351,7 +351,7 @@ async def background_deploy_task(
                 executor_id,
             )
 
-    logger.debug(f"Experiment {experiment_id} deployment finished")
+    logger.info(f"Experiment {experiment_id} deployment finished")
     await db_connection_pool.execute(
         "UPDATE experiments SET status = $1 WHERE experiment_id = $2",
         ExperimentStatus.READY.value,
@@ -374,7 +374,7 @@ async def execute(
     if experiment_data is None:
         return 404, f"Experiment {experiment_id} not found"
     experiment: Experiment = Experiment.from_json(experiment_data)
-    logger.debug(f"Starting execution of experiment {experiment_id}")
+    logger.info(f"Starting execution of experiment {experiment_id}")
 
     # There could be unprepared deployments and already finished executors:
     # 1.1. remove from deployment map all which executors already finished
@@ -472,7 +472,7 @@ async def background_execute_task(
         # noinspection DuplicatedCode
         for executor_id, result in results.items():
             if isinstance(result, Success):
-                logger.debug(
+                logger.info(
                     f"Execution of executor {executor_id} on connector {connector_name} succeeded"
                 )
                 continue
@@ -488,7 +488,7 @@ async def background_execute_task(
                 executor_id,
             )
 
-    logger.debug(f"Experiment {experiment_id} execution started")
+    logger.info(f"Experiment {experiment_id} execution started")
 
 
 async def stop_execution(
@@ -584,7 +584,7 @@ async def background_stop_executors_task(
         # each key in result is an executor id, value is Success or Failure with description
         for executor_id, result in results.items():
             if isinstance(result, Success):
-                logger.debug(
+                logger.info(
                     f"Stopping of executor {executor_id} on connector {connector_name} succeeded"
                 )
                 await db_connection_pool.execute(

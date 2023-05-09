@@ -163,9 +163,9 @@ async def docker_compilation_cycle(
         )
         return True
 
-    logger.debug(f"Finished compilation of {compilation_id}")
+    logger.info(f"Finished compilation of {compilation_id}")
     if isinstance(result, subprocess.CompletedProcess):
-        logger.debug(f"Return code: {result.returncode}")
+        logger.info(f"Return code: {result.returncode}")
     await record_compilation_result(
         experiment_id,
         compilation_id,
