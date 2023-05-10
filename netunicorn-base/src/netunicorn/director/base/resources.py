@@ -49,10 +49,12 @@ def get_logger(name: str, level: int = __logger_level) -> __logging.Logger:
 
     stream_handler = __logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(formatter)
+    stream_handler.setLevel(level)
     logger.addHandler(stream_handler)
 
     file_handler = __logging.FileHandler(f"{name}.log")
     file_handler.setFormatter(formatter)
+    file_handler.setLevel(level)
     logger.addHandler(file_handler)
 
     logger.setLevel(level)

@@ -22,6 +22,7 @@ db_conn_pool: asyncpg.Pool
 
 locker_task_handler: asyncio.Task[NoReturn]
 update_experiments_task_handler: asyncio.Task[NoReturn]
+preparing_experiment_watchdog_task_handler: asyncio.Task[NoReturn]
 
 
 async def collect_executors_results(experiment_id: str, experiment: Experiment) -> None:
@@ -96,7 +97,7 @@ async def update_experiment_status(
                     experiment_id,
                     executor_id,
                 )
-                logger.debug(f"Executor {executor_id} timed out")
+                logger.warning(f"Executor {executor_id} timed out")
             else:
                 alive_executor_exists = True
 
@@ -108,7 +109,7 @@ async def update_experiment_status(
             experiment_id,
         )
         await collect_executors_results(experiment_id, experiment)
-        logger.debug(f"Experiment {experiment_id} finished")
+        logger.info(f"Experiment {experiment_id} finished")
 
 
 async def update_experiments_task(timeout_sec: int = 30) -> NoReturn:
@@ -132,11 +133,10 @@ async def update_experiments_task(timeout_sec: int = 30) -> NoReturn:
 async def locker_task(timeout_sec: int = 10) -> NoReturn:
     logger.info("Locker task started.")
     while True:
-        # get all experiment that are in PREPARING, READY, or RUNNING state
+        # get all experiment that are in PREPARING or RUNNING state
         experiments = await db_conn_pool.fetch(
-            "SELECT username, data::jsonb FROM experiments WHERE status IN ($1, $2, $3)",
+            "SELECT username, data::jsonb FROM experiments WHERE status IN ($1, $2)",
             ExperimentStatus.PREPARING.value,
-            ExperimentStatus.READY.value,
             ExperimentStatus.RUNNING.value,
         )
         if not experiments:
@@ -177,10 +177,36 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
         await asyncio.sleep(timeout_sec)
 
 
+async def preparing_experiment_watchdog_task(timeout_sec: int = 3600) -> NoReturn:
+    logger.info("Preparing experiment watchdog task started.")
+    while True:
+        async with db_conn_pool.acquire() as conn:
+            async with conn.transaction():
+                experiment_ids = await conn.fetch(
+                    "SELECT experiment_id, data::jsonb, start_time FROM experiments WHERE status = $1",
+                    ExperimentStatus.PREPARING.value,
+                )
+                for line in experiment_ids:
+                    experiment_id = line["experiment_id"]
+                    creation_time = line["creation_time"]
+                    if datetime.now() - creation_time > timedelta(days=1):
+                        # most likely something went wrong, set status to UNKNOWN
+                        await conn.execute(
+                            "UPDATE experiments SET status = $1 WHERE experiment_id = $2",
+                            ExperimentStatus.UNKNOWN.value,
+                            experiment_id,
+                        )
+                        logger.warning(
+                            f"Experiment {experiment_id} timed out during preparation."
+                        )
+        await asyncio.sleep(timeout_sec)
+
+
 async def task_done_callback(fut: asyncio.Future[NoReturn]) -> None:
     try:
         locker_task_handler.cancel()
         update_experiments_task_handler.cancel()
+        preparing_experiment_watchdog_task_handler.cancel()
         fut.result()
     except asyncio.CancelledError:
         logger.info("Task cancelled.")
@@ -190,7 +216,7 @@ async def task_done_callback(fut: asyncio.Future[NoReturn]) -> None:
 
 
 async def main() -> None:
-    global locker_task_handler, update_experiments_task_handler, db_conn_pool
+    global locker_task_handler, update_experiments_task_handler, db_conn_pool, preparing_experiment_watchdog_task_handler
     db_conn_pool = await asyncpg.create_pool(
         host=DATABASE_ENDPOINT,
         user=DATABASE_USER,
@@ -204,6 +230,11 @@ async def main() -> None:
 
     update_experiments_task_handler = asyncio.create_task(update_experiments_task())
     update_experiments_task_handler.add_done_callback(task_done_callback)
+
+    preparing_experiment_watchdog_task_handler = asyncio.create_task(
+        preparing_experiment_watchdog_task()
+    )
+    preparing_experiment_watchdog_task_handler.add_done_callback(task_done_callback)
 
     await asyncio.gather(locker_task_handler, update_experiments_task_handler)
 

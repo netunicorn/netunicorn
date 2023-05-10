@@ -44,6 +44,7 @@ class Task(ABC):
         Please, do not forget to call `super().__init__()` in your implementation.
         """
         self.name = name or str(uuid.uuid4())  # Each task should have a name
+        self.requirements = copy.deepcopy(self.requirements)
 
     def __call__(self) -> Any:
         return self.run()

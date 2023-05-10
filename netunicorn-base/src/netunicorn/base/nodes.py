@@ -3,12 +3,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain, cycle
-from typing import Callable, Dict, Iterator, List, Sequence, Union
+from typing import Callable, Dict, Iterator, List, Sequence, Set, Union
 from uuid import uuid4
 
 import netunicorn
 
 from .architecture import Architecture
+from .environment_definitions import _available_environment_definitions
 from .types import NodeProperty, NodeRepresentation, NodesRepresentation
 
 
@@ -23,9 +24,28 @@ class Node:
         self.properties = properties
         self.additional_properties: Dict[str, NodeProperty] = {}
         self.architecture = architecture
+        self.available_environments: Set[type] = self._infer_environments()
+
+    def _infer_environments(self) -> Set[type]:
+        result = set()
+        # noinspection PyBroadException
+        try:
+            environments = self.properties.get(
+                "netunicorn-environments", _available_environment_definitions.keys()
+            )
+            if hasattr(environments, "__iter__"):
+                for environment_name in environments:  # type: ignore
+                    if environment_name in _available_environment_definitions:
+                        result.add(_available_environment_definitions[environment_name])
+        except Exception:
+            return set(_available_environment_definitions.values())
+        return result
 
     def __getitem__(self, item: str) -> NodeProperty:
         return self.properties.get(item, None)
+
+    def __iter__(self) -> Iterator[NodeProperty]:
+        raise TypeError("Node is not iterable")
 
     def __setitem__(self, key: str, value: NodeProperty) -> None:
         self.properties[key] = value

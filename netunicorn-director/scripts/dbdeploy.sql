@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS Experiments (
     execution_results jsonb[],
     creation_time TIMESTAMP NOT NULL,
     start_time TIMESTAMP,
+    cleaned_up bool default FALSE,
     PRIMARY KEY (experiment_id),
     UNIQUE (username, experiment_name)
 );
@@ -47,5 +48,14 @@ CREATE TABLE IF NOT EXISTS Executors (
     keepalive TIMESTAMP,
     error TEXT,
     finished BOOLEAN NOT NULL,
+    state INT,
     PRIMARY KEY (experiment_id, executor_id)
 );
+
+CREATE TABLE IF NOT EXISTS Flags (
+    experiment_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    text_value TEXT,
+    int_value INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (experiment_id, key)
+)

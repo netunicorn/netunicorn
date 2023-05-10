@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 import os
 from collections import defaultdict
 from logging import Logger
-from typing import Any, Optional, Tuple, Union
+from typing import Any, NoReturn, Optional, Tuple, Union
 
 import asyncpg
 import yaml
@@ -13,16 +14,20 @@ from fastapi import BackgroundTasks
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.experiment import Experiment, ExperimentStatus
 from netunicorn.base.nodes import CountableNodePool, Nodes
+from netunicorn.base.types import ExperimentRepresentation
+from netunicorn.director.base.connectors.protocol import NetunicornConnectorProtocol
+from netunicorn.director.base.connectors.types import StopExecutorRequest
 from netunicorn.director.base.resources import LOGGING_LEVELS, get_logger
+from netunicorn.director.base.types import ConnectorContext
 from netunicorn.director.base.utils import __init_connection
 from returns.result import Failure, Success
 
-from .connectors.protocol import NetunicornConnectorProtocol
-from .connectors.types import StopExecutorRequest
+from .tasks import cleanup_watchdog_task
 
 logger: Logger
 db_connection_pool: asyncpg.pool.Pool
 connectors: dict[str, NetunicornConnectorProtocol] = {}
+tasks: dict[str, asyncio.Task[NoReturn]] = {}  # type: ignore
 
 
 async def initialize_connector(
@@ -55,7 +60,7 @@ async def initialize_connector(
         connectors[connector_name] = connector
         logger.info(f"Connector {connector_name} initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize connector {connector_name}: {e}")
+        logger.exception(f"Failed to initialize connector {connector_name}: {e}")
     return
 
 
@@ -80,10 +85,11 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
     # log level
     config["netunicorn.infrastructure.log.level"] = (
-        os.environ.get("NETUNICORN_INFRASTRUCTURE_LOG_LEVEL", False)
-        or config.get("netunicorn.infrastructure.log.level", False)
+        os.environ.get("NETUNICORN_INFRASTRUCTURE_LOG_LEVEL", None)
+        or config.get("netunicorn.infrastructure.log.level", None)
+        or os.environ.get("NETUNICORN_LOG_LEVEL", None)
         or "info"
-    )
+    ).lower()
     logger_level = config["netunicorn.infrastructure.log.level"].upper()
     if logger_level not in LOGGING_LEVELS:
         raise ValueError(f"Invalid log level {logger_level}")
@@ -94,9 +100,9 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
     # module host and port
     config["netunicorn.infrastructure.host"] = (
-        os.environ.get("NETUNICORN_INFRASTRUCTURE_HOST", False)
-        or config.get("netunicorn.infrastructure.host", False)
-        or "127.0.0.1"
+        os.environ.get("NETUNICORN_INFRASTRUCTURE_IP", False)
+        or config.get("netunicorn.infrastructure.ip", False)
+        or "0.0.0.0"
     )
     logger.info(f"Host: {config['netunicorn.infrastructure.host']}")
     config["netunicorn.infrastructure.port"] = (
@@ -141,7 +147,7 @@ def parse_config(filepath: str) -> dict[str, Any]:
 
 
 async def initialize(config: dict[str, Any]) -> None:
-    global db_connection_pool, connectors
+    global db_connection_pool
 
     db_connection_pool = await asyncpg.create_pool(
         host=config["netunicorn.database.endpoint"],
@@ -161,6 +167,12 @@ async def initialize(config: dict[str, Any]) -> None:
             connector_name, connector_config, config["netunicorn.gateway.endpoint"]
         )
 
+    tasks["cleanup"] = asyncio.create_task(
+        cleanup_watchdog_task(
+            connectors=connectors, db_conn_pool=db_connection_pool, logger=logger
+        )
+    )
+
     return
 
 
@@ -178,7 +190,9 @@ async def health() -> Tuple[int, str]:
             status, description = await connector.health()
         except Exception as e:
             status, description = False, str(e)
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
         statuses.append((connector_name, status, description))
@@ -195,30 +209,49 @@ async def shutdown() -> None:
         try:
             await connector.shutdown()
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
 
 
-async def get_nodes(username: str) -> Tuple[int, Union[Nodes, str]]:
+async def get_nodes(
+    username: str,
+    netunicorn_authentication_context: ConnectorContext = None,
+) -> Tuple[int, Union[Nodes, str]]:
     pools = []
     for connector_name in set(connectors.keys()):
         connector = connectors[connector_name]
         try:
-            nodes = await connector.get_nodes(username)
+            connector_authentication_context = None
+            if (
+                netunicorn_authentication_context
+                and connector_name in netunicorn_authentication_context
+            ):
+                connector_authentication_context = netunicorn_authentication_context[
+                    connector_name
+                ]
+            nodes = await connector.get_nodes(
+                username, connector_authentication_context
+            )
             nodes.set_property("connector", connector_name)
             pools.append(nodes)
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
-    pools = CountableNodePool(nodes=pools)
-    return 200, pools
+    return 200, CountableNodePool(nodes=pools)  # type: ignore
 
 
 async def deploy(
-    username: str, experiment_id: str, background_tasks: BackgroundTasks
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # 1. take experiment information from the database
-    experiment_data: Optional[dict[str, Any]] = await db_connection_pool.fetchval(
+    experiment_data: ExperimentRepresentation = await db_connection_pool.fetchval(
         "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
         experiment_id,
     )
@@ -226,17 +259,17 @@ async def deploy(
         return 404, f"Experiment {experiment_id} not found"
 
     experiment: Experiment = Experiment.from_json(experiment_data)
-    logger.debug(f"Starting deployment of experiment {experiment_id}")
+    logger.info(f"Starting deployment of experiment {experiment_id}")
 
     # 2. find all prepared deployments per each connector
     deployments: dict[str, list[Deployment]] = defaultdict(list)
     for deployment in experiment.deployment_map:
         if not deployment.prepared:
-            logger.debug(
+            logger.info(
                 f"Skipping deployment of not prepared executor {deployment.executor_id}, node {deployment.node}"
             )
             continue
-        deployments[deployment.node["connector"]].append(deployment)
+        deployments[str(deployment.node["connector"])].append(deployment)
 
     # 3. check that all connectors are available
     for connector_name in deployments.keys():
@@ -248,22 +281,48 @@ async def deploy(
 
     # 4. start background task to deploy
     background_tasks.add_task(
-        background_deploy_task, username, experiment_id, deployments
+        background_deploy_task,
+        username,
+        experiment_id,
+        deployments,
+        experiment.deployment_context,
+        netunicorn_authentication_context,
     )
     return 200, f"Deployment of experiment {experiment_id} started"
 
 
 async def background_deploy_task(
-    username: str, experiment_id: str, deployments: dict[str, list[Deployment]]
+    username: str,
+    experiment_id: str,
+    deployments: dict[str, list[Deployment]],
+    deployment_context: Optional[dict[str, dict[str, str]]],
+    netunicorn_authentication_context: Optional[dict[str, dict[str, str]]] = None,
 ) -> None:
     # 5. deploy on each connector
     for connector_name, connector_deployments in deployments.items():
         try:
+            connector_deploy_context = None
+            if deployment_context and connector_name in deployment_context:
+                connector_deploy_context = deployment_context[connector_name]
+            connector_auth_context = None
+            if (
+                netunicorn_authentication_context
+                and connector_name in netunicorn_authentication_context
+            ):
+                connector_auth_context = netunicorn_authentication_context[
+                    connector_name
+                ]
             results = await connectors[connector_name].deploy(
-                username, experiment_id, connector_deployments
+                username,
+                experiment_id,
+                connector_deployments,
+                connector_deploy_context,
+                connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and deployment couldn't be completed"
@@ -276,7 +335,7 @@ async def background_deploy_task(
         # noinspection DuplicatedCode
         for executor_id, result in results.items():
             if isinstance(result, Success):
-                logger.debug(
+                logger.info(
                     f"Deployment of executor {executor_id} on connector {connector_name} succeeded"
                 )
                 continue
@@ -292,7 +351,7 @@ async def background_deploy_task(
                 executor_id,
             )
 
-    logger.debug(f"Experiment {experiment_id} deployment finished")
+    logger.info(f"Experiment {experiment_id} deployment finished")
     await db_connection_pool.execute(
         "UPDATE experiments SET status = $1 WHERE experiment_id = $2",
         ExperimentStatus.READY.value,
@@ -301,17 +360,21 @@ async def background_deploy_task(
 
 
 async def execute(
-    username: str, experiment_id: str, background_tasks: BackgroundTasks
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    execution_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # 1. take experiment information from the database
-    experiment_data: Optional[dict[str, Any]] = await db_connection_pool.fetchval(
+    experiment_data: ExperimentRepresentation = await db_connection_pool.fetchval(
         "SELECT data::jsonb FROM experiments WHERE experiment_id = $1",
         experiment_id,
     )
     if experiment_data is None:
         return 404, f"Experiment {experiment_id} not found"
     experiment: Experiment = Experiment.from_json(experiment_data)
-    logger.debug(f"Starting execution of experiment {experiment_id}")
+    logger.info(f"Starting execution of experiment {experiment_id}")
 
     # There could be unprepared deployments and already finished executors:
     # 1.1. remove from deployment map all which executors already finished
@@ -343,7 +406,7 @@ async def execute(
     # 2. find all prepared deployments per each connector
     deployments: dict[str, list[Deployment]] = defaultdict(list)
     for deployment in deployment_map:
-        deployments[deployment.node["connector"]].append(deployment)
+        deployments[str(deployment.node["connector"])].append(deployment)
 
     # 3. check that all connectors are available
     for connector_name in deployments.keys():
@@ -355,22 +418,48 @@ async def execute(
 
     # 4. start background task to execute
     background_tasks.add_task(
-        background_execute_task, username, experiment_id, deployments
+        background_execute_task,
+        username,
+        experiment_id,
+        deployments,
+        execution_context,
+        netunicorn_authentication_context,
     )
     return 200, f"Execution of experiment {experiment_id} started"
 
 
 async def background_execute_task(
-    username: str, experiment_id: str, deployments: dict[str, list[Deployment]]
+    username: str,
+    experiment_id: str,
+    deployments: dict[str, list[Deployment]],
+    execution_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> None:
     # 5. execute on each connector
     for connector_name, connector_deployments in deployments.items():
         try:
+            connector_execution_context = None
+            if execution_context and connector_name in execution_context:
+                connector_execution_context = execution_context[connector_name]
+            connector_auth_context = None
+            if (
+                netunicorn_authentication_context
+                and connector_name in netunicorn_authentication_context
+            ):
+                connector_auth_context = netunicorn_authentication_context[
+                    connector_name
+                ]
             results = await connectors[connector_name].execute(
-                username, experiment_id, connector_deployments
+                username,
+                experiment_id,
+                connector_deployments,
+                connector_execution_context,
+                connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and execution couldn't be completed"
@@ -383,7 +472,7 @@ async def background_execute_task(
         # noinspection DuplicatedCode
         for executor_id, result in results.items():
             if isinstance(result, Success):
-                logger.debug(
+                logger.info(
                     f"Execution of executor {executor_id} on connector {connector_name} succeeded"
                 )
                 continue
@@ -399,18 +488,26 @@ async def background_execute_task(
                 executor_id,
             )
 
-    logger.debug(f"Experiment {experiment_id} execution started")
+    logger.info(f"Experiment {experiment_id} execution started")
 
 
 async def stop_execution(
-    username: str, experiment_id: str, background_tasks: BackgroundTasks
+    username: str,
+    experiment_id: str,
+    background_tasks: BackgroundTasks,
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # TODO: implement
     return 500, "Not implemented"
 
 
 async def stop_executors(
-    username: str, executors: list[str], background_tasks: BackgroundTasks
+    username: str,
+    executors: list[str],
+    background_tasks: BackgroundTasks,
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> Tuple[int, str]:
     # find all connectors to ask and give them information about executors to stop
     # 1. find all executors
@@ -437,20 +534,45 @@ async def stop_executors(
             return 500, f"Connector {connector_name} is not available, cannot proceed"
 
     # 4. start background task to stop executors
-    background_tasks.add_task(background_stop_executors_task, username, executors_dict)
+    background_tasks.add_task(
+        background_stop_executors_task,
+        username,
+        executors_dict,
+        cancellation_context,
+        netunicorn_authentication_context,
+    )
     return 200, f"Stopping executors {executors_dict} started"
 
 
 async def background_stop_executors_task(
-    username: str, executors: dict[str, list[StopExecutorRequest]]
+    username: str,
+    executors: dict[str, list[StopExecutorRequest]],
+    cancellation_context: Optional[dict[str, dict[str, str]]] = None,
+    netunicorn_authentication_context: ConnectorContext = None,
 ) -> None:
     for connector_name, executors_list in executors.items():
         try:
+            connector_cancellation_context = None
+            if cancellation_context and connector_name in cancellation_context:
+                connector_cancellation_context = cancellation_context[connector_name]
+            connector_auth_context = None
+            if (
+                netunicorn_authentication_context
+                and connector_name in netunicorn_authentication_context
+            ):
+                connector_auth_context = netunicorn_authentication_context[
+                    connector_name
+                ]
             results = await connectors[connector_name].stop_executors(
-                username, executors_list
+                username,
+                executors_list,
+                connector_cancellation_context,
+                connector_auth_context,
             )
         except Exception as e:
-            logger.warning(f"Connector {connector_name} raised an exception: {e}")
+            logger.warning(
+                f"Connector {connector_name} raised an exception: {str(e.with_traceback(e.__traceback__))}"
+            )
             logger.warning(f"Connector {connector_name} moved to unavailable status.")
             connectors.pop(connector_name)
             failure_reason = f"Connector {connector_name} raised an exception and execution couldn't be completed"
@@ -462,7 +584,7 @@ async def background_stop_executors_task(
         # each key in result is an executor id, value is Success or Failure with description
         for executor_id, result in results.items():
             if isinstance(result, Success):
-                logger.debug(
+                logger.info(
                     f"Stopping of executor {executor_id} on connector {connector_name} succeeded"
                 )
                 await db_connection_pool.execute(
