@@ -80,6 +80,8 @@ class UnicornEncoder(JSONEncoder):
     def default(self, obj: Any) -> Any:  # pylint: disable=E0202
         if isinstance(obj, Exception):
             return str(obj.__reduce__())
+        if isinstance(obj, set):
+            return list(obj)
         if dataclasses.is_dataclass(obj):
             return dataclasses.asdict(obj)
         if hasattr(obj, "__json__"):
