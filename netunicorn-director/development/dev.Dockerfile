@@ -68,9 +68,13 @@ COPY netunicorn-director/netunicorn-processor/src ./src
 RUN pip install .
 
 # connectors
-RUN pip install netunicorn-connector-aci
-RUN pip install netunicorn-connector-salt
-RUN pip install netunicorn-connector-docker
+RUN pip install --no-cache-dir \
+    netunicorn-connector-aci  \
+    netunicorn-connector-salt \
+    netunicorn-connector-ssh \
+    netunicorn-connector-kubernetes \
+    netunicorn-connector-aws \
+    netunicorn-connector-docker
 
 WORKDIR /app
 
