@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 from returns.result import Result
+from returns.pipeline import is_successful
 
 from .deployment import Deployment
 from .nodes import Node, Nodes
@@ -81,10 +82,10 @@ class Experiment:
         return len(self.deployment_map)
 
     def __str__(self) -> str:
-        return "; ".join([f"<{x}>" for x in self.deployment_map])
+        return "\n".join([f" - {x}" for x in self.deployment_map])
 
     def __repr__(self) -> str:
-        return str(self)
+        return self.__str__()
 
     def __add__(self, other: Experiment) -> Experiment:
         new_map = copy.deepcopy(self)
@@ -124,7 +125,24 @@ class DeploymentExecutionResult:
         return cloudpickle.loads(self._result) if self._result else None
 
     def __str__(self) -> str:
-        return f"DeploymentExecutionResult(node={self.node}, result={self.result}, error={self.error})"
+        text = (
+            "DeploymentExecutionResult:\n"
+            f"  Node: {self.node}\n"
+        )
+        if self._result:
+            text += f"  Result: {type(self.result[0])}\n"
+            if not is_successful(self.result[0]):
+                text += f"   {self.result[0]}\n"
+            else:
+                for task_id, task_result in self.result[0].unwrap().items():
+                    text += f"    {task_id}: {task_result}\n"
+            text += f"  Logs:\n"
+            for line in self.result[1]:
+                text += f"    {line}"
+        if self.error:
+            text += f"  Error: {self.error}\n"
+        text += "\n"
+        return text
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -156,6 +174,20 @@ class ExperimentExecutionInformation:
     status: ExperimentStatus
     experiment: Optional[Experiment]
     execution_result: Union[None, Exception, List[DeploymentExecutionResult]]
+
+    def __str__(self):
+        text = (
+            f"ExperimentExecutionInformation:\n"
+            f"status: {self.status}\n"
+            f"experiment: \n"
+            f"{self.experiment}\n"
+            f"execution_result:\n"
+            f"{self.execution_result}\n"
+        )
+        return text
+
+    def __repr__(self):
+        return self.__str__()
 
     def __json__(self) -> ExperimentExecutionInformationRepresentation:
         execution_result: Union[
