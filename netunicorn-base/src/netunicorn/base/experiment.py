@@ -127,14 +127,15 @@ class DeploymentExecutionResult:
     def __str__(self) -> str:
         text = "DeploymentExecutionResult:\n  Node: {self.node}\n"
         if self._result:
-            text += f"  Result: {type(self.result[0])}\n"
-            if not is_successful(self.result[0]):
-                text += f"   {self.result[0]}\n"
+            result: Tuple[Result[PipelineResult, PipelineResult], LogType] = self.result  # type: ignore
+            text += f"  Result: {type(result[0])}\n"
+            if not is_successful(result[0]):
+                text += f"   {result[0]}\n"
             else:
-                for task_id, task_result in self.result[0].unwrap().items():
+                for task_id, task_result in result[0].unwrap().items():
                     text += f"    {task_id}: {task_result}\n"
             text += f"  Logs:\n"
-            for line in self.result[1]:
+            for line in result[1]:
                 text += f"    {line}"
         if self.error:
             text += f"  Error: {self.error}\n"
@@ -172,7 +173,7 @@ class ExperimentExecutionInformation:
     experiment: Optional[Experiment]
     execution_result: Union[None, Exception, List[DeploymentExecutionResult]]
 
-    def __str__(self):
+    def __str__(self) -> str:
         text = (
             f"ExperimentExecutionInformation:\n"
             f"status: {self.status}\n"
@@ -183,7 +184,7 @@ class ExperimentExecutionInformation:
         )
         return text
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
     def __json__(self) -> ExperimentExecutionInformationRepresentation:

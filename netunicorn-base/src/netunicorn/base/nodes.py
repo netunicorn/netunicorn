@@ -33,11 +33,12 @@ class Node:
             environments = self.properties.get(
                 "netunicorn-environments", _available_environment_definitions.keys()
             )
-            for environment_name in environments:
-                if environment_name in _available_environment_definitions:
-                    result.add(_available_environment_definitions[environment_name])
+            if hasattr(environments, "__iter__"):
+                for environment_name in environments:  # type: ignore
+                    if environment_name in _available_environment_definitions:
+                        result.add(_available_environment_definitions[environment_name])
         except Exception:
-            return _available_environment_definitions.values()
+            return set(_available_environment_definitions.values())
         return result
 
     def __getitem__(self, item: str) -> NodeProperty:
