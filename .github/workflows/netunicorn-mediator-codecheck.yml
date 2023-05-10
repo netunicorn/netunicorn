@@ -21,7 +21,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install black pylint mypy isort
-          pip install ./netunicorn-base
 
       - name: Run Black
         run: black --check --diff ./netunicorn-director/netunicorn-mediator
@@ -34,4 +33,5 @@ jobs:
         with:
           path: './netunicorn-director/netunicorn-mediator'
           mypy_flags: '--config-file ./netunicorn-director/netunicorn-mediator/pyproject.toml'
+          requirements: './netunicorn-base'
           requirements_file: './misc/requirements.dev.txt'
