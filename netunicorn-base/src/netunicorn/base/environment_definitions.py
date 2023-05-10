@@ -161,3 +161,9 @@ class DockerImage(EnvironmentDefinition):
         instance.build_context = BuildContext.from_json(data["build_context"])
         instance.runtime_context = RuntimeContext.from_json(data["runtime_context"])
         return instance
+
+
+_available_environment_definitions = {
+    ShellExecution.__name__: ShellExecution,
+    DockerImage.__name__: DockerImage,
+}

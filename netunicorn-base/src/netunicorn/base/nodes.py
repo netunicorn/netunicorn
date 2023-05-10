@@ -3,12 +3,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain, cycle
-from typing import Callable, Dict, Iterator, List, Sequence, Union
+from typing import Callable, Dict, Iterator, List, Sequence, Set, Union
 from uuid import uuid4
 
 import netunicorn
 
 from .architecture import Architecture
+from .environment_definitions import _available_environment_definitions
 from .types import NodeProperty, NodeRepresentation, NodesRepresentation
 
 
@@ -23,6 +24,21 @@ class Node:
         self.properties = properties
         self.additional_properties: Dict[str, NodeProperty] = {}
         self.architecture = architecture
+        self.available_environments: Set[type] = self._infer_environments()
+
+    def _infer_environments(self) -> Set[type]:
+        result = set()
+        # noinspection PyBroadException
+        try:
+            environments = self.properties.get(
+                "netunicorn-environments", _available_environment_definitions.keys()
+            )
+            for environment_name in environments:
+                if environment_name in _available_environment_definitions:
+                    result.add(_available_environment_definitions[environment_name])
+        except Exception:
+            return _available_environment_definitions.values()
+        return result
 
     def __getitem__(self, item: str) -> NodeProperty:
         return self.properties.get(item, None)

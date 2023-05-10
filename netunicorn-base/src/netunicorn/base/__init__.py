@@ -1,6 +1,8 @@
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
 
+from .architecture import Architecture
+from .environment_definitions import DockerImage, ShellExecution
 from .experiment import Experiment, ExperimentExecutionInformation, ExperimentStatus
 from .pipeline import Pipeline
 from .task import Task, TaskDispatcher
@@ -18,4 +20,6 @@ __all__ = [
     "Failure",
     "is_successful",
     "FlagValues",
+    "ShellExecution",
+    "DockerImage",
 ]

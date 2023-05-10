@@ -26,6 +26,7 @@ from returns.result import Result
 from .engine import (
     cancel_executors,
     cancel_experiment,
+    check_environments,
     check_runtime_context,
     check_services_availability,
     check_sudo_access,
@@ -164,6 +165,7 @@ async def prepare_experiment_handler(
         experiment_precheck(experiment),
         check_sudo_access(experiment, username),
         check_runtime_context(experiment),
+        check_environments(experiment),
     )
     for result in prechecks:
         if not is_successful(result):

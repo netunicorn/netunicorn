@@ -38,6 +38,8 @@ class Deployment:
         self.keep_alive_timeout_minutes = keep_alive_timeout_minutes
         self.cleanup = cleanup
 
+        self._validate_deployment(node, pipeline)
+
         pipeline = deepcopy(pipeline)
 
         for i, element in enumerate(pipeline.tasks):
@@ -50,6 +52,13 @@ class Deployment:
                 self.environment_definition.commands.extend(x.requirements)  # type: ignore
 
         self.pipeline = cloudpickle.dumps(pipeline)
+
+    @staticmethod
+    def _validate_deployment(node: Node, pipeline: Pipeline) -> None:
+        if type(pipeline.environment_definition) not in node.available_environments:
+            raise ValueError(
+                f"Node {node.name} does not support environment {type(pipeline.environment_definition).__name__}"
+            )
 
     def __str__(self) -> str:
         return f"Deployment: Node={self.node.name}, executor_id={self.executor_id}, prepared={self.prepared}"

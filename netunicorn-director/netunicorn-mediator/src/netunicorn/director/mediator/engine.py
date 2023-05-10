@@ -240,6 +240,18 @@ async def experiment_precheck(experiment: Experiment) -> Result[None, str]:
     return Success(None)
 
 
+async def check_environments(experiment: Experiment) -> Result[None, str]:
+    for deployment in experiment.deployment_map:
+        if (
+            type(deployment.environment_definition)
+            not in deployment.node.available_environments
+        ):
+            failure_message = f"Environment {deployment.environment_definition} is not available on node {deployment.node.name}"
+            logger.warning(failure_message)
+            return Failure(failure_message)
+    return Success(None)
+
+
 async def prepare_experiment_task(
     experiment_name: str,
     experiment: Experiment,
