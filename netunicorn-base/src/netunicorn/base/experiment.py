@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
-from returns.result import Result
 from returns.pipeline import is_successful
+from returns.result import Result
 
 from .deployment import Deployment
 from .nodes import Node, Nodes
@@ -125,10 +125,7 @@ class DeploymentExecutionResult:
         return cloudpickle.loads(self._result) if self._result else None
 
     def __str__(self) -> str:
-        text = (
-            "DeploymentExecutionResult:\n"
-            f"  Node: {self.node}\n"
-        )
+        text = "DeploymentExecutionResult:\n  Node: {self.node}\n"
         if self._result:
             text += f"  Result: {type(self.result[0])}\n"
             if not is_successful(self.result[0]):
