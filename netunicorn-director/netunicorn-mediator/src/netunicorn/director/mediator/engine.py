@@ -59,7 +59,9 @@ async def check_services_availability() -> None:
         NETUNICORN_INFRASTRUCTURE_ENDPOINT,
         NETUNICORN_AUTH_ENDPOINT,
     ]:
-        req.get(f"{url}/health", timeout=30).raise_for_status()
+        result = req.get(f"{url}/health", timeout=30)
+        if result.status_code != 200:
+            raise Exception(result.content)
 
 
 async def get_experiment_id_and_status(
