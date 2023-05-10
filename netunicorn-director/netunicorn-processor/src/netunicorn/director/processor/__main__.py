@@ -133,7 +133,7 @@ async def update_experiments_task(timeout_sec: int = 30) -> NoReturn:
 async def locker_task(timeout_sec: int = 10) -> NoReturn:
     logger.info("Locker task started.")
     while True:
-        # get all experiment that are in PREPARING, READY, or RUNNING state
+        # get all experiment that are in PREPARING or RUNNING state
         experiments = await db_conn_pool.fetch(
             "SELECT username, data::jsonb FROM experiments WHERE status IN ($1, $2)",
             ExperimentStatus.PREPARING.value,

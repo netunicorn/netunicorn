@@ -24,4 +24,5 @@ __all__ = [
     "ShellExecution",
     "DockerImage",
     "Node",
+    "Architecture",
 ]
