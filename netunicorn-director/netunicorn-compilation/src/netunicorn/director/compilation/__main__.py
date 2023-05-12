@@ -109,6 +109,7 @@ async def docker_compilation_cycle(
         f"FROM python:{python_version}-slim",
         "ENV DEBIAN_FRONTEND=noninteractive",
         "RUN apt update",
+        "RUN apt install -y iproute2 iputils-ping net-tools",
         *["RUN " + str(x).removeprefix("sudo ") for x in commands],
     ]
 
