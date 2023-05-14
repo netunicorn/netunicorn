@@ -1,6 +1,6 @@
 [project]
 name = "netunicorn-base"
-version = "0.3.2"
+version = "0.3.3"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]

@@ -259,7 +259,7 @@ class UncountableNodePool(Nodes):
 
     def __next__(self) -> Node:
         node = deepcopy(next(self._nodes))
-        node.name += str(uuid4())
+        node.name += uuid4().hex
         return node
 
     def __getitem__(self, key: int) -> Node:
