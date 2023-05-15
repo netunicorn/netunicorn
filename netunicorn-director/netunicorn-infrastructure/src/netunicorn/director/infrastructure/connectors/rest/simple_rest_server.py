@@ -143,7 +143,7 @@ async def return_nodes(
 
 
 @app.post("/cleanup/{experiment_id}", status_code=200)
-async def deploy(
+async def cleanup(
     experiment_id: str,
     deployments_data: List[DeploymentRepresentation],
 ) -> None:
