@@ -172,3 +172,18 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                     else Failure(y["data"])
                     for x, y in result.items()
                 }
+
+    async def cleanup(
+            self,
+            experiment_id: str,
+            deployments: list[Deployment],
+            *args: Any,
+            **kwargs: Any
+    ) -> None:
+        async with aiohttp.ClientSession(
+            json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder)
+        ) as session:
+            async with session.post(
+                f"{self.url}/cleanup/{experiment_id}",
+            ) as response:
+                response.raise_for_status()

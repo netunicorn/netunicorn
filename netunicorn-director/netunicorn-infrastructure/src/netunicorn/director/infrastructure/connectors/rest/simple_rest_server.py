@@ -142,4 +142,12 @@ async def return_nodes(
     return Response(media_type="application/json", content=json_str)  # type: ignore
 
 
+@app.post("/cleanup/{experiment_id}", status_code=200)
+async def deploy(
+    experiment_id: str,
+    deployments_data: List[DeploymentRepresentation],
+) -> None:
+    deployments = [Deployment.from_json(x) for x in deployments_data]
+    return
+
 uvicorn.run(app)
