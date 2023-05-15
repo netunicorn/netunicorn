@@ -14,29 +14,51 @@ from returns.result import Failure, Result, Success
 
 
 class SimpleRESTConnector(NetunicornConnectorProtocol):
+    """
+    Config is a valid JSON-serialized object with the next properties:
+    - url: str
+    - api_key: str
+    - init_params: dict[str, str]
+
+    `url` is a URL of the REST API endpoint.
+    `api_key` is a string that will be used as for authentication and should match the API key of the REST API endpoint
+    (usually, NETUNICORN_API_KEY environment variable).
+    `init_params` is a dictionary that will be passed to the REST API endpoint during initialization. Generally, connectors
+    use these parameters to configure the underlying infrastructure. Optional.
+    """
     def __init__(
         self,
         connector_name: str,
-        url: str | None,
+        config: str | None,
         netunicorn_gateway: str,
         logger: Optional[logging.Logger] = None,
     ):
-        if url is None:
-            raise ValueError("URL is required for REST connector")
+        if config is None:
+            raise ValueError("At least `url` and `api_key` are required for REST connector")
 
         if not logger:
             logging.basicConfig()
             logger = logging.getLogger(__name__)
         self.logger = logger
         self.connector_name = connector_name
-        self.url = url.removesuffix("/")
+        self.config = config
         self.netunicorn_gateway = netunicorn_gateway
 
-    async def initialize(self) -> None:
+        parsed_config = json.loads(config)
+        if ('url' not in parsed_config) or ('api_key' not in parsed_config):
+            raise ValueError("At least `url` and `api_key` are required for REST connector")
+        self.url = parsed_config['url']
+        self.api_key = parsed_config['api_key']
+        self.init_params = parsed_config.get('init_params', {})
+
+    async def initialize(self, *args, **kwargs) -> None:
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder)
         ) as session:
-            async with session.post(f"{self.url}/initialize") as response:
+            async with session.post(
+                    f"{self.url}/initialize",
+                    json=self.init_params,
+            ) as response:
                 response.raise_for_status()
 
     async def health(self) -> Tuple[bool, str]:
