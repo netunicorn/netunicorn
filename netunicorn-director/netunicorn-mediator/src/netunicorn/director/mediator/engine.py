@@ -264,7 +264,9 @@ async def prepare_experiment_task(
         _username: str, _deployment: Deployment, _envs: dict[int, str]
     ) -> None:
         _deployment.executor_id = str(uuid4())
-        _deployment.environment_definition.runtime_context.environment_variables["NETUNICORN_EXECUTOR_ID"] = _deployment.executor_id
+        _deployment.environment_definition.runtime_context.environment_variables[
+            "NETUNICORN_EXECUTOR_ID"
+        ] = _deployment.executor_id
         env_def = _deployment.environment_definition
 
         # check lock on device for the user
@@ -409,7 +411,9 @@ async def prepare_experiment_task(
     ] = {}  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation: List[Deployment] = []
     for deployment in experiment:
-        deployment.environment_definition.runtime_context.environment_variables["NETUNICORN_EXPERIMENT_ID"] = experiment_id
+        deployment.environment_definition.runtime_context.environment_variables[
+            "NETUNICORN_EXPERIMENT_ID"
+        ] = experiment_id
         await prepare_deployment(username, deployment, envs)
 
     compilation_ids = set(envs.values())

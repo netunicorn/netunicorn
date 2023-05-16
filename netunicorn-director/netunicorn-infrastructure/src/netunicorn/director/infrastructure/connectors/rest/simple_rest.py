@@ -26,6 +26,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
     `init_params` is a dictionary that will be passed to the REST API endpoint during initialization. Generally, connectors
     use these parameters to configure the underlying infrastructure. Optional.
     """
+
     def __init__(
         self,
         connector_name: str,
@@ -34,7 +35,9 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         logger: Optional[logging.Logger] = None,
     ):
         if config is None:
-            raise ValueError("At least `url` and `api_key` are required for REST connector")
+            raise ValueError(
+                "At least `url` and `api_key` are required for REST connector"
+            )
 
         if not logger:
             logging.basicConfig()
@@ -45,11 +48,13 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         self.netunicorn_gateway = netunicorn_gateway
 
         parsed_config = json.loads(config)
-        if ('url' not in parsed_config) or ('api_key' not in parsed_config):
-            raise ValueError("At least `url` and `api_key` are required for REST connector")
-        self.url = parsed_config['url']
-        self.api_key = parsed_config['api_key']
-        self.init_params = parsed_config.get('init_params', {})
+        if ("url" not in parsed_config) or ("api_key" not in parsed_config):
+            raise ValueError(
+                "At least `url` and `api_key` are required for REST connector"
+            )
+        self.url = parsed_config["url"]
+        self.api_key = parsed_config["api_key"]
+        self.init_params = parsed_config.get("init_params", {})
 
     async def initialize(self, *args, **kwargs) -> None:
         async with aiohttp.ClientSession(
@@ -58,11 +63,13 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
             timeout=60,
         ) as session:
             async with session.post(
-                    f"{self.url}/initialize",
-                    json=self.init_params,
+                f"{self.url}/initialize",
+                json=self.init_params,
             ) as response:
                 if not response.ok:
-                    raise ValueError(f"Failed to initialize connector: {response.content}")
+                    raise ValueError(
+                        f"Failed to initialize connector: {response.content}"
+                    )
 
     async def health(self) -> Tuple[bool, str]:
         async with aiohttp.ClientSession(
@@ -81,7 +88,9 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         ) as session:
             async with session.post(f"{self.url}/shutdown") as response:
                 if not response.ok:
-                    raise ValueError(f"Failed to shutdown connector: {response.content}")
+                    raise ValueError(
+                        f"Failed to shutdown connector: {response.content}"
+                    )
 
     async def get_nodes(
         self,
@@ -132,11 +141,18 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                         authentication_context,
                         cls=UnicornEncoder,
                     ),
-                    "netunicorn-deployment-context": json.dumps(deployment_context, cls=UnicornEncoder),
+                    "netunicorn-deployment-context": json.dumps(
+                        deployment_context, cls=UnicornEncoder
+                    ),
                 },
             ) as response:
                 if not response.ok:
-                    self.logger.error({"deployments": deployments, "deployment-context": deployment_context})
+                    self.logger.error(
+                        {
+                            "deployments": deployments,
+                            "deployment-context": deployment_context,
+                        }
+                    )
                     raise ValueError(f"Failed to deploy: {response.content}")
                 result = await response.json()
                 self.logger.debug(result)
@@ -169,11 +185,18 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                         authentication_context,
                         cls=UnicornEncoder,
                     ),
-                    "netunicorn-execution-context": json.dumps(execution_context, cls=UnicornEncoder),
+                    "netunicorn-execution-context": json.dumps(
+                        execution_context, cls=UnicornEncoder
+                    ),
                 },
             ) as response:
                 if not response.ok:
-                    self.logger.error({"deployments": deployments, "execution-context": execution_context})
+                    self.logger.error(
+                        {
+                            "deployments": deployments,
+                            "execution-context": execution_context,
+                        }
+                    )
                     raise ValueError(f"Failed to execute: {response.content}")
                 result = await response.json()
                 return {
@@ -205,11 +228,18 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                         authentication_context,
                         cls=UnicornEncoder,
                     ),
-                    "netunicorn-cancellation-context": json.dumps(cancellation_context, cls=UnicornEncoder),
+                    "netunicorn-cancellation-context": json.dumps(
+                        cancellation_context, cls=UnicornEncoder
+                    ),
                 },
             ) as response:
                 if not response.ok:
-                    self.logger.error({"requests": requests_list, "cancellation-context": cancellation_context})
+                    self.logger.error(
+                        {
+                            "requests": requests_list,
+                            "cancellation-context": cancellation_context,
+                        }
+                    )
                     raise ValueError(f"Failed to stop executors: {response.content}")
                 result = await response.json()
                 return {
@@ -220,11 +250,11 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                 }
 
     async def cleanup(
-            self,
-            experiment_id: str,
-            deployments: list[Deployment],
-            *args: Any,
-            **kwargs: Any
+        self,
+        experiment_id: str,
+        deployments: list[Deployment],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),

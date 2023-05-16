@@ -103,11 +103,11 @@ class DummyNetunicornConnector(NetunicornConnectorProtocol):
         return {request["executor_id"]: Success(None) for request in requests_list}
 
     async def cleanup(
-            self,
-            experiment_id: str,
-            deployments: list[Deployment],
-            *args: Any,
-            **kwargs: Any
+        self,
+        experiment_id: str,
+        deployments: list[Deployment],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         self.logger.info(
             f"Cleanup called with {experiment_id=}, {deployments=}, {args=}, {kwargs=}"
