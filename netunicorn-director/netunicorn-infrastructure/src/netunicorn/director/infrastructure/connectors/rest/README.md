@@ -13,6 +13,7 @@ A valid string is a JSON-serialized object with the following structure:
   "url": "https://connector.url/",
   "api_key": "preshared_api_key (usually NETUNICORN_API_KEY on the other side)",
   "init_params": {
+    "netunicorn_gateway": "netunicorn_gateway address",
     "param1": "value1",
     "param2": "value2",
     "these params": "would be passed to the remote connector during initialization"
