@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from itertools import chain, cycle
+from itertools import chain, cycle, count
 from typing import Callable, Dict, Iterator, List, Sequence, Set, Union
-from uuid import uuid4
 
 import netunicorn
 
@@ -248,6 +247,7 @@ class UncountableNodePool(Nodes):
     def __init__(self, node_template: List[Node]):
         self._node_template = node_template
         self._nodes = cycle(node_template)
+        self._counter = count(start=1, step=1)
 
     def __str__(self) -> str:
         return str(
@@ -259,7 +259,7 @@ class UncountableNodePool(Nodes):
 
     def __next__(self) -> Node:
         node = deepcopy(next(self._nodes))
-        node.name += uuid4().hex
+        node.name += str(next(self._counter))
         return node
 
     def __getitem__(self, key: int) -> Node:
