@@ -5,6 +5,7 @@ import logging
 from typing import Any, Optional, Tuple
 
 import aiohttp
+from aiohttp import ClientTimeout
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.nodes import Nodes
 from netunicorn.base.utils import UnicornEncoder
@@ -55,12 +56,14 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         self.url = parsed_config["url"]
         self.api_key = parsed_config["api_key"]
         self.init_params = parsed_config.get("init_params", {})
+        if "netunicorn_gateway" not in self.init_params:
+            self.init_params["netunicorn_gateway"] = self.netunicorn_gateway
 
     async def initialize(self, *args, **kwargs) -> None:
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),
             headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=60,
+            timeout=ClientTimeout(total=60),
         ) as session:
             async with session.post(
                 f"{self.url}/initialize",
@@ -102,7 +105,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),
             headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=300,
+            timeout=ClientTimeout(total=300),
         ) as session:
             async with session.get(
                 f"{self.url}/nodes/{username}",
@@ -131,7 +134,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),
             headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=300,
+            timeout=ClientTimeout(total=300),
         ) as session:
             async with session.post(
                 f"{self.url}/deploy/{username}/{experiment_id}",
@@ -176,6 +179,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),
             headers={"Authorization": f"Bearer {self.api_key}"},
+            timeout=ClientTimeout(total=300)
         ) as session:
             async with session.post(
                 f"{self.url}/execute/{username}/{experiment_id}",
@@ -218,7 +222,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),
             headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=300,
+            timeout=ClientTimeout(total=300),
         ) as session:
             async with session.post(
                 f"{self.url}/stop_executors/{username}",
@@ -259,7 +263,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),
             headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=300,
+            timeout=ClientTimeout(total=300),
         ) as session:
             async with session.post(
                 f"{self.url}/cleanup/{experiment_id}",
