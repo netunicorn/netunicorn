@@ -71,7 +71,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
             ) as response:
                 if not response.ok:
                     raise ValueError(
-                        f"Failed to initialize connector: {response.content}"
+                        f"Failed to initialize connector: {await response.text()}"
                     )
 
     async def health(self) -> Tuple[bool, str]:
@@ -92,7 +92,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
             async with session.post(f"{self.url}/shutdown") as response:
                 if not response.ok:
                     raise ValueError(
-                        f"Failed to shutdown connector: {response.content}"
+                        f"Failed to shutdown connector: {await response.text()}"
                     )
 
     async def get_nodes(
@@ -117,7 +117,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                 },
             ) as response:
                 if not response.ok:
-                    raise ValueError(f"Failed to get nodes: {response.content}")
+                    raise ValueError(f"Failed to get nodes: {await response.text()}")
                 nodes = await response.json()
                 return Nodes.dispatch_and_deserialize(nodes)
 
@@ -156,7 +156,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                             "deployment-context": deployment_context,
                         }
                     )
-                    raise ValueError(f"Failed to deploy: {response.content}")
+                    raise ValueError(f"Failed to deploy: {await response.text()}")
                 result = await response.json()
                 self.logger.debug(result)
                 return {
@@ -201,7 +201,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                             "execution-context": execution_context,
                         }
                     )
-                    raise ValueError(f"Failed to execute: {response.content}")
+                    raise ValueError(f"Failed to execute: {await response.text()}")
                 result = await response.json()
                 return {
                     x: Success(y["result"])
@@ -244,7 +244,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                             "cancellation-context": cancellation_context,
                         }
                     )
-                    raise ValueError(f"Failed to stop executors: {response.content}")
+                    raise ValueError(f"Failed to stop executors: {await response.text()}")
                 result = await response.json()
                 return {
                     x: Success(y["result"])
@@ -271,4 +271,4 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
             ) as response:
                 if not response.ok:
                     self.logger.error({"deployments": deployments})
-                    raise ValueError(f"Failed to cleanup: {response.content}")
+                    raise ValueError(f"Failed to cleanup: {await response.text()}")
