@@ -15,10 +15,10 @@ import requests.exceptions
 from netunicorn.base.pipeline import Pipeline
 from netunicorn.base.task import Task
 from netunicorn.base.types import PipelineExecutorState, PipelineResult
-from netunicorn.base.utils import NonStablePool as Pool
-from netunicorn.base.utils import safe
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
+
+from .utils import NonStablePool as Pool, safe
 
 
 class PipelineExecutor:

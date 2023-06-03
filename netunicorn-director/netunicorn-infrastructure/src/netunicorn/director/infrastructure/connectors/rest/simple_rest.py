@@ -179,7 +179,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),
             headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=ClientTimeout(total=300)
+            timeout=ClientTimeout(total=300),
         ) as session:
             async with session.post(
                 f"{self.url}/execute/{username}/{experiment_id}",
@@ -244,7 +244,9 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
                             "cancellation-context": cancellation_context,
                         }
                     )
-                    raise ValueError(f"Failed to stop executors: {await response.text()}")
+                    raise ValueError(
+                        f"Failed to stop executors: {await response.text()}"
+                    )
                 result = await response.json()
                 return {
                     x: Success(y["result"])
