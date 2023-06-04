@@ -1,3 +1,7 @@
+"""
+Environment definitions to create an environment for a deployment.
+"""
+
 from __future__ import annotations
 
 import platform

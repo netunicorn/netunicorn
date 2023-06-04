@@ -9,9 +9,9 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../.."))  # Source code dir relative to this file
-sys.path.insert(0, os.path.abspath("../../netunicorn-base/src/netunicorn"))
-sys.path.insert(0, os.path.abspath("../../netunicorn-client/src/netunicorn"))
+sys.path.insert(0, os.path.abspath("../../.."))  # Source code dir relative to this file
+sys.path.insert(0, os.path.abspath("../../../netunicorn-base/src/netunicorn"))
+sys.path.insert(0, os.path.abspath("../../../netunicorn-client/src/netunicorn"))
 
 project = "netunicorn"
 copyright = "2023, Roman Beltiukov"
@@ -28,6 +28,7 @@ extensions = [
     "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx_jekyll_builder",  # Jekyll markdown docs
     "sphinx.ext.linkcode",
+    "myst_parser",
 ]
 
 autodoc_default_options = {
@@ -54,7 +55,7 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "alabaster"
+html_theme = "furo"
 html_static_path = ["_static"]
 
 
