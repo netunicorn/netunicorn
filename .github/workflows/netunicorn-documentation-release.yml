@@ -5,7 +5,7 @@ on:
     paths:
       - "netunicorn-base/pyproject.toml"
       - "netunicorn-client/pyproject.toml"
-    branches: ["sphinx"]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
 
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/sphinx' }}
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       with:
         publish_branch: gh-pages
         github_token: ${{ secrets.GITHUB_TOKEN }}
