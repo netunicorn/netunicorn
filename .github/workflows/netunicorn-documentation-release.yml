@@ -1,4 +1,4 @@
-name: Release netunicorn-base and netunicorn-client documentation
+name: Release documentation
 
 on:
   push:
