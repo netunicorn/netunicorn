@@ -46,7 +46,12 @@ typehints_use_rtype = False
 typehints_defaults = "comma"
 
 
-autodoc_mock_imports = ["netunicorn.library", "netunicorn.executor", "typing", "pydantic"]
+autodoc_mock_imports = [
+    "netunicorn.library",
+    "netunicorn.executor",
+    "typing",
+    "pydantic",
+]
 
 templates_path = ["_templates"]
 exclude_patterns = []
@@ -59,21 +64,21 @@ html_static_path = ["_static"]
 
 
 def linkcode_resolve(domain, info):
-    if domain != 'py':
+    if domain != "py":
         return None
-    if not info['module']:
+    if not info["module"]:
         return None
-    filename = info['module'].replace('.', '/')
-    package = '-'.join(info['module'].split('.')[0:2])
-    fullname = info['fullname'].split('.')[-1]
+    filename = info["module"].replace(".", "/")
+    package = "-".join(info["module"].split(".")[0:2])
+    fullname = info["fullname"].split(".")[-1]
     return f"https://github.com/netunicorn/netunicorn/tree/main/{package}/src/{filename}.py#:~:text={fullname}"
 
 
 def autodoc_skip_member(app, what, name, obj, skip, options):
-    if what == "method" and hasattr(obj, '__objclass__') and obj.__objclass__ == dict:
+    if what == "method" and hasattr(obj, "__objclass__") and obj.__objclass__ == dict:
         return True
     return None
 
 
 def setup(app):
-    app.connect('autodoc-skip-member', autodoc_skip_member)
+    app.connect("autodoc-skip-member", autodoc_skip_member)

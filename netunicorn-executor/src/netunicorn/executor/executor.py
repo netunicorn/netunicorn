@@ -18,7 +18,8 @@ from netunicorn.base.types import PipelineExecutorState, PipelineResult
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
 
-from .utils import NonStablePool as Pool, safe
+from .utils import NonStablePool as Pool
+from .utils import safe
 
 
 class PipelineExecutor:
@@ -253,7 +254,3 @@ class PipelineExecutor:
 
 if __name__ == "__main__":
     PipelineExecutor().__call__()
-
-# TODO: add event system
-#  short idea: task should somehow be able to send and receive events,
-#  probably pass to run() some object that would allow to do it
