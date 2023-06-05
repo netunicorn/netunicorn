@@ -23,6 +23,8 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r docs/requirements.txt
+        pip install ./netunicorn-base
+        pip install ./netunicorn-client
 
     - name: Sphinx build
       run: sphinx-build docs/source _build
