@@ -1,4 +1,4 @@
-# Compilation
+# Compilation service
 This service process compilation requests from the mediation service.
 
 ## Docker compilation request procedure

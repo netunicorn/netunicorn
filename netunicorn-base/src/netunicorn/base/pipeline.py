@@ -1,3 +1,7 @@
+"""
+Abstrcations for Pipeline representation.
+"""
+
 from __future__ import annotations
 
 import uuid
@@ -18,12 +22,17 @@ class Pipeline:
     Pipeline will execute elements in order and return the combined result of all tasks.
     If element is a tuple of tasks, these tasks would be executed in parallel.
 
-    The result of pipeline execution would be one of the following:
-    - Success: if all tasks succeed, then Success is returned
-    - Failure: if any task fails, then Failure is returned
+    | The result of pipeline execution would be one of the following:
+    | - Success: if all tasks succeed, then Success is returned
+    | - Failure: if any task fails, then Failure is returned
 
-    Returning object will always contain a Result object for each task executed.
-    If early_stopping is set to True, then any task after first failed wouldn't be executed.
+    | Returning object will always contain a Result object for each task executed.
+    | If early_stopping is set to True, then any task after first failed wouldn't be executed.
+
+    :param tasks: tasks (ordered by stages) to be executed
+    :param early_stopping: whether to stop executing tasks after first failure
+    :param report_results: whether executor should connect core services to report pipeline results in the end
+    :param environment_definition: environment definition for the pipeline
     """
 
     def __init__(
@@ -33,18 +42,38 @@ class Pipeline:
         report_results: bool = True,
         environment_definition: Optional[EnvironmentDefinition] = None,
     ):
+        self.name: str = str(uuid.uuid4())
         """
-        Initialize Pipeline with a tuple of Tasks or TaskDispatchers and early_stopping flag.
-        :param tasks: a tuple of tasks to be executed
-        :param early_stopping: whether to stop executing tasks after first failure
-        :param report_results: whether executor should connect director services to report pipeline results after exec
+        Pipeline name.
         """
-        self.name = str(uuid.uuid4())
+
         self.task_names: Set[str] = set()
-        self.early_stopping = early_stopping
+        """
+        Task names in the pipeline, used for dictionary of results.
+        """
+
+        self.early_stopping: bool = early_stopping
+        """
+        Whether to stop executing tasks after first failure.
+        """
+
         self.tasks: List[List[TaskElement]] = []
-        self.report_results = report_results
-        self.environment_definition = environment_definition or DockerImage()
+        """
+        Tasks stages to be executed.
+        """
+
+        self.report_results: bool = report_results
+        """
+        Whether executor should connect core services to report pipeline results in the end.
+        """
+
+        self.environment_definition: EnvironmentDefinition = (
+            environment_definition or DockerImage()
+        )
+        """
+        Environment definition for the pipeline.
+        """
+
         for element in tasks:
             self.then(element)
 
@@ -67,7 +96,8 @@ class Pipeline:
 
     def then(self, element: PipelineElement) -> Pipeline:
         """
-        Add a task or list of tasks to the end of the pipeline.
+        Add a task or list of tasks as a separate stage to the end of the pipeline.
+
         :param element: a task or tuple of tasks to be added
         :return: self
         """
@@ -79,6 +109,7 @@ class Pipeline:
     def copy(self) -> Pipeline:
         """
         Return a copy of the pipeline.
+
         :return: a copy of the pipeline
         """
         return Pipeline(deepcopy(self.tasks), self.early_stopping)

@@ -1,3 +1,6 @@
+"""
+Experiment-related entities and classes.
+"""
 from __future__ import annotations
 
 import base64
@@ -22,32 +25,94 @@ from .utils import LogType
 
 
 class ExperimentStatus(Enum):
+    """
+    Represents a status of an experiment.
+    """
+
     UNKNOWN = 0
+    """
+    Unknown status.
+    """
+
     PREPARING = 1
+    """
+    Experiment is under preparation.
+    """
+
     READY = 2
+    """
+    Experiment is prepared and ready to be started.
+    """
+
     RUNNING = 3
+    """
+    Experiment is running.
+    """
+
     FINISHED = 4
+    """
+    Experiment is finished.
+    """
 
     def __json__(self) -> int:
         return self.value
 
     @classmethod
     def from_json(cls, value: int) -> ExperimentStatus:
+        """
+        Converts a JSON representation of an experiment status to an instance of ExperimentStatus.
+
+        :param value: experiment status value.
+        :return: an instance of ExperimentStatus.
+        """
         return cls(value)
 
 
 class Experiment:
+    """
+    Represents an experiment that contains a mapping of pipelines to nodes.
+
+    :param deployment_context: deployment context to be used by connectors.
+    """
+
     def __init__(
         self, deployment_context: Optional[Dict[str, Dict[str, str]]] = None
     ) -> None:
         self.deployment_map: List[Deployment] = []
-        self.deployment_context = deployment_context
+        """
+        a list of deployments
+        """
+
+        self.deployment_context: Optional[
+            Dict[str, Dict[str, str]]
+        ] = deployment_context
+        """
+        A dictionary that contains a context for deployments.
+            Context is to be provided by connectors. 
+            Format: {connector_name: {key: value}}
+        """
 
     def append(self, node: Node, pipeline: Pipeline) -> Experiment:
+        """
+        Append a new deployment (mapping of pipeline to a node) to the experiment.
+
+        :param node: a node to deploy the pipeline to.
+        :param pipeline: a pipeline to deploy.
+        :return: self.
+        """
+
         self.deployment_map.append(Deployment(node, pipeline))
         return self
 
     def map(self, pipeline: Pipeline, nodes: Sequence[Node]) -> Experiment:
+        """
+        Map a pipeline to a sequence of nodes.
+
+        :param pipeline: a pipeline to deploy.
+        :param nodes: a sequence of nodes to deploy the pipeline to.
+        :return: self.
+        """
+
         if isinstance(nodes, Nodes):
             raise TypeError("Expected sequence of nodes, got Nodes instead")
 
@@ -65,6 +130,12 @@ class Experiment:
 
     @classmethod
     def from_json(cls, data: ExperimentRepresentation) -> Experiment:
+        """
+        Creates an instance of Experiment from a JSON representation.
+
+        :param data: a JSON representation of an experiment.
+        :return: an instance of Experiment.
+        """
         instance = cls.__new__(cls)
         instance.deployment_map = [
             Deployment.from_json(x) for x in data["deployment_map"]
@@ -73,12 +144,29 @@ class Experiment:
         return instance
 
     def __getitem__(self, item: int) -> Deployment:
+        """
+        Returns a deployment by index.
+
+        :param item: an index of a deployment.
+        :return: a deployment.
+        """
         return self.deployment_map[item]
 
     def __iter__(self) -> Iterator[Deployment]:
+        """
+        Returns an iterator over deployments.
+
+        :return: an iterator over deployments.
+        """
         return iter(self.deployment_map)
 
     def __len__(self) -> int:
+        """
+        Returns a number of deployments in the experiment.
+
+        :return: a number of deployments in the experiment.
+        :meta public:
+        """
         return len(self.deployment_map)
 
     def __str__(self) -> str:
@@ -88,6 +176,13 @@ class Experiment:
         return self.__str__()
 
     def __add__(self, other: Experiment) -> Experiment:
+        """
+        Concatenates two experiments resulting in a union of deployments.
+
+        :param other: an experiment to concatenate with.
+        :return: a new experiment.
+        """
+
         new_map = copy.deepcopy(self)
         new_map.deployment_map.extend(other.deployment_map)
         if other.deployment_context:
@@ -98,6 +193,15 @@ class Experiment:
 
 
 class DeploymentExecutionResult:
+    """
+    Stores a result (or ongoing information) of a deployment execution.
+
+    :param node: a node that was used for deployment.
+    :param serialized_pipeline: a serialized pipeline.
+    :param result: a result of a deployment execution.
+    :param error: an error message if deployment failed.
+    """
+
     def __init__(
         self,
         node: Node,
@@ -105,13 +209,33 @@ class DeploymentExecutionResult:
         result: Optional[bytes],
         error: Optional[str] = None,
     ):
-        self.node = node
-        self._pipeline = serialized_pipeline
-        self._result = result
-        self.error = error
+        self.node: Node = node
+        """
+        a node that was used for deployment
+        """
+
+        self._pipeline: Optional[bytes] = serialized_pipeline
+        """
+        a serialized pipeline
+        """
+
+        self._result: Optional[bytes] = result
+        """
+        Deployment execution result
+        """
+
+        self.error: Optional[str] = error
+        """
+        An error message if deployment failed.
+        """
 
     @property
     def pipeline(self) -> Pipeline:
+        """
+        Returns a pipeline that was used for deployment.
+
+        :return: a pipeline that was used for deployment.
+        """
         import cloudpickle
 
         return cloudpickle.loads(self._pipeline)  # type: ignore
@@ -120,6 +244,11 @@ class DeploymentExecutionResult:
     def result(
         self,
     ) -> Optional[Tuple[Result[PipelineResult, PipelineResult], LogType]]:
+        """
+        Returns a result of a deployment execution and logs.
+
+        :return: a tuple of (execution result, logs).
+        """
         import cloudpickle
 
         return cloudpickle.loads(self._result) if self._result else None
@@ -159,6 +288,12 @@ class DeploymentExecutionResult:
     def from_json(
         cls, data: DeploymentExecutionResultRepresentation
     ) -> DeploymentExecutionResult:
+        """
+        Returns an instance of DeploymentExecutionResult from a JSON representation.
+
+        :param data: a JSON representation of a deployment execution result.
+        :return: an instance of DeploymentExecutionResult.
+        """
         return cls(
             Node.from_json(data["node"]),
             base64.b64decode(data["pipeline"]),
@@ -169,9 +304,28 @@ class DeploymentExecutionResult:
 
 @dataclass(frozen=True)
 class ExperimentExecutionInformation:
+    """
+    Stores information about an experiment execution.
+
+    :param status: a status of an experiment execution.
+    :param experiment: a definition of an experiment.
+    :param execution_result: a result of an experiment execution.
+    """
+
     status: ExperimentStatus
+    """
+    Describes the status of an experiment execution.
+    """
+
     experiment: Optional[Experiment]
+    """
+    Stores the definition of the experiment.
+    """
+
     execution_result: Union[None, Exception, List[DeploymentExecutionResult]]
+    """
+    Stores either an Exception if experiment execution failed or a list of deployment execution results.
+    """
 
     def __str__(self) -> str:
         text = (
@@ -205,6 +359,13 @@ class ExperimentExecutionInformation:
     def from_json(
         cls, data: ExperimentExecutionInformationRepresentation
     ) -> ExperimentExecutionInformation:
+        """
+        Returns an instance of ExperimentExecutionInformation from a JSON representation.
+
+        :param data: a JSON representation of an experiment execution information.
+        :return: an instance of ExperimentExecutionInformation.
+        """
+
         status = ExperimentStatus.from_json(data["status"])
         experiment = (
             Experiment.from_json(data["experiment"]) if data["experiment"] else None

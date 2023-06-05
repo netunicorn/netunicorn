@@ -13,4 +13,4 @@ This module retranslates most of the requests to different connectors that imple
 
 By default, connectors are implemented as Python package (which allows to just install them in the system) and imported during the startup of the module. Besides this, there's also a generic REST connector that can enable interaction with another part of the connector, implemented and hosted as a separate API.
 
-The example of infrastructure module initialization and configuration is provided in the [configuration-example.yaml](../../netunicorn-director/netunicorn-infrastructure/configuration-example.yaml).
+The example of infrastructure module initialization and configuration is provided in the [configuration-example.yaml](https://github.com/netunicorn/netunicorn/blob/main/netunicorn-director/netunicorn-infrastructure/configuration-example.yaml).

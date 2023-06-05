@@ -1,18 +1,18 @@
 # Milestones
 In this document description of milestones is provided and what requirements the platform should satisfy for each of them
 
-## Milestone 0.1 - achieved 12/19/22
+## Milestone 0.1 - achieved December 19, 2022
 Goal: ability to use the platform for dataset collection based research in the particular university with the fixed infrastructure
-#### Requirements
+### Requirements
 - Task/Pipeline/Experiment definition and processing
 - Ability to use a particular infrastructure deployed in the university (SaltStack)
 - Ability to collect results, logs, and produced artifacts
 - Task implementation support for different platforms (linux-based amd64, arm64, pisa switches via sidecar)
 - Docker environment generation and usage
 
-## Milestone 0.2 -- achieved 02/19/23
+## Milestone 0.2 -- achieved February 19, 2023
 Goal: public availability of the platform (repositories and documentation), ability to deploy infrastructure in other places using cloud connectors
-#### Requirements
+### Requirements
 - Stabilize the public API (netunicorn-base, netunicorn-client, public part of netunicorn-mediator)
 - Ability to use multiple nodes infrastructures together
 - Public documentation of the user-side of the platform
@@ -22,9 +22,9 @@ Goal: public availability of the platform (repositories and documentation), abil
 - Public Python package releases
 - Public Docker images releases
 
-## Milestone 0.3
+## Milestone 0.3 -- achieved May 10, 2023
 Goal: ability to deploy this platform in another universities and provide basic usage capabilities
-#### Requirements
+### Requirements
 - Event-based system for nodes synchronization
 - Easiness of deployment of the system (docker-compose)
 - AWS and Ansible support
