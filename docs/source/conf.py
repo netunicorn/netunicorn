@@ -26,7 +26,6 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",
     "sphinx.ext.autosummary",  # Create neat summary tables
-    "sphinx_jekyll_builder",  # Jekyll markdown docs
     "sphinx.ext.linkcode",
     "myst_parser",
 ]
