@@ -172,6 +172,7 @@ class ShellExecutionRepresentation(EnvironmentDefinitionRepresentation):
     """
     Shell execution Environment definition JSON representation.
     """
+
     pass
 
 
