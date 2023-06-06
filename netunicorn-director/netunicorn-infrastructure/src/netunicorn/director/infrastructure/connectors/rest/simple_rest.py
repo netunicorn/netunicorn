@@ -59,7 +59,7 @@ class SimpleRESTConnector(NetunicornConnectorProtocol):
         if "netunicorn_gateway" not in self.init_params:
             self.init_params["netunicorn_gateway"] = self.netunicorn_gateway
 
-    async def initialize(self, *args, **kwargs) -> None:
+    async def initialize(self, *args: Any, **kwargs: Any) -> None:
         async with aiohttp.ClientSession(
             json_serialize=lambda x: json.dumps(x, cls=UnicornEncoder),
             headers={"Authorization": f"Bearer {self.api_key}"},
