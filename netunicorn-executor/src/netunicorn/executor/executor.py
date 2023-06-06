@@ -7,13 +7,13 @@ from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Optional, Tuple, Type
+from typing import Any, Optional, Tuple, Type, cast, List
 
 import cloudpickle
 import requests as req
 import requests.exceptions
 from netunicorn.base.pipeline import Pipeline
-from netunicorn.base.task import Task
+from netunicorn.base.task import Task, TaskDispatcher
 from netunicorn.base.types import PipelineExecutorState, PipelineResult
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
@@ -151,7 +151,7 @@ class PipelineExecutor:
     @staticmethod
     def execute_task(serialized_task: bytes) -> Tuple[str, bytes]:
         task = cloudpickle.loads(serialized_task)
-        result = safe(task.run)()
+        result: Result[Any, Any] = safe(task.run)()
         return task.name, cloudpickle.dumps(result)
 
     def std_redirection(self, *args: Any) -> None:
@@ -173,9 +173,15 @@ class PipelineExecutor:
             return
 
         resulting_type: Type[Result[PipelineResult, PipelineResult]] = Success
-        for element in self.pipeline.tasks:
-            if isinstance(element, Task):
-                element = [element]
+        for elements in self.pipeline.tasks:
+            if isinstance(elements, Task):
+                elements = [elements]
+            for task in elements:
+                if isinstance(task, TaskDispatcher):
+                    self.step_results[task.name].append(Failure("Element is unexpectedly TaskDispatcher"))
+                    continue
+
+            element: List[Task] = cast(List[Task], elements)
 
             # create processes and execute tasks
             with Pool(len(element), initializer=self.std_redirection) as p:
@@ -183,19 +189,19 @@ class PipelineExecutor:
                 for task in element:
                     task.previous_steps = deepcopy(self.step_results)
 
-                element = [cloudpickle.dumps(task) for task in element]
-                results = p.map_async(
-                    PipelineExecutor.execute_task, element, chunksize=1
+                serialized_element = [cloudpickle.dumps(task) for task in element]
+                execution_results_awaiter = p.map_async(
+                    PipelineExecutor.execute_task, serialized_element, chunksize=1
                 )
 
-                while not results.ready():
+                while not execution_results_awaiter.ready():
                     await asyncio.sleep(1.0)
 
-                results = results.get()
+                execution_results = execution_results_awaiter.get()
 
             results = tuple(
                 (task_name, cloudpickle.loads(result))
-                for (task_name, result) in results
+                for (task_name, result) in execution_results
             )
 
             for task_name, result in results:

@@ -1,8 +1,8 @@
 import multiprocessing.pool
 from functools import wraps
-from typing import Any, Callable, Union
+from typing import Any, Callable, Union, TypeVar
 
-from returns.result import Failure, Result, Success, TypeVar
+from returns.result import Failure, Result, Success
 
 _ValueType = TypeVar("_ValueType", covariant=True)
 _FailureValueType = TypeVar("_FailureValueType", covariant=True)
@@ -14,7 +14,7 @@ _FunctionType = Union[
 
 
 def safe(
-    function: _FunctionType,  # type: ignore
+    function: _FunctionType[Any, Any],
 ) -> Union[
     Callable[..., Result[_ValueType, Exception]],
     Callable[..., Result[_ValueType, _FailureValueType]],
