@@ -214,7 +214,7 @@ class DeploymentExecutionResult:
         a node that was used for deployment
         """
 
-        self._pipeline: Optional[bytes] = serialized_pipeline
+        self._pipeline: bytes = serialized_pipeline
         """
         a serialized pipeline
         """
