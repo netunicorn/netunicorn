@@ -83,6 +83,11 @@ class EnvironmentDefinition:
     A list of commands that should be executed to create an environment.
     """
 
+    runtime_context: RuntimeContext = field(default_factory=RuntimeContext)
+    """
+    Runtime context for this environment definition
+    """
+
     def __hash__(self) -> int:
         return hash(tuple(self.commands))
 
@@ -104,6 +109,7 @@ class EnvironmentDefinition:
     def __json__(self) -> EnvironmentDefinitionRepresentation:
         return {
             "commands": self.commands,
+            "runtime_context": self.runtime_context.__json__(),
         }
 
 
@@ -114,17 +120,6 @@ class ShellExecution(EnvironmentDefinition):
 
     :param runtime_context: runtime context for this environment definition
     """
-
-    runtime_context: RuntimeContext = field(default_factory=RuntimeContext)
-    """
-    Runtime context for this environment definition
-    """
-
-    def __json__(self) -> ShellExecutionRepresentation:
-        return {
-            "commands": self.commands,
-            "runtime_context": self.runtime_context.__json__(),
-        }
 
     @classmethod
     def from_json(cls, _data: EnvironmentDefinitionRepresentation) -> ShellExecution:

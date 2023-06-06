@@ -58,6 +58,11 @@ class EnvironmentDefinitionRepresentation(TypedDict):
     Environment definition commands.
     """
 
+    runtime_context: RuntimeContextRepresentation
+    """
+    Runtime context JSON representation.
+    """
+
 
 class DeploymentRepresentation(TypedDict):
     """
@@ -167,11 +172,7 @@ class ShellExecutionRepresentation(EnvironmentDefinitionRepresentation):
     """
     Shell execution Environment definition JSON representation.
     """
-
-    runtime_context: RuntimeContextRepresentation
-    """
-    Runtime context JSON representation.
-    """
+    pass
 
 
 class DockerImageRepresentation(EnvironmentDefinitionRepresentation):
@@ -187,11 +188,6 @@ class DockerImageRepresentation(EnvironmentDefinitionRepresentation):
     build_context: BuildContextRepresentation
     """
     Build context JSON representation.
-    """
-
-    runtime_context: RuntimeContextRepresentation
-    """
-    Runtime context JSON representation.
     """
 
 
