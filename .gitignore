@@ -10,3 +10,4 @@ build/
 .mypy_cache
 **/.ipynb_checkpoints
 */**/.env
+docs/source/_autosummary
