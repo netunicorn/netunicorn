@@ -2,9 +2,9 @@
 netunicorn.infrastructure.connectors:
   defaultdocker:
     enabled: true
-    module: "netunicorn.director.infrastructure.connectors"  # where to import from
+    module: "netunicorn.director.infrastructure.connectors.docker_connector"  # where to import from
     class: "DockerConnector"  # class name
     config: "/app/infrastructure-example-config.yaml"     # path to configuration file
 
-netunicorn.infrastructure.connectors.docker.base_url: "unix://var/run/docker.sock"
-netunicorn.infrastructure.providers.docker.default_network: "netunicorn-network"
+netunicorn.docker.base_url: "unix://var/run/docker.sock"
+netunicorn.docker.default_network: "netunicorn-network"
