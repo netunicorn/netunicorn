@@ -7,7 +7,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain, count, cycle
-from typing import Callable, Dict, Iterator, List, Sequence, Set, Union, cast, Iterable
+from typing import Callable, Dict, Iterable, Iterator, List, Sequence, Set, Union, cast
 
 import netunicorn.base
 
@@ -261,7 +261,9 @@ class CountableNodePool(Nodes):
             if "node_pool_type" in element:
                 # we know this is a NodesRepresentation
                 nodes_representation_element = cast(NodesRepresentation, element)
-                nodes.append(Nodes.dispatch_and_deserialize(nodes_representation_element))
+                nodes.append(
+                    Nodes.dispatch_and_deserialize(nodes_representation_element)
+                )
             else:
                 nodes.append(Node.from_json(element))
         return cls(nodes)
@@ -306,7 +308,10 @@ class CountableNodePool(Nodes):
 
     def take(self, count: int) -> Sequence[Node]:
         iterator: Iterator[Node] = chain.from_iterable(
-            cast(Iterable[Iterable[Node]], ([x] if isinstance(x, Node) else x for x in self.nodes))
+            cast(
+                Iterable[Iterable[Node]],
+                ([x] if isinstance(x, Node) else x for x in self.nodes),
+            )
         )
         nodes = []
         for _ in range(count):

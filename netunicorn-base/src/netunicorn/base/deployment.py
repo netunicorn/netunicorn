@@ -5,13 +5,13 @@ from __future__ import annotations
 
 from base64 import b64decode
 from copy import deepcopy
-from typing import Optional, List, cast
+from typing import List, Optional, cast
 
 import netunicorn.base.environment_definitions
 
 from .nodes import Node
 from .pipeline import Pipeline
-from .task import TaskDispatcher, Task
+from .task import Task, TaskDispatcher
 from .types import DeploymentRepresentation
 from .utils import SerializedPipelineType
 

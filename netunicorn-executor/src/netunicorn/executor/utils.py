@@ -1,6 +1,6 @@
 import multiprocessing.pool
 from functools import wraps
-from typing import Any, Callable, Union, TypeVar
+from typing import Any, Callable, TypeVar, Union
 
 from returns.result import Failure, Result, Success
 

@@ -7,7 +7,7 @@ from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Optional, Tuple, Type, cast, List
+from typing import Any, List, Optional, Tuple, Type, cast
 
 import cloudpickle
 import requests as req
@@ -178,7 +178,9 @@ class PipelineExecutor:
                 elements = [elements]
             for task in elements:
                 if isinstance(task, TaskDispatcher):
-                    self.step_results[task.name].append(Failure("Element is unexpectedly TaskDispatcher"))
+                    self.step_results[task.name].append(
+                        Failure("Element is unexpectedly TaskDispatcher")
+                    )
                     continue
 
             element: List[Task] = cast(List[Task], elements)
