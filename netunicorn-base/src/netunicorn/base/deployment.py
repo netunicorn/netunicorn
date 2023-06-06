@@ -5,13 +5,13 @@ from __future__ import annotations
 
 from base64 import b64decode
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, List, cast
 
 import netunicorn.base.environment_definitions
 
 from .nodes import Node
 from .pipeline import Pipeline
-from .task import TaskDispatcher
+from .task import TaskDispatcher, Task
 from .types import DeploymentRepresentation
 from .utils import SerializedPipelineType
 
@@ -92,9 +92,9 @@ class Deployment:
                 x.dispatch(node) if isinstance(x, TaskDispatcher) else x
                 for x in element
             ]
-            for x in pipeline.tasks[i]:
-                # now it's only Tasks
-                self.environment_definition.commands.extend(x.requirements)  # type: ignore
+            tasks_list: List[Task] = cast(List[Task], pipeline.tasks[i])
+            for x in tasks_list:
+                self.environment_definition.commands.extend(x.requirements)
 
         self.pipeline = cloudpickle.dumps(pipeline)
 

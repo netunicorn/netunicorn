@@ -7,9 +7,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain, count, cycle
-from typing import Callable, Dict, Iterator, List, Sequence, Set, Union
+from typing import Callable, Dict, Iterator, List, Sequence, Set, Union, cast, Iterable
 
-import netunicorn
+import netunicorn.base
 
 from .architecture import Architecture
 from .environment_definitions import _available_environment_definitions
@@ -64,7 +64,7 @@ class Node:
                 "netunicorn-environments", _available_environment_definitions.keys()
             )
             if hasattr(environments, "__iter__"):
-                for environment_name in environments:  # type: ignore
+                for environment_name in cast(Iterable[str], environments):
                     if environment_name in _available_environment_definitions:
                         result.add(_available_environment_definitions[environment_name])
         except Exception:
@@ -260,7 +260,8 @@ class CountableNodePool(Nodes):
         for element in data:
             if "node_pool_type" in element:
                 # we know this is a NodesRepresentation
-                nodes.append(Nodes.dispatch_and_deserialize(element))  # type: ignore
+                nodes_representation_element = cast(NodesRepresentation, element)
+                nodes.append(Nodes.dispatch_and_deserialize(nodes_representation_element))
             else:
                 nodes.append(Node.from_json(element))
         return cls(nodes)
@@ -305,7 +306,7 @@ class CountableNodePool(Nodes):
 
     def take(self, count: int) -> Sequence[Node]:
         iterator: Iterator[Node] = chain.from_iterable(
-            [x] if isinstance(x, Node) else x for x in self.nodes  # type: ignore
+            cast(Iterable[Iterable[Node]], ([x] if isinstance(x, Node) else x for x in self.nodes))
         )
         nodes = []
         for _ in range(count):
@@ -413,7 +414,8 @@ class UncountableNodePool(Nodes):
             if "node_pool_type" in x:
                 raise ValueError("UncountableNodePool cannot have Nodes as elements.")
         # now we have only NodeRepresentation in the list
-        return cls([Node.from_json(x) for x in data])  # type: ignore
+        node_representation_data = cast(List[NodeRepresentation], data)
+        return cls([Node.from_json(x) for x in node_representation_data])
 
     def set_property(self, name: str, value: NodeProperty) -> UncountableNodePool:
         for node in self._node_template:

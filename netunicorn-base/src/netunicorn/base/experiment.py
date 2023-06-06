@@ -7,7 +7,7 @@ import base64
 import copy
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union, cast
 
 from returns.pipeline import is_successful
 from returns.result import Result
@@ -238,7 +238,7 @@ class DeploymentExecutionResult:
         """
         import cloudpickle
 
-        return cloudpickle.loads(self._pipeline)  # type: ignore
+        return cast(Pipeline, cloudpickle.loads(self._pipeline))
 
     @property
     def result(
@@ -255,8 +255,8 @@ class DeploymentExecutionResult:
 
     def __str__(self) -> str:
         text = "DeploymentExecutionResult:\n  Node: {self.node}\n"
-        if self._result:
-            result: Tuple[Result[PipelineResult, PipelineResult], LogType] = self.result  # type: ignore
+        result = self.result
+        if result:
             text += f"  Result: {type(result[0])}\n"
             if not is_successful(result[0]):
                 text += f"   {result[0]}\n"

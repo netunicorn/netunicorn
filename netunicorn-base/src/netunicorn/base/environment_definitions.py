@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import platform
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
 from .types import (
     BuildContextRepresentation,
@@ -137,7 +137,7 @@ class ShellExecution(EnvironmentDefinition):
 
         if "runtime_context" not in _data:
             raise ValueError("runtime_context is missing")
-        data: ShellExecutionRepresentation = _data  # type: ignore
+        data = cast(ShellExecutionRepresentation, _data)
         instance = cls.__new__(cls)
         instance.commands = data["commands"]
         instance.runtime_context = RuntimeContext.from_json(data["runtime_context"])
@@ -170,7 +170,7 @@ class BuildContext:
         try:
             import cloudpickle
 
-            return cloudpickle.__version__  # type: ignore
+            return cast(str, cloudpickle.__version__)
         except ImportError:
             return None
 
@@ -253,7 +253,7 @@ class DockerImage(EnvironmentDefinition):
 
         if "image" not in _data:
             raise ValueError("image is missing")
-        data: DockerImageRepresentation = _data  # type: ignore
+        data = cast(DockerImageRepresentation, _data)
         instance = cls.__new__(cls)
         instance.commands = data["commands"]
         instance.image = data["image"]
