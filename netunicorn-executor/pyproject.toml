@@ -20,7 +20,7 @@ dependencies = [
     "returns",
     "cloudpickle",
     "requests",
-    "netunicorn-base >= 0.3.0",
+    "netunicorn-base >= 0.3.3",
 ]
 
 [tool.setuptools.packages.find]
