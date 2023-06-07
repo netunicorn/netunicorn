@@ -1,4 +1,5 @@
 # REST API connector
+
 TODO: documentation
 
 This connector is used to connect to other netunicorn connectors that are hosted as a default REST API service.
@@ -19,5 +20,4 @@ A valid string is a JSON-serialized object with the following structure:
     "these params": "would be passed to the remote connector during initialization"
   }
 }
-
 ```
