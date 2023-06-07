@@ -1,3 +1,6 @@
+"""
+Default remote client for netunicorn.
+"""
 import json
 import warnings
 from typing import Dict, Iterable, Optional
@@ -17,10 +20,23 @@ from .base import BaseClient
 
 
 class RemoteClientException(Exception):
+    """
+    Generic exception for remote client.
+    """
+
     pass
 
 
 class RemoteClient(BaseClient):
+    """
+    Remote client for Unicorn.
+
+    :param endpoint: netunicorn endpoint
+    :param login: netunicorn login
+    :param password: netunicorn password
+    :param authentication_context: authentication context for connectors
+    """
+
     def __init__(
         self,
         endpoint: str,
@@ -28,24 +44,32 @@ class RemoteClient(BaseClient):
         password: str,
         authentication_context: Optional[Dict[str, Dict[str, str]]] = None,
     ):
-        """
-        Remote client for Unicorn.
-        :param endpoint: Unicorn installation endpoint.
-        :param login: Unicorn installation login.
-        :param password: Unicorn installation password.
-        :param authentication_context: Authentication context for connectors.
-        E.g., if a connector A requires users to provide additional security token, it could be specified here.
-        Format: {connector_name: {key: value}}
-        """
         if endpoint.endswith("/"):
             endpoint = endpoint[:-1]
         self.endpoint = endpoint
+        """
+        netunicorn installation endpoint.
+        """
+
         self.login = login
+        """
+        netunicorn installation login.
+        """
+
         self.password = password
-        self._authentication_context = authentication_context or {}
+        """
+        netunicorn installation password.
+        """
+
+        self.authentication_context = authentication_context or {}
+        """
+        Authentication context for connectors.
+            E.g., if a connector A requires users to provide additional security token, it could be specified here.
+            Format: {connector_name: {key: value}}
+        """
 
     @staticmethod
-    def quote_plus_and_warn(string: str) -> str:
+    def _quote_plus_and_warn(string: str) -> str:
         result = quote_plus(string)
         if result != string:
             warnings.warn(
@@ -71,7 +95,7 @@ class RemoteClient(BaseClient):
             auth=(self.login, self.password),
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self._authentication_context
+                    self.authentication_context
                 )
             },
         )
@@ -85,13 +109,13 @@ class RemoteClient(BaseClient):
         )
 
     def delete_experiment(self, experiment_name: str) -> None:
-        experiment_name = self.quote_plus_and_warn(experiment_name)
+        experiment_name = self._quote_plus_and_warn(experiment_name)
         result_data = req.delete(
             f"{self.endpoint}/api/v1/experiment/{experiment_name}",
             auth=(self.login, self.password),
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self._authentication_context
+                    self.authentication_context
                 )
             },
         )
@@ -107,7 +131,7 @@ class RemoteClient(BaseClient):
             auth=(self.login, self.password),
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self._authentication_context
+                    self.authentication_context
                 )
             },
         )
@@ -134,7 +158,7 @@ class RemoteClient(BaseClient):
                 experiment.deployment_context = {}
             experiment.deployment_context.update(deployment_context)
 
-        experiment_id = self.quote_plus_and_warn(experiment_id)
+        experiment_id = self._quote_plus_and_warn(experiment_id)
         data = json.dumps(experiment, cls=UnicornEncoder)
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/prepare",
@@ -143,7 +167,7 @@ class RemoteClient(BaseClient):
             headers={
                 "Content-Type": "application/json",
                 "netunicorn-authentication-context": json.dumps(
-                    self._authentication_context
+                    self.authentication_context
                 ),
             },
         )
@@ -160,14 +184,14 @@ class RemoteClient(BaseClient):
         experiment_id: str,
         execution_context: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> str:
-        experiment_id = self.quote_plus_and_warn(experiment_id)
+        experiment_id = self._quote_plus_and_warn(experiment_id)
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/start",
             auth=(self.login, self.password),
             json=execution_context,
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self._authentication_context
+                    self.authentication_context
                 )
             },
         )
@@ -182,13 +206,13 @@ class RemoteClient(BaseClient):
     def get_experiment_status(
         self, experiment_id: str
     ) -> ExperimentExecutionInformation:
-        experiment_id = self.quote_plus_and_warn(experiment_id)
+        experiment_id = self._quote_plus_and_warn(experiment_id)
         result_data = req.get(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}",
             auth=(self.login, self.password),
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self._authentication_context
+                    self.authentication_context
                 )
             },
         )
@@ -206,14 +230,14 @@ class RemoteClient(BaseClient):
         experiment_id: str,
         cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> str:
-        experiment_id = self.quote_plus_and_warn(experiment_id)
+        experiment_id = self._quote_plus_and_warn(experiment_id)
         result = req.post(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/cancel",
             auth=(self.login, self.password),
             json=cancellation_context,
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self._authentication_context
+                    self.authentication_context
                 )
             },
         )
@@ -239,7 +263,7 @@ class RemoteClient(BaseClient):
             },
             headers={
                 "netunicorn-authentication-context": json.dumps(
-                    self._authentication_context
+                    self.authentication_context
                 )
             },
         )
@@ -252,8 +276,8 @@ class RemoteClient(BaseClient):
         )
 
     def get_flag_values(self, experiment_id: str, flag_name: str) -> FlagValues:
-        experiment_id = self.quote_plus_and_warn(experiment_id)
-        flag_name = self.quote_plus_and_warn(flag_name)
+        experiment_id = self._quote_plus_and_warn(experiment_id)
+        flag_name = self._quote_plus_and_warn(flag_name)
         result_data = req.get(
             f"{self.endpoint}/api/v1/experiment/{experiment_id}/flag/{flag_name}",
             auth=(self.login, self.password),
@@ -269,8 +293,8 @@ class RemoteClient(BaseClient):
     def set_flag_values(
         self, experiment_id: str, flag_name: str, flag_values: FlagValues
     ) -> None:
-        experiment_id = self.quote_plus_and_warn(experiment_id)
-        flag_name = self.quote_plus_and_warn(flag_name)
+        experiment_id = self._quote_plus_and_warn(experiment_id)
+        flag_name = self._quote_plus_and_warn(flag_name)
         if flag_values.int_value is None and flag_values.text_value is None:
             raise RemoteClientException(
                 "One of int_value or text_value must be provided."

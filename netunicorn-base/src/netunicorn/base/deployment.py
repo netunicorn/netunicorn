@@ -1,14 +1,17 @@
+"""
+Single deployment of pipeline on node.
+"""
 from __future__ import annotations
 
 from base64 import b64decode
 from copy import deepcopy
-from typing import Optional
+from typing import List, Optional, cast
 
 import netunicorn.base.environment_definitions
 
 from .nodes import Node
 from .pipeline import Pipeline
-from .task import TaskDispatcher
+from .task import Task, TaskDispatcher
 from .types import DeploymentRepresentation
 from .utils import SerializedPipelineType
 
@@ -22,6 +25,15 @@ except ImportError:
 
 
 class Deployment:
+    """
+    Single deployment of pipeline on node.
+
+    :param node: Node to deploy pipeline on
+    :param pipeline: Pipeline to deploy
+    :param keep_alive_timeout_minutes: time to wait for executor update before timeout
+    :param cleanup: whether to remove artifacts (e.g., Docker image and containers) after execution
+    """
+
     def __init__(
         self,
         node: Node,
@@ -29,14 +41,47 @@ class Deployment:
         keep_alive_timeout_minutes: int = 10,
         cleanup: bool = True,
     ):
-        self.node = node
-        self.prepared = False
-        self.executor_id = ""
+        self.node: Node = node
+        """
+        Node to deploy pipeline on
+        """
+
+        self.prepared: bool = False
+        """
+        if False, deployment is not prepared yet or failed during preparation
+        """
+
+        self.executor_id: str = ""
+        """
+        ID of executor on node
+        """
+
         self.error: Optional[Exception] = None
+        """
+        if deployment failed, this field contains error
+        """
+
         self.pipeline: SerializedPipelineType = b""
-        self.environment_definition = deepcopy(pipeline.environment_definition)
-        self.keep_alive_timeout_minutes = keep_alive_timeout_minutes
-        self.cleanup = cleanup
+        """
+        Serialized Pipeline to be deployed
+        """
+
+        self.environment_definition: netunicorn.base.environment_definitions.EnvironmentDefinition = deepcopy(
+            pipeline.environment_definition
+        )
+        """
+        Environment definition to use for deployment
+        """
+
+        self.keep_alive_timeout_minutes: int = keep_alive_timeout_minutes
+        """
+        time to wait for executor update before timeout
+        """
+
+        self.cleanup: bool = cleanup
+        """
+        if True, corresponding artifacts (Docker image and containers) will be removed after execution
+        """
 
         self._validate_deployment(node, pipeline)
 
@@ -47,9 +92,9 @@ class Deployment:
                 x.dispatch(node) if isinstance(x, TaskDispatcher) else x
                 for x in element
             ]
-            for x in pipeline.tasks[i]:
-                # now it's only Tasks
-                self.environment_definition.commands.extend(x.requirements)  # type: ignore
+            tasks_list: List[Task] = cast(List[Task], pipeline.tasks[i])
+            for x in tasks_list:
+                self.environment_definition.commands.extend(x.requirements)
 
         self.pipeline = cloudpickle.dumps(pipeline)
 
@@ -81,6 +126,12 @@ class Deployment:
 
     @classmethod
     def from_json(cls, data: DeploymentRepresentation) -> Deployment:
+        """
+        Create Deployment from JSON representation
+
+        :param data: JSON representation of Deployment
+        :return: Deserialized Deployment
+        """
         instance = cls.__new__(cls)
 
         instance.node = Node.from_json(data["node"])

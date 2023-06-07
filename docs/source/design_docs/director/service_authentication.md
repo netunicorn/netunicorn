@@ -1,4 +1,4 @@
-# Authentication
+# Authentication service
 This service provides basic authentication capabilities to the system.   
 
 Current implementation of this service authenticate users by checking login and password hash in the database.  
