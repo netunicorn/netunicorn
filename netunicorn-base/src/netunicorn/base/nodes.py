@@ -371,6 +371,9 @@ class UncountableNodePool(Nodes):
     def __repr__(self) -> str:
         return str(self)
 
+    def __iter__(self):
+        return self
+
     def __next__(self) -> Node:
         """
         Generate and returns the next node in the pool.
