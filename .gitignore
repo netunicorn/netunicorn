@@ -11,3 +11,7 @@ build/
 **/.ipynb_checkpoints
 */**/.env
 docs/source/_autosummary
+netunicorn-library/pyproject.toml
+netunicorn-library/src/netunicorn/library/tasks
+netunicorn-library/src/netunicorn/library/pipelines
+.vscode
