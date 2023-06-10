@@ -16,7 +16,7 @@ class Architecture(Enum):
 
     LINUX_ARM64 = "linux/arm64"
     """
-    AMR64-based Linux node.
+    ARM64-based Linux node.
     """
 
     WINDOWS_AMD64 = "win/amd64"
