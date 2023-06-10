@@ -19,6 +19,16 @@ class Architecture(Enum):
     AMR64-based Linux node.
     """
 
+    WINDOWS_AMD64 = "win/amd64"
+    """
+    AMD64-based Windows node.
+    """
+
+    WINDOWS_ARM64 = "win/arm64"
+    """
+    ARM64-based Windows node.
+    """
+
     UNKNOWN = "unknown"
     """
     Unknown architecture and operating system.
