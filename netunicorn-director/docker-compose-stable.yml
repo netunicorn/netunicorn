@@ -55,7 +55,7 @@ services:
   compilation:
     image: netunicorn/compilation
     restart: unless-stopped
-    container_name: netunicorn-dev-compilation
+    container_name: netunicorn-compilation
     environment: *common-variables
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -109,7 +109,7 @@ services:
   mediator:
     image: netunicorn/mediator
     restart: unless-stopped
-    container_name: netunicorn-dev-mediator
+    container_name: netunicorn-mediator
     environment:
       <<: *common-variables
       NETUNICORN_MEDIATOR_IP: "0.0.0.0"
