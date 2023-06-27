@@ -254,7 +254,7 @@ class DeploymentExecutionResult:
         return cloudpickle.loads(self._result) if self._result else None
 
     def __str__(self) -> str:
-        text = "DeploymentExecutionResult:\n  Node: {self.node}\n"
+        text = f"DeploymentExecutionResult:\n  Node: {self.node}\n"
         result = self.result
         if result:
             text += f"  Result: {type(result[0])}\n"
