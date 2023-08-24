@@ -17,12 +17,51 @@ from netunicorn.director.base.resources import (
 )
 from netunicorn.director.base.utils import __init_connection
 
+from .postprocessors import experiment_postprocessors
+
 logger = get_logger("netunicorn.director.processor")
 db_conn_pool: asyncpg.Pool
 
 locker_task_handler: asyncio.Task[NoReturn]
 update_experiments_task_handler: asyncio.Task[NoReturn]
 preparing_experiment_watchdog_task_handler: asyncio.Task[NoReturn]
+
+
+async def apply_postprocessors(experiment_id: str) -> None:
+    logger.debug(f"Applying postprocessors to experiment {experiment_id}")
+
+    async with db_conn_pool.acquire() as conn:
+        async with conn.transaction():
+            experiment_data = await conn.fetch(
+                "SELECT data::jsonb FROM experiments WHERE experiment_id = $1 LIMIT 1",
+                experiment_id,
+            )
+
+    if not experiment_data:
+        logger.error(f"Experiment {experiment_id} not found")
+        return
+
+    experiment = Experiment.from_json(experiment_data[0]["data"])
+    for postprocessor in experiment_postprocessors:
+        try:
+            postprocessor(experiment_id, experiment)
+        except Exception as e:
+            # do not return here, go on applying with other postprocessors
+
+            logger.exception(e)
+            user_error = f"Error occurred during applying postprocessors, ask administrator for details. \n{e}"
+            current_error = await db_conn_pool.fetchval(
+                "SELECT error FROM experiments WHERE experiment_id = $1", experiment_id
+            )
+
+            current_error = current_error if current_error else ""
+            current_error += f"\n{user_error}"
+
+            await db_conn_pool.execute(
+                "UPDATE experiments SET error = $1 WHERE experiment_id = $2",
+                user_error,
+                experiment_id,
+            )
 
 
 async def collect_executors_results(experiment_id: str, experiment: Experiment) -> None:
@@ -66,6 +105,7 @@ async def update_experiment_status(
             ExperimentStatus.UNKNOWN.value,
             experiment_id,
         )
+        await apply_postprocessors(experiment_id)
         return
 
     # collect all results and add to experiment object
@@ -109,6 +149,7 @@ async def update_experiment_status(
             experiment_id,
         )
         await collect_executors_results(experiment_id, experiment)
+        await apply_postprocessors(experiment_id)
         logger.info(f"Experiment {experiment_id} finished")
 
 
@@ -199,6 +240,7 @@ async def preparing_experiment_watchdog_task(timeout_sec: int = 3600) -> NoRetur
                         logger.warning(
                             f"Experiment {experiment_id} timed out during preparation."
                         )
+                        await apply_postprocessors(experiment_id)
         await asyncio.sleep(timeout_sec)
 
 
