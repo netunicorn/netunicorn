@@ -12,7 +12,8 @@ All preprocessor classes would be imported and instantiated in a lexical order o
 import importlib.util
 import os
 import sys
-from typing import List
+from importlib.machinery import ModuleSpec
+from typing import List, cast
 
 from netunicorn.director.base.resources import get_logger
 from netunicorn.director.base.types import BasePreprocessor
@@ -31,9 +32,12 @@ def import_preprocessors(filename: str, preprocessors: List[BasePreprocessor]) -
     file_path = os.path.join(PREPROCESSORS_FOLDER, filename)
     module_name = filename[:-3]
     spec = importlib.util.spec_from_file_location(module_name, file_path)
+    if spec is None:
+        logger.error(f"Failed to import preprocessor {filename}")
+    spec = cast(ModuleSpec, spec)
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
-    spec.loader.exec_module(module)
+    spec.loader.exec_module(module)  # type: ignore
 
     for name, obj in module.__dict__.items():
         if (
