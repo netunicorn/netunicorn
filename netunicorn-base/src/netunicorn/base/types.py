@@ -6,10 +6,11 @@ from __future__ import annotations
 
 import sys
 from enum import IntEnum
-from typing import Any, Dict, List, Optional, Set, TypedDict, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 from pydantic import BaseModel
 from returns.result import Result
+from typing_extensions import TypedDict
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias

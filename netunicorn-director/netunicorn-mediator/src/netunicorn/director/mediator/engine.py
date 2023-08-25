@@ -393,10 +393,10 @@ async def prepare_experiment_task(
     try:
         # apply all defined preprocessors
         for p in experiment_preprocessors:
-            experiment = p(experiment)
+            experiment = p(experiment_id, experiment)
     except Exception as e:
         logger.exception(e)
-        user_error = "Error occurred during applying preprocessors, ask administrator for details. \n{e}"
+        user_error = f"Error occurred during applying preprocessors, ask administrator for details. \n{e}"
         await db_conn_pool.execute(
             "UPDATE experiments SET status = $1, error = $2 WHERE experiment_id = $3",
             ExperimentStatus.FINISHED.value,
