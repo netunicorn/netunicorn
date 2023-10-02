@@ -55,6 +55,9 @@ class Task(ABC):
         self.name = name or str(uuid.uuid4())
         self.requirements = copy.deepcopy(self.requirements)
 
+    def __hash__(self) -> int:
+        return hash(self.name)
+
     def __call__(self) -> Any:
         """
         This method is called when you call the task instance as a function. It's a shortcut for `run` method.

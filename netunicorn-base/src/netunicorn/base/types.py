@@ -90,9 +90,9 @@ class DeploymentRepresentation(TypedDict):
     Error message.
     """
 
-    pipeline: bytes
+    execution_graph: bytes
     """
-    Serialized pipeline.
+    Serialized execution graph.
     """
 
     keep_alive_timeout_minutes: int
@@ -219,9 +219,9 @@ class DeploymentExecutionResultRepresentation(TypedDict):
     Node JSON representation.
     """
 
-    pipeline: str
+    execution_graph: str
     """
-    Serialized pipeline.
+    Serialized execution_graph.
     """
 
     result: Optional[str]
@@ -256,29 +256,29 @@ class ExperimentExecutionInformationRepresentation(TypedDict):
     """
 
 
-class PipelineExecutorState(IntEnum):
+class ExecutorState(IntEnum):
     """
     Executor state.
     """
 
-    LOOKING_FOR_PIPELINE = 0
+    LOOKING_FOR_EXECUTION_GRAPH = 0
     """
-    Looking for pipeline locally or downloading from netunicorn gateway.
+    Looking for the execution graph locally or downloading from netunicorn gateway.
     """
 
     EXECUTING = 1
     """
-    Pipeline is currently executing.
+    Currently executing the graph.
     """
 
     REPORTING = 2
     """
-    Pipeline execution is finished and executor is reporting results.
+    Execution is finished and executor is reporting results.
     """
 
     FINISHED = 3
     """
-    Pipeline execution is finished and results are reported (if needed).
+    Execution is finished and results are reported (if needed).
     """
 
 

@@ -4,18 +4,18 @@ Abstrcations for Pipeline representation.
 
 from __future__ import annotations
 
-import uuid
-from copy import deepcopy
-from typing import Collection, List, Optional, Set, Union
-from warnings import warn
+from typing import Collection, List, Optional, Union
 
-from .environment_definitions import DockerImage, EnvironmentDefinition
+import networkx as nx
+
+from .environment_definitions import EnvironmentDefinition
+from .execution_graph import ExecutionGraph
 from .task import TaskElement
 
 PipelineElement = Union[TaskElement, Collection[TaskElement]]
 
 
-class Pipeline:
+class Pipeline(ExecutionGraph):
     """
     Pipeline is a class that takes a tuple of Tasks and executes them in order.
     Each element in the tuple should be either a Task or a tuple of Tasks.
@@ -42,57 +42,27 @@ class Pipeline:
         report_results: bool = True,
         environment_definition: Optional[EnvironmentDefinition] = None,
     ):
-        self.name: str = str(uuid.uuid4())
-        """
-        Pipeline name.
-        """
-
-        self.task_names: Set[str] = set()
-        """
-        Task names in the pipeline, used for dictionary of results.
-        """
-
-        self.early_stopping: bool = early_stopping
-        """
-        Whether to stop executing tasks after first failure.
-        """
-
-        self.tasks: List[List[TaskElement]] = []
-        """
-        Tasks stages to be executed.
-        """
-
-        self.report_results: bool = report_results
-        """
-        Whether executor should connect core services to report pipeline results in the end.
-        """
-
-        self.environment_definition: EnvironmentDefinition = (
-            environment_definition or DockerImage()
+        super().__init__(
+            early_stopping=early_stopping,
+            report_results=report_results,
+            environment_definition=environment_definition,
         )
+
+        self.last_stage: Union[str, int] = "root"
         """
-        Environment definition for the pipeline.
+        Current last stage of the pipeline.
         """
 
         for element in tasks:
             self.then(element)
 
     @staticmethod
-    def __element_to_stage(element: PipelineElement) -> List[TaskElement]:
+    def _element_to_stage(element: PipelineElement) -> List[TaskElement]:
         if not isinstance(element, Collection):
             element = [element]
         if not isinstance(element, list):
             element = list(element)
         return element
-
-    def __check_tasks_names(self, stage: List[TaskElement]) -> None:
-        for task in stage:
-            if task.name in self.task_names:
-                warn(
-                    f"Task with name {task.name} already exists in the current pipeline {self.__str__()}. "
-                    "Please, note that execution results of these tasks could be mixed or overwritten."
-                )
-            self.task_names.add(task.name)
 
     def then(self, element: PipelineElement) -> Pipeline:
         """
@@ -101,9 +71,14 @@ class Pipeline:
         :param element: a task or tuple of tasks to be added
         :return: self
         """
-        element = self.__element_to_stage(element)
-        self.__check_tasks_names(element)
-        self.tasks.append(element)
+        element = self._element_to_stage(element)
+
+        initial_stage = self.last_stage
+        next_stage = self.last_stage + 1 if isinstance(self.last_stage, int) else 1
+        self.graph.add_edges_from([(initial_stage, x) for x in element])
+        self.graph.add_edges_from([(x, next_stage) for x in element])
+        self.last_stage = next_stage
+
         return self
 
     def copy(self) -> Pipeline:
@@ -112,10 +87,71 @@ class Pipeline:
 
         :return: a copy of the pipeline
         """
-        return Pipeline(deepcopy(self.tasks), self.early_stopping)
+        pipeline = Pipeline(
+            early_stopping=self.early_stopping,
+            report_results=self.report_results,
+            environment_definition=self.environment_definition,
+        )
+
+        pipeline.graph = self.graph.copy()
+        return pipeline
 
     def __str__(self) -> str:
-        return f"Pipeline({self.name}): {self.tasks}"
+        successors = nx.dfs_successors(self.graph, "root")
+        stages = {
+            x: y for x, y in successors.items() if isinstance(x, int) or x == "root"
+        }
+
+        return f"Pipeline({self.name}): {stages}"
 
     def __repr__(self) -> str:
         return str(self)
+
+
+class CyclePipeline(Pipeline):
+    """
+    CyclePipeline is a Pipeline that will be executed several times. All defined stages would be executed
+    and then the execution would continue from the first stage again.
+    """
+
+    def __init__(
+        self,
+        cycles: Optional[int] = None,
+        tasks: Collection[PipelineElement] = (),
+        early_stopping: bool = True,
+        report_results: bool = True,
+        environment_definition: Optional[EnvironmentDefinition] = None,
+    ):
+        self.edge_params = {}
+        if cycles is not None:
+            self.edge_params = {"counter": cycles}
+
+        super().__init__(
+            tasks=tasks,
+            early_stopping=early_stopping,
+            report_results=report_results,
+            environment_definition=environment_definition,
+        )
+
+        self.graph.add_edge("root", "root", **self.edge_params)
+
+    def then(self, element: PipelineElement) -> Pipeline:
+        """
+        Add a task or list of tasks as a separate stage to the end of the pipeline.
+
+        :param element: a task or tuple of tasks to be added
+        :return: self
+        """
+        element = self._element_to_stage(element)
+
+        initial_stage = self.last_stage
+        if self.graph.has_edge(initial_stage, "root"):
+            self.graph.remove_edge(initial_stage, "root")
+
+        next_stage = self.last_stage + 1 if isinstance(self.last_stage, int) else 1
+        self.graph.add_edges_from([(initial_stage, x) for x in element])
+        self.graph.add_edges_from([(x, next_stage) for x in element])
+        self.last_stage = next_stage
+        self.graph.add_edge(next_stage, "root", **self.edge_params)
+
+        return self
