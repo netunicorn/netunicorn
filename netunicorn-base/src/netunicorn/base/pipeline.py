@@ -4,7 +4,7 @@ Abstrcations for Pipeline representation.
 
 from __future__ import annotations
 
-from typing import Collection, List, Optional, Union
+from typing import Collection, List, Optional, Union, Dict, Any
 
 import networkx as nx
 
@@ -122,7 +122,7 @@ class CyclePipeline(Pipeline):
         report_results: bool = True,
         environment_definition: Optional[EnvironmentDefinition] = None,
     ):
-        self.edge_params = {"type": "weak"}
+        self.edge_params: Dict[str, Any] = {"type": "weak"}
         if cycles is not None:
             self.edge_params["counter"] = cycles
 

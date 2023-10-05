@@ -128,7 +128,7 @@ class ExecutionGraph:
     def __str__(self) -> str:
         return f"ExecutionGraph(name={self.name}, {self.graph.__str__()})"
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.name)
 
     def __repr__(self) -> str:
