@@ -285,12 +285,12 @@ async def prepare_experiment_task(
         if isinstance(env_def, ShellExecution):
             # nothing to do with shell execution
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished, connector) "
+                "INSERT INTO executors (experiment_id, executor_id, node_name, execution_graph, finished, connector) "
                 "VALUES ($1, $2, $3, $4, FALSE, $5) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.node.name,
-                _deployment.pipeline,
+                _deployment.execution_graph,
                 _deployment.node["connector"],
             )
             _deployment.prepared = True
@@ -311,19 +311,21 @@ async def prepare_experiment_task(
             # specific case: if key is in the _envs, that means that we need to wait this deployment too
             # description: that happens when 2 deployments have the same environment definition object in memory,
             #  so update of image name for one deployment will affect another deployment
-            _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
+            _key = hash(
+                (_deployment.execution_graph, env_def, _deployment.node.architecture)
+            )
             if _key in _envs:
                 deployments_waiting_for_compilation.append(_deployment)
                 return
 
             # if docker image is provided - just provide pipeline
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished, connector) "
+                "INSERT INTO executors (experiment_id, executor_id, node_name, execution_graph, finished, connector) "
                 "VALUES ($1, $2, $3, $4, FALSE, $5) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.node.name,
-                _deployment.pipeline,
+                _deployment.execution_graph,
                 _deployment.node["connector"],
             )
             _deployment.prepared = True
@@ -336,7 +338,9 @@ async def prepare_experiment_task(
             deployments_waiting_for_compilation.append(_deployment)
 
             # unique compilation is combination of pipeline, docker commands, and node architecture
-            _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
+            _key = hash(
+                (_deployment.execution_graph, env_def, _deployment.node.architecture)
+            )
             if _key in _envs:
                 # we already started this compilation
                 env_def.image = f"{DOCKER_REGISTRY_URL}/{_envs[_key]}:latest"
@@ -353,22 +357,28 @@ async def prepare_experiment_task(
             #  - key with image name (so we can find it later)
             _envs[_key] = compilation_uid
             _envs[
-                hash((_deployment.pipeline, env_def, _deployment.node.architecture))
+                hash(
+                    (
+                        _deployment.execution_graph,
+                        env_def,
+                        _deployment.node.architecture,
+                    )
+                )
             ] = compilation_uid
 
             # put compilation request to the database
             await db_conn_pool.execute(
                 "INSERT INTO compilations "
-                "(experiment_id, compilation_id, status, result, architecture, pipeline, environment_definition) "
+                "(experiment_id, compilation_id, status, result, architecture, execution_graph, environment_definition) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7) "
                 "ON CONFLICT (experiment_id, compilation_id) DO UPDATE SET "
-                "status = $3, result = $4, architecture = $5, pipeline = $6::bytea, environment_definition = $7::jsonb",
+                "status = $3, result = $4, architecture = $5, execution_graph = $6::bytea, environment_definition = $7::jsonb",
                 experiment_id,
                 compilation_uid,
                 None,
                 None,
                 _deployment.node.architecture.value,
-                _deployment.pipeline,
+                _deployment.execution_graph,
                 _deployment.environment_definition.__json__(),
             )
 
@@ -464,7 +474,7 @@ async def prepare_experiment_task(
     for deployment in deployments_waiting_for_compilation:
         key = hash(
             (
-                deployment.pipeline,
+                deployment.execution_graph,
                 deployment.environment_definition,
                 deployment.node.architecture,
             )

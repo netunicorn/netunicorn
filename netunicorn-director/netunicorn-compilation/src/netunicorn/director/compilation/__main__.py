@@ -40,7 +40,7 @@ async def docker_compilation_cycle(
     compilation_request = await db_pool.fetchrow(
         "SELECT "
         "experiment_id, compilation_id, architecture, "
-        "pipeline::bytea, environment_definition::jsonb "
+        "execution_graph::bytea, environment_definition::jsonb "
         "FROM compilations WHERE status IS NULL LIMIT 1"
     )
     if compilation_request is None:
@@ -50,7 +50,7 @@ async def docker_compilation_cycle(
     experiment_id: str = compilation_request["experiment_id"]
     compilation_id: str = compilation_request["compilation_id"]
     architecture: str = compilation_request["architecture"]
-    pipeline: Optional[bytes] = compilation_request["pipeline"]
+    pipeline: Optional[bytes] = compilation_request["execution_graph"]
     environment_definition = environment_definitions.DockerImage.from_json(
         compilation_request["environment_definition"]
     )
@@ -114,8 +114,10 @@ async def docker_compilation_cycle(
     ]
 
     if pipeline is not None:
-        filelines.append(f"COPY {compilation_id}.pipeline unicorn.pipeline")
-        with open(f"{compilation_id}.pipeline", "wb") as f:
+        filelines.append(
+            f"COPY {compilation_id}.execution_graph netunicorn.execution_graph"
+        )
+        with open(f"{compilation_id}.execution_graph", "wb") as f:
             f.write(pipeline)
 
     filelines += [
