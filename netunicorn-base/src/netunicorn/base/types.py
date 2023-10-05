@@ -20,7 +20,8 @@ else:
 NodeProperty = Union[str, float, int, Set[str], None]
 
 TaskElementResult: TypeAlias = Result[Any, Any]
-PipelineResult = Dict[str, List[TaskElementResult]]
+ExecutionGraphResult = Dict[str, List[TaskElementResult]]
+PipelineResult = ExecutionGraphResult
 
 
 class NodeRepresentation(TypedDict):

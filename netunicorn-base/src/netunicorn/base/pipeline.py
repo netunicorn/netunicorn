@@ -122,9 +122,9 @@ class CyclePipeline(Pipeline):
         report_results: bool = True,
         environment_definition: Optional[EnvironmentDefinition] = None,
     ):
-        self.edge_params = {}
+        self.edge_params = {"type": "weak"}
         if cycles is not None:
-            self.edge_params = {"counter": cycles}
+            self.edge_params["counter"] = cycles
 
         super().__init__(
             tasks=tasks,

@@ -17,7 +17,7 @@ from .execution_graph import ExecutionGraph
 from .nodes import Node, Nodes
 from .types import (
     DeploymentExecutionResultRepresentation,
-    PipelineResult,
+    ExecutionGraphResult,
     ExperimentExecutionInformationRepresentation,
     ExperimentRepresentation,
 )
@@ -243,7 +243,7 @@ class DeploymentExecutionResult:
     @property
     def result(
         self,
-    ) -> Optional[Tuple[Result[PipelineResult, PipelineResult], LogType]]:
+    ) -> Optional[Tuple[Result[ExecutionGraphResult, ExecutionGraphResult], LogType]]:
         """
         Returns a result of a deployment execution and logs.
 

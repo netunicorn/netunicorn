@@ -16,11 +16,17 @@ class ExecutionGraph:
     """
     ExecutionGraph is a class that allows you to flexibly define a graph of tasks and their order.
     It has the next rules:
+
     | 1. Execution graph is a directed graph.
     | 2. Execution graph always starts with a node "root" (this node is automatically added in the new graph during initialization).
     | 3. Any node of type TaskDispather would be dispatched to Task. Any node of type Task would be executed. Any nodes of other types would not be executed but would be treated as synchronization points.
     | 4. Number of components in the graph must be 1, the graph should be weakly connected, and all nodes should be accessible from the root node.
-    | 5. Any edge can have attribute "counter" with integer value. This value would be used to determine how many times this edge should be traversed. If this attribute is not present, then edge would be traversed infinitely. You can use this attribute to implement finite loops in the graph.
+    | 5. Any edge have either "strong" or "weak" type. If no type provided, it's a "strong" edge.
+    Type is provided as an attribute "type" with value "strong" or "weak".
+    Executor will not treat incoming "weak" edges as requirements for the execution of the task, but will traverse them to start executing next tasks.
+    "Weak" edges are required for cycle dependencies to avoid deadlocks.
+
+    | 6. Any edge can have attribute "counter" with integer value. This value would be used to determine how many times this edge should be traversed. If this attribute is not present, then edge would be traversed infinitely. You can use this attribute to implement finite loops in the graph.
 
     :param early_stopping: If True, then the execution of the graph would be stopped if any task fails. If False, then the execution of the graph would be continued even if some tasks fail.
     :param report_results: If True, then the executor would connect core services to report execution results in the end.
@@ -88,6 +94,20 @@ class ExecutionGraph:
                 f"All tasks must be accessible from the root node. Inaccessible nodes: {diff}"
             )
 
+        # if remove all weak links, the graph should be acyclic
+        graph_copy = graph.copy()
+        graph_copy.remove_edges_from(
+            [
+                (u, v)
+                for u, v, d in graph_copy.edges(data=True)
+                if d.get("type", "strong") == "weak"
+            ]
+        )
+        if not nx.is_directed_acyclic_graph(graph_copy):
+            raise ValueError(
+                "Execution graph must be acyclic after removing all weak links. Otherwise your cycles will introduce deadlocks."
+            )
+
         return True
 
     def __copy__(self) -> ExecutionGraph:
@@ -101,6 +121,9 @@ class ExecutionGraph:
 
     def __str__(self) -> str:
         return f"ExecutionGraph(name={self.name}, {self.graph.__str__()})"
+
+    def __hash__(self):
+        return hash(self.name)
 
     def __repr__(self) -> str:
         return self.__str__()
