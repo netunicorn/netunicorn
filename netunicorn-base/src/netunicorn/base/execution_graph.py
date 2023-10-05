@@ -25,6 +25,7 @@ class ExecutionGraph:
     Type is provided as an attribute "type" with value "strong" or "weak".
     Executor will not treat incoming "weak" edges as requirements for the execution of the task, but will traverse them to start executing next tasks.
     "Weak" edges are required for cycle dependencies to avoid deadlocks.
+    You can consider weak links as links for defining the execution flow, and strong links to define both execution flow and prerequisites.
 
     | 6. Any edge can have attribute "counter" with integer value. This value would be used to determine how many times this edge should be traversed. If this attribute is not present, then edge would be traversed infinitely. You can use this attribute to implement finite loops in the graph.
 
@@ -106,6 +107,11 @@ class ExecutionGraph:
         if not nx.is_directed_acyclic_graph(graph_copy):
             raise ValueError(
                 "Execution graph must be acyclic after removing all weak links. Otherwise your cycles will introduce deadlocks."
+            )
+        successors = set(nx.dfs_postorder_nodes(graph_copy, "root"))
+        if diff := set(graph_copy.nodes).difference(successors):
+            raise ValueError(
+                f"After removing weak links, all nodes should be accessible from the root. Inaccessible nodes: {diff}"
             )
 
         return True

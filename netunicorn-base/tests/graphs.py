@@ -89,6 +89,13 @@ class TestValidAndInvalidGraphs(unittest.TestCase):
         with self.assertRaises(Exception):
             ExecutionGraph.is_execution_graph_valid(graph)
 
+        graph = ExecutionGraph()
+        graph.graph.add_edge("root", "a")
+        graph.graph.add_edge("b", "a")
+        graph.graph.add_edge("a", "b", type="weak")
+        with self.assertRaises(Exception):
+            ExecutionGraph.is_execution_graph_valid(graph)
+
     def test_valid_graphs_0(self):
         # not very logical, but valid
         graph = ExecutionGraph()
