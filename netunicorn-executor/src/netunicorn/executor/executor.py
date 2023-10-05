@@ -169,7 +169,14 @@ class Executor:
         sys.stdout = self.print_file
         sys.stderr = self.print_file
 
-    def add_successors_to_waiting_tasks(self, waiting_tasks, current_task):
+    def add_successors_to_waiting_tasks(
+        self, waiting_tasks: Set[Union[Any, Task]], current_task: Union[Any, Task]
+    ) -> None:
+        if not self.execution_graph:
+            error = "No execution graph to execute. Incorrect function call."
+            self.logger.error(error)
+            raise Exception(error)
+
         for successor in self.execution_graph.graph.successors(current_task):
             waiting_tasks.add(successor)
             counter = self.execution_graph.graph.edges[current_task, successor].get(
