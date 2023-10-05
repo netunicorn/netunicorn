@@ -4,7 +4,7 @@ Abstrcations for Pipeline representation.
 
 from __future__ import annotations
 
-from typing import Collection, List, Optional, Union, Dict, Any
+from typing import Any, Collection, Dict, List, Optional, Union
 
 import networkx as nx
 
