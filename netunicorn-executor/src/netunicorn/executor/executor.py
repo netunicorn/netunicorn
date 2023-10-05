@@ -169,6 +169,21 @@ class Executor:
         sys.stdout = self.print_file
         sys.stderr = self.print_file
 
+    def add_successors_to_waiting_tasks(self, waiting_tasks, current_task):
+        for successor in self.execution_graph.graph.successors(current_task):
+            waiting_tasks.add(successor)
+            counter = self.execution_graph.graph.edges[current_task, successor].get(
+                "counter", None
+            )
+            if counter is not None:
+                counter -= 1
+                self.execution_graph.graph.edges[current_task, successor][
+                    "counter"
+                ] = counter
+                if counter <= 0:
+                    self.execution_graph.graph.remove_edge(current_task, successor)
+                    self.logger.info(f"Removed edge {current_task} -> {successor}")
+
     async def execute(self) -> None:
         """
         This method executes the execution graph.
@@ -242,8 +257,7 @@ class Executor:
                 }
 
                 del running_tasks[task]
-                for successor in self.execution_graph.graph.successors(task):
-                    waiting_tasks.add(successor)
+                self.add_successors_to_waiting_tasks(waiting_tasks, task)
 
             # for each task in waiting: if all their ancestors connected via strong links finished, start the task and add to running
             for task in waiting_tasks:
@@ -276,8 +290,7 @@ class Executor:
                         self.step_results[str(task)].append(
                             Success("Synchronization task finished.")
                         )
-                        for successor in self.execution_graph.graph.successors(task):
-                            waiting_tasks.add(successor)
+                        self.add_successors_to_waiting_tasks(waiting_tasks, task)
 
             if not running_tasks and waiting_tasks and not tasks_processed:
                 # deadlock?
