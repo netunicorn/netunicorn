@@ -1,1 +1,1 @@
-from .executor import PipelineExecutor
+from .executor import Executor

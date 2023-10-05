@@ -1,6 +1,6 @@
 [project]
 name = "netunicorn-executor"
-version = "0.3.1"
+version = "0.4.0"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
@@ -20,7 +20,7 @@ dependencies = [
     "returns",
     "cloudpickle",
     "requests",
-    "netunicorn-base >= 0.3.3",
+    "netunicorn-base >= 0.4.0",
 ]
 
 [tool.setuptools.packages.find]

@@ -7,22 +7,30 @@ from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, List, Optional, Tuple, Type, cast
+from multiprocessing import Process, Queue
+from typing import Any, Dict, Optional, Set, Type, Union
 
 import cloudpickle
 import requests as req
 import requests.exceptions
-from netunicorn.base.pipeline import Pipeline
-from netunicorn.base.task import Task, TaskDispatcher
-from netunicorn.base.types import PipelineExecutorState, PipelineResult
+from netunicorn.base.execution_graph import ExecutionGraph
+from netunicorn.base.task import Task
+from netunicorn.base.types import ExecutionGraphResult, ExecutorState
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
+from typing_extensions import TypedDict
 
-from .utils import NonStablePool as Pool
 from .utils import safe
 
+RunningTasksItem = TypedDict(
+    "RunningTasksItem", {"process": Process, "queue": Queue[bytes]}
+)
+FinishedTasksItem = TypedDict(
+    "FinishedTasksItem", {"process": Optional[Process], "queue": Optional[Queue[bytes]]}
+)
 
-class PipelineExecutor:
+
+class Executor:
     def __init__(
         self,
         executor_id: Optional[str] = None,
@@ -60,13 +68,15 @@ class PipelineExecutor:
             0.5 * x for x in range(75)
         )  # limit to 1425 secs total, then StopIteration Exception
 
-        self.pipeline: Optional[Pipeline] = None
-        self.step_results: PipelineResult = defaultdict(list)
-        self.pipeline_results: Optional[Result[PipelineResult, PipelineResult]] = None
-        self.state = PipelineExecutorState.LOOKING_FOR_PIPELINE
+        self.execution_graph: Optional[ExecutionGraph] = None
+        self.step_results: ExecutionGraphResult = defaultdict(list)
+        self.execution_graph_results: Optional[
+            Result[ExecutionGraphResult, ExecutionGraphResult]
+        ] = None
+        self.state = ExecutorState.LOOKING_FOR_EXECUTION_GRAPH
 
     async def heartbeat(self) -> None:
-        while self.state == PipelineExecutorState.EXECUTING:
+        while self.state == ExecutorState.EXECUTING:
             try:
                 await asyncio.sleep(30)
                 req.post(
@@ -90,69 +100,69 @@ class PipelineExecutor:
         """
         while True:
             try:
-                if self.state == PipelineExecutorState.LOOKING_FOR_PIPELINE:
-                    self.request_pipeline()
-                elif self.state == PipelineExecutorState.EXECUTING:
+                if self.state == ExecutorState.LOOKING_FOR_EXECUTION_GRAPH:
+                    self.request_execution_graph()
+                elif self.state == ExecutorState.EXECUTING:
                     asyncio.run(self.execute())
-                elif self.state == PipelineExecutorState.REPORTING:
+                elif self.state == ExecutorState.REPORTING:
                     self.report_results()
-                elif self.state == PipelineExecutorState.FINISHED:
+                elif self.state == ExecutorState.FINISHED:
                     return
             except Exception as e:
                 self.logger.exception(e)
-                self.logger.critical("Failed to execute pipeline. Shutting down.")
-                self.state = PipelineExecutorState.FINISHED
+                self.logger.critical("Failed to execute the graph. Shutting down.")
+                self.state = ExecutorState.FINISHED
                 break
 
         # if we break the cycle with an exception, we'll try to report the results
         self.report_results()
 
-    def request_pipeline(self) -> None:
+    def request_execution_graph(self) -> None:
         """
-        This method tries to look for pipeline locally to execute, and if not found then asks master for it
+        This method tries to look for an execution graph locally to execute, and if not found then asks the master for it
         :return: None
         """
 
-        if self.pipeline is not None:
+        if self.execution_graph is not None:
             self.logger.error(
-                "request_pipeline is called, but self.pipeline is already set, executing."
+                "request_execution_graph is called, but self.execution_graph is already set, executing."
             )
-            self.state = PipelineExecutorState.EXECUTING
+            self.state = ExecutorState.EXECUTING
             return
 
-        pipeline_filename = f"unicorn.pipeline"
-        if os.path.exists(pipeline_filename):
-            with open(pipeline_filename, "rb") as f:
-                self.pipeline = cloudpickle.load(f)
-                self.logger.info("Pipeline loaded from local file, executing.")
-                self.state = PipelineExecutorState.EXECUTING
+        execution_graph_filename = f"netunicorn.execution_graph"
+        if os.path.exists(execution_graph_filename):
+            with open(execution_graph_filename, "rb") as f:
+                self.execution_graph = cloudpickle.load(f)
+                self.logger.info("Execution graph loaded from a local file, executing.")
+                self.state = ExecutorState.EXECUTING
                 return
 
         try:
             result = req.get(
-                f"{self.gateway_endpoint}/api/v1/executor/pipeline?executor_id={self.executor_id}",
+                f"{self.gateway_endpoint}/api/v1/executor/execution_graph?executor_id={self.executor_id}",
                 timeout=30,
             )
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
-            self.logger.info(f"Exception while requesting pipeline: {e} ")
+            self.logger.info(f"Exception while requesting an execution graph: {e} ")
             time.sleep(next(self.backoff_func))
             return
 
         if result.status_code == 200:
-            pipeline = b64decode(result.content)
-            self.pipeline = cloudpickle.loads(pipeline)
-            self.state = PipelineExecutorState.EXECUTING
-            self.logger.info("Successfully received pipeline.")
+            execution_graph = b64decode(result.content)
+            self.execution_graph = cloudpickle.loads(execution_graph)
+            self.state = ExecutorState.EXECUTING
+            self.logger.info("Successfully received the execution graph.")
         else:
             self.logger.info(
-                f"Failed to receive pipeline. Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
+                f"Failed to receive the execution graph. Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
             )
 
-    @staticmethod
-    def execute_task(serialized_task: bytes) -> Tuple[str, bytes]:
+    def execute_task(self, serialized_task: bytes, result_queue: Queue[bytes]) -> None:
+        self.std_redirection()
         task = cloudpickle.loads(serialized_task)
         result: Result[Any, Any] = safe(task.run)()
-        return task.name, cloudpickle.dumps(result)
+        result_queue.put(cloudpickle.dumps(result))
 
     def std_redirection(self, *args: Any) -> None:
         _ = args
@@ -161,78 +171,146 @@ class PipelineExecutor:
 
     async def execute(self) -> None:
         """
-        This method executes the pipeline.
+        This method executes the execution graph.
         """
 
         if self.heartbeat_flag:
             asyncio.create_task(self.heartbeat())
 
-        if not self.pipeline:
-            self.logger.error("No pipeline to execute.")
-            self.pipeline_results = Failure(self.step_results)
+        if not self.execution_graph:
+            self.logger.error("No execution graph to execute.")
+            self.execution_graph_results = Failure(self.step_results)
+            self.state = ExecutorState.REPORTING
             return
 
-        resulting_type: Type[Result[PipelineResult, PipelineResult]] = Success
-        for elements in self.pipeline.tasks:
-            if isinstance(elements, Task):
-                elements = [elements]
-            for task in elements:
-                if isinstance(task, TaskDispatcher):
-                    self.step_results[task.name].append(
-                        Failure("Element is unexpectedly TaskDispatcher")
-                    )
+        try:
+            ExecutionGraph.is_execution_graph_valid(self.execution_graph)
+        except Exception as e:
+            self.logger.error("The provided execution graph is not valid.")
+            self.logger.exception(e)
+            self.execution_graph_results = Failure(self.step_results)
+            self.state = ExecutorState.REPORTING
+            return
+
+        resulting_type: Type[
+            Result[ExecutionGraphResult, ExecutionGraphResult]
+        ] = Success
+
+        waiting_tasks: Set[Union[Any, Task]] = set("root")
+        running_tasks: Dict[Task, RunningTasksItem] = {}
+        finished_tasks: Dict[Union[Task, str], FinishedTasksItem] = {}
+
+        stop_execution = False
+
+        while (
+            self.execution_graph.early_stopping and not stop_execution
+        ) or not self.execution_graph.early_stopping:
+            tasks_processed = False
+            if not waiting_tasks and not running_tasks:
+                break
+
+            # check running tasks: if any of them finished, then we should remove them from the running tasks,
+            #  process their results, add it to finished for requirements check, and add descendants to the waiting tasks
+            for task in running_tasks:
+                if running_tasks[task]["process"].is_alive():
                     continue
 
-            element: List[Task] = cast(List[Task], elements)
+                running_tasks[task]["process"].join()
+                tasks_processed = True
 
-            # create processes and execute tasks
-            with Pool(len(element), initializer=self.std_redirection) as p:
-                # attach previous task results to the next step
-                for task in element:
-                    task.previous_steps = deepcopy(self.step_results)
+                # sanity checks
+                if running_tasks[task]["process"].exitcode != 0:
+                    resulting_text = f"Task {task.name} failed with exit code {running_tasks[task]['process'].exitcode}"
+                    self.logger.error(resulting_text)
+                    self.step_results[task.name].append(Failure(resulting_text))
+                    stop_execution = True
+                elif running_tasks[task]["queue"].empty():
+                    resulting_text = f"Task {task.name} failed with empty queue"
+                    self.logger.error(resulting_text)
+                    self.step_results[task.name].append(Failure(resulting_text))
+                    stop_execution = True
+                else:
+                    result = cloudpickle.loads(running_tasks[task]["queue"].get())
+                    self.step_results[task.name].append(result)
+                    if not is_successful(result):
+                        resulting_type = Failure
+                        stop_execution = True
 
-                serialized_element = [cloudpickle.dumps(task) for task in element]
-                execution_results_awaiter = p.map_async(
-                    PipelineExecutor.execute_task, serialized_element, chunksize=1
-                )
+                finished_tasks[task] = {
+                    "process": running_tasks[task]["process"],
+                    "queue": running_tasks[task]["queue"],
+                }
 
-                while not execution_results_awaiter.ready():
-                    await asyncio.sleep(1.0)
+                del running_tasks[task]
+                for successor in self.execution_graph.graph.successors(task):
+                    waiting_tasks.add(successor)
 
-                execution_results = execution_results_awaiter.get()
+            # for each task in waiting: if all their ancestors connected via strong links finished, start the task and add to running
+            for task in waiting_tasks:
+                if all(
+                    ancestor in finished_tasks
+                    for ancestor in self.execution_graph.graph.predecessors(task)
+                    if self.execution_graph.graph.edges[ancestor, task].get(
+                        "type", "strong"
+                    )
+                    != "weak"
+                ):
+                    waiting_tasks.remove(task)
+                    tasks_processed = True
 
-            results = tuple(
-                (task_name, cloudpickle.loads(result))
-                for (task_name, result) in execution_results
-            )
+                    # if type - Task -> start and add to running, otherwise just synchronization
+                    if isinstance(task, Task):
+                        task.previous_steps = deepcopy(self.step_results)
+                        serialized_task = cloudpickle.dumps(task)
 
-            for task_name, result in results:
-                self.step_results[task_name].append(result)
+                        queue: Queue[bytes] = Queue()
+                        running_tasks[task] = {
+                            "queue": queue,
+                            "process": Process(
+                                target=self.execute_task, args=(serialized_task, queue)
+                            ),
+                        }
+                        running_tasks[task]["process"].start()
+                    else:
+                        finished_tasks[task] = {"process": None, "queue": None}
+                        self.step_results[str(task)].append(
+                            Success("Synchronization task finished.")
+                        )
+                        for successor in self.execution_graph.graph.successors(task):
+                            waiting_tasks.add(successor)
 
-            if any(not is_successful(result) for _, result in results):
-                resulting_type = Failure
-                if self.pipeline.early_stopping:
-                    break
+            if not running_tasks and waiting_tasks and not tasks_processed:
+                # deadlock?
+                self.logger.error("Possible deadlock detected, exiting.")
+                self.execution_graph_results = Failure(self.step_results)
+                break
 
-        # set flag that pipeline is finished
-        self.logger.info("Pipeline finished, start reporting results.")
-        self.state = PipelineExecutorState.REPORTING
-        self.pipeline_results = resulting_type(self.step_results)
+            await asyncio.sleep(1.0)
+
+        # set flag that the execution is finished
+        self.logger.info("Execution is finished, start reporting results.")
+        self.state = ExecutorState.REPORTING
+        self.execution_graph_results = resulting_type(self.step_results)
 
     def report_results(self) -> None:
         """
         This method reports the results to the communicator.
         """
-        if isinstance(self.pipeline, Pipeline) and not self.pipeline.report_results:
-            self.logger.info("Skipping reporting results due to pipeline setting.")
-            self.state = PipelineExecutorState.FINISHED
+        if (
+            isinstance(self.execution_graph, ExecutionGraph)
+            and not self.execution_graph.report_results
+        ):
+            self.logger.info(
+                "Skipping reporting results due to execution graph setting."
+            )
+            self.state = ExecutorState.FINISHED
             return
 
         with open(self.logfile_name, "rt") as f:
             current_log = f.readlines()
 
         try:
-            results = cloudpickle.dumps([self.pipeline_results, current_log])
+            results = cloudpickle.dumps([self.execution_graph_results, current_log])
         except Exception as e:
             results = cloudpickle.dumps([e, current_log])
         results_data = b64encode(results).decode()
@@ -253,12 +331,15 @@ class PipelineExecutor:
             return
 
         if result.status_code == 200:
-            self.state = PipelineExecutorState.FINISHED
+            self.state = ExecutorState.FINISHED
         else:
             self.logger.warning(
                 f"Failed to report results. Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
             )
 
 
+# for backward compatibility
+PipelineExecutor = Executor
+
 if __name__ == "__main__":
-    PipelineExecutor().__call__()
+    Executor().__call__()
