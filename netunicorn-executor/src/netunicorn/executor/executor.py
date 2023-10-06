@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import os
@@ -8,7 +10,7 @@ from base64 import b64decode, b64encode
 from collections import defaultdict
 from copy import deepcopy
 from multiprocessing import Process, Queue
-from typing import Any, Dict, Optional, Set, Type, Union
+from typing import Any, Dict, Optional, Set, Type, Union, List
 
 import cloudpickle
 import requests as req
@@ -22,11 +24,13 @@ from typing_extensions import TypedDict
 
 from .utils import safe
 
+
 RunningTasksItem = TypedDict(
-    "RunningTasksItem", {"process": Process, "queue": Queue[bytes]}
+    "RunningTasksItem", {"process": Process, "queue": "Queue[bytes]"}
 )
 FinishedTasksItem = TypedDict(
-    "FinishedTasksItem", {"process": Optional[Process], "queue": Optional[Queue[bytes]]}
+    "FinishedTasksItem",
+    {"process": Optional[Process], "queue": Optional["Queue[bytes]"]},
 )
 
 
@@ -158,7 +162,9 @@ class Executor:
                 f"Failed to receive the execution graph. Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
             )
 
-    def execute_task(self, serialized_task: bytes, result_queue: Queue[bytes]) -> None:
+    def execute_task(
+        self, serialized_task: bytes, result_queue: "Queue[bytes]"
+    ) -> None:
         self.std_redirection()
         task = cloudpickle.loads(serialized_task)
         result: Result[Any, Any] = safe(task.run)()
@@ -170,15 +176,16 @@ class Executor:
         sys.stderr = self.print_file
 
     def add_successors_to_waiting_tasks(
-        self, waiting_tasks: Set[Union[Any, Task]], current_task: Union[Any, Task]
+        self, waiting_tasks: List[Union[Any, Task]], current_task: Union[Any, Task]
     ) -> None:
         if not self.execution_graph:
             error = "No execution graph to execute. Incorrect function call."
             self.logger.error(error)
             raise Exception(error)
 
+        edges_to_delete = []
         for successor in self.execution_graph.graph.successors(current_task):
-            waiting_tasks.add(successor)
+            waiting_tasks.append(successor)
             counter = self.execution_graph.graph.edges[current_task, successor].get(
                 "counter", None
             )
@@ -188,8 +195,11 @@ class Executor:
                     "counter"
                 ] = counter
                 if counter <= 0:
-                    self.execution_graph.graph.remove_edge(current_task, successor)
-                    self.logger.info(f"Removed edge {current_task} -> {successor}")
+                    edges_to_delete.append((current_task, successor))
+
+        for edge in edges_to_delete:
+            self.execution_graph.graph.remove_edge(*edge)
+            self.logger.info(f"Removed edge {edge[0]} -> {edge[1]}")
 
     async def execute(self) -> None:
         """
@@ -218,7 +228,7 @@ class Executor:
             Result[ExecutionGraphResult, ExecutionGraphResult]
         ] = Success
 
-        waiting_tasks: Set[Union[Any, Task]] = set("root")
+        waiting_tasks: Set[Union[Any, Task]] = {"root"}
         running_tasks: Dict[Task, RunningTasksItem] = {}
         finished_tasks: Dict[Union[Task, str], FinishedTasksItem] = {}
 
@@ -227,6 +237,8 @@ class Executor:
         while (
             self.execution_graph.early_stopping and not stop_execution
         ) or not self.execution_graph.early_stopping:
+            tasks_to_delete = []
+            tasks_to_add: List[Union[Any, Task]] = []
             tasks_processed = False
             if not waiting_tasks and not running_tasks:
                 break
@@ -263,8 +275,15 @@ class Executor:
                     "queue": running_tasks[task]["queue"],
                 }
 
-                del running_tasks[task]
-                self.add_successors_to_waiting_tasks(waiting_tasks, task)
+                tasks_to_delete.append(task)
+                self.add_successors_to_waiting_tasks(tasks_to_add, task)
+
+            for x in tasks_to_delete:
+                del running_tasks[x]
+            for x in tasks_to_add:
+                waiting_tasks.add(x)
+            tasks_to_delete = []
+            tasks_to_add = []
 
             # for each task in waiting: if all their ancestors connected via strong links finished, start the task and add to running
             for task in waiting_tasks:
@@ -276,7 +295,7 @@ class Executor:
                     )
                     != "weak"
                 ):
-                    waiting_tasks.remove(task)
+                    tasks_to_delete.append(task)
                     tasks_processed = True
 
                     # if type - Task -> start and add to running, otherwise just synchronization
@@ -284,7 +303,7 @@ class Executor:
                         task.previous_steps = deepcopy(self.step_results)
                         serialized_task = cloudpickle.dumps(task)
 
-                        queue: Queue[bytes] = Queue()
+                        queue: "Queue[bytes]" = Queue()
                         running_tasks[task] = {
                             "queue": queue,
                             "process": Process(
@@ -294,10 +313,12 @@ class Executor:
                         running_tasks[task]["process"].start()
                     else:
                         finished_tasks[task] = {"process": None, "queue": None}
-                        self.step_results[str(task)].append(
-                            Success("Synchronization task finished.")
-                        )
-                        self.add_successors_to_waiting_tasks(waiting_tasks, task)
+                        self.add_successors_to_waiting_tasks(tasks_to_add, task)
+
+            for x in tasks_to_delete:
+                waiting_tasks.remove(x)
+            for x in tasks_to_add:
+                waiting_tasks.add(x)
 
             if not running_tasks and waiting_tasks and not tasks_processed:
                 # deadlock?
@@ -305,7 +326,8 @@ class Executor:
                 self.execution_graph_results = Failure(self.step_results)
                 break
 
-            await asyncio.sleep(1.0)
+            if not tasks_processed:
+                await asyncio.sleep(1.0)
 
         # set flag that the execution is finished
         self.logger.info("Execution is finished, start reporting results.")
