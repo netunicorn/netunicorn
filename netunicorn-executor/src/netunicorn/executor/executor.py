@@ -10,7 +10,7 @@ from base64 import b64decode, b64encode
 from collections import defaultdict
 from copy import deepcopy
 from multiprocessing import Process, Queue
-from typing import Any, Dict, Optional, Set, Type, Union, List
+from typing import Any, Dict, List, Optional, Set, Type, Union
 
 import cloudpickle
 import requests as req
@@ -23,7 +23,6 @@ from returns.result import Failure, Result, Success
 from typing_extensions import TypedDict
 
 from .utils import safe
-
 
 RunningTasksItem = TypedDict(
     "RunningTasksItem", {"process": Process, "queue": "Queue[bytes]"}
