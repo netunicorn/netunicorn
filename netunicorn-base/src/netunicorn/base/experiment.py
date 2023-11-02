@@ -258,14 +258,16 @@ class DeploymentExecutionResult:
         result = self.result
         if result:
             text += f"  Result: {type(result[0])}\n"
-            if not is_successful(result[0]):
+            if not isinstance(result[0], Result) or not is_successful(result[0]):
                 text += f"   {result[0]}\n"
             else:
                 for task_id, task_result in result[0].unwrap().items():
                     text += f"    {task_id}: {task_result}\n"
-            text += f"  Logs:\n"
-            for line in result[1]:
-                text += f"    {line}"
+
+            if result[1]:
+                text += f"  Logs:\n"
+                for line in result[1]:
+                    text += f"    {line}"
         if self.error:
             text += f"  Error: {self.error}\n"
         text += "\n"
