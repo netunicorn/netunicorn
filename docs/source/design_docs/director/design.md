@@ -9,7 +9,7 @@ Core services are separated to three main service groups:
 - **Deployment Services.** These services support experiment preparation and deployment process, such as pipeline preparation, environment compilation, environment distribution and start.
 - **Runtime Services.** These services support running Experiments, such as providing event processing, results collection, and Experiment status monitoring.
 
-```mermaid
+```{mermaid}
 flowchart LR
 	user((User))
 	subgraph "Director Infrastructure"
