@@ -14,6 +14,7 @@ from fastapi import (
     Request,
     Response,
 )
+from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.types import FlagValues
@@ -23,6 +24,7 @@ from pydantic import BaseModel
 from returns.pipeline import is_successful
 from returns.result import Result
 
+from .admin import admin_page
 from .engine import (
     cancel_executors,
     cancel_experiment,
@@ -269,6 +271,14 @@ async def set_experiment_flag_handler(
 ) -> Response:
     result = await set_experiment_flag(username, experiment_id, flag_name, values)
     return result_to_response(result)
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def get_admin_page(
+    request: Request,
+    username: str = Depends(check_credentials),
+) -> Response:
+    return await admin_page(request, username)
 
 
 if __name__ == "__main__":

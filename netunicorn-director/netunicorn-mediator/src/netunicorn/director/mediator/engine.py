@@ -52,6 +52,10 @@ async def close_db_connection() -> None:
     await db_conn_pool.close()
 
 
+async def get_db_connection_pool() -> asyncpg.Pool:
+    return db_conn_pool
+
+
 async def check_services_availability() -> None:
     await db_conn_pool.fetchval("SELECT 1")
 
@@ -171,13 +175,23 @@ async def delete_experiment(experiment_name: str, username: str) -> Result[None,
     return Success(None)
 
 
+async def verify_sudo(username: str) -> bool:
+    """
+    Return if the current user is sudo user
+    """
+
+    return bool(
+        await db_conn_pool.fetchval(
+            "SELECT sudo FROM authentication WHERE username = $1", username
+        )
+    )
+
+
 async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
     """
     checking additional_arguments in runtime_context of environment definitions and whether user us allowed to use them
     """
-    sudo_user = await db_conn_pool.fetchval(
-        "SELECT sudo FROM authentication WHERE username = $1", username
-    )
+    sudo_user = await verify_sudo(username)
     if not sudo_user:
         for executor in experiment.deployment_map:
             if isinstance(executor.environment_definition, DockerImage) or isinstance(
