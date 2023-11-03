@@ -1,7 +1,7 @@
 # netUnicorn
 
 netUnicorn is a data-collection platform that simplifies expressing and realizing diverse data-collection intents over disparate network virtual (e.g., [Mininet](https://mininet.org/)) and physical infrastructures (e.g., [PINOT](https://pinot.cs.ucsb.edu), [SaltStack](https://saltproject.io/), [Amazon AWS](https://aws.amazon.com/fargate/), [MS Azure Container Instances](https://azure.microsoft.com/en-us/products/container-instances), etc.).
-- see [connectors](/connectors) for more details
+- see [connectors](/administrator_docs/connectors) for more details
 
 ## Motivation
 The remarkable success of the use of machine learning-based solutions for networking problems has been impeded by the developed ML models’ inability to maintain efficacy when used in different network environments exhibiting different network behaviors. This issue is commonly referred to as the generalizability problem of ML models.

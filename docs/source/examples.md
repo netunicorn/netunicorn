@@ -5,33 +5,7 @@ Here we will present several examples of using netunicorn platform for network-o
 ## Deployment of netunicorn
 For all these experiments, we assume that you have access to netunicorn deployment operating within some infrastructure. If yes, skip this section and proceed to the next one.
 
-If this is not the case and you want to explore these experiments on your own, we suggest to easily deploy your own test copy of netunicorn based on Docker compose file.
-
-### Prerequisites
-- Linux-based OS (as Docker containers are Linux-based)
-- Installed `wget`
-- Installed Docker and Docker Compose plugin. Please, refer to [Docker installation guide](https://docs.docker.com/engine/install/) and [Docker Compose installation guide](https://docs.docker.com/compose/install/).
-    - If you use rootless installation of Docker, please modify `/var/run/docker.sock` links on the left side of volume sections in docker-compose.yml file as needed (usually, to `/run/user/1000/docker.sock` if your user id is 1000)
-
-### Installation
-
-1. Create a separate folder for local netunicorn configuration files and `cd` into this folder.
-2. Download and run installation script:
-   ```bash
-   wget https://raw.githubusercontent.com/netunicorn/netunicorn/main/netunicorn-director/scripts/install.sh
-   chmod +x install.sh
-   ./install.sh
-   ```
-   - This script will create needed directories and put configuration files into them.
-   - **Optional:** We encourage you to explore the file content before running to verify the harmless nature of the script.
-3. Run docker compose:
-   ```bash
-   docker compose up
-   ```
-   - This command will download and run all needed containers.
-   - **Optional:** You can explore the `docker-compose.yml` file content before running and make changes as needed.
-
-Now you should have running instance of `netunicorn` platform on your machine.
+If this is not the case and you want to explore these experiments on your own, we suggest to easily deploy your own test copy of netunicorn based on Docker compose file. For further details, see [Deployment](/administrator_docs/deployment) guide, section "Simplified deployment".
 
 ## Preparation
 You should have the following information to interact with netunicorn platform:

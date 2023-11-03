@@ -1,4 +1,4 @@
-# run me with a context of main netunicorn directory!
+# run me with a context of the netunicorn-director directory!
 version: "3.9"
 
 x-common-variables: &common-variables
