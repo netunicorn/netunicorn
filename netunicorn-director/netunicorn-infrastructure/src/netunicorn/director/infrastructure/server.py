@@ -25,7 +25,7 @@ from .kernel import (
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
     await initialize(config)
     yield
     await shutdown()

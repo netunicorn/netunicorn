@@ -60,7 +60,7 @@ security = HTTPBasic()
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
     await open_db_connection()
     logger.info("Mediator started, connection to DB established")
     yield

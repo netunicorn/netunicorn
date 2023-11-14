@@ -19,7 +19,7 @@ logger = get_logger("netunicorn.director.authentication")
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
     global db_conn_pool
     db_conn_pool = await asyncpg.create_pool(
         user=DATABASE_USER,
