@@ -1,4 +1,5 @@
 import json
+from contextlib import asynccontextmanager
 from typing import Annotated, Any, Optional
 
 import uvicorn
@@ -22,7 +23,15 @@ from .kernel import (
     stop_executors,
 )
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await initialize(config)
+    yield
+    await shutdown()
+
+
+app = FastAPI(lifespan=lifespan)
 config: dict[str, Any]
 
 
@@ -46,16 +55,6 @@ async def health_handler() -> Response:
         content=json.dumps(result, cls=UnicornEncoder),
         media_type="application/json",
     )
-
-
-@app.on_event("startup")
-async def startup_handler() -> None:
-    await initialize(config)
-
-
-@app.on_event("shutdown")
-async def shutdown_handler() -> None:
-    await shutdown()
 
 
 @app.get("/nodes/{username}", status_code=200)
@@ -161,6 +160,14 @@ async def stop_executors_handler(
 def main(filepath: str) -> None:
     global config
     config = parse_config(filepath)
+
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
+    log_config["formatters"]["default"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
     uvicorn.run(
         app,
         host=config["netunicorn.infrastructure.host"],

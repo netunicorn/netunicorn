@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from typing import Optional
 
 import asyncpg
@@ -12,7 +13,6 @@ from netunicorn.director.base.resources import (
     DATABASE_USER,
     get_logger,
 )
-from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
 logger = get_logger("netunicorn.director.authentication")
