@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from contextlib import asynccontextmanager
 from typing import Annotated, Any, List, Optional, Union
 
 import uvicorn
@@ -55,16 +56,26 @@ class CancellationRequest(BaseModel):
 logger = get_logger("netunicorn.director.mediator")
 
 proxy_path = os.environ.get("PROXY_PATH", "").removesuffix("/")
-app = FastAPI(
-    title="netunicorn API",
-    root_path=proxy_path,
-)
 security = HTTPBasic()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
+    await open_db_connection()
+    logger.info("Mediator started, connection to DB established")
+    yield
+    await close_db_connection()
+    logger.info("Mediator stopped")
+
+
+app = FastAPI(title="netunicorn API", root_path=proxy_path, lifespan=lifespan)
 
 
 def result_to_response(result: Result[Any, Any]) -> Response:
     status_code = 200 if is_successful(result) else 400
     content = result.unwrap() if is_successful(result) else result.failure()
+    if status_code == 400:
+        logger.warning(f"Returning error response: {content}")
     return Response(
         content=json.dumps(content, cls=UnicornEncoder),
         media_type="application/json",
@@ -109,18 +120,6 @@ async def unicorn_exception_handler(_: Request, exc: Exception) -> Response:
 async def health_check() -> str:
     await check_services_availability()
     return "OK"
-
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    await open_db_connection()
-    logger.info("Mediator started, connection to DB established")
-
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    await close_db_connection()
-    logger.info("Mediator stopped")
 
 
 @app.get("/api/v1/nodes", status_code=200)
@@ -285,4 +284,12 @@ if __name__ == "__main__":
     IP = os.environ.get("NETUNICORN_MEDIATOR_IP", "0.0.0.0")
     PORT = int(os.environ.get("NETUNICORN_MEDIATOR_PORT", "26511"))
     logger.info(f"Starting mediator on {IP}:{PORT}")
+
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
+    log_config["formatters"]["default"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
     uvicorn.run(app, host=IP, port=PORT)

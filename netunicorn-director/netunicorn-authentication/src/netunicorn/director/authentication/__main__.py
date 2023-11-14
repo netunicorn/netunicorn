@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from typing import Optional
 
 import asyncpg
@@ -16,7 +17,21 @@ from pydantic import BaseModel
 
 logger = get_logger("netunicorn.director.authentication")
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
+    global db_conn_pool
+    db_conn_pool = await asyncpg.create_pool(
+        user=DATABASE_USER,
+        password=DATABASE_PASSWORD,
+        database=DATABASE_DB,
+        host=DATABASE_ENDPOINT,
+    )
+    yield
+    await db_conn_pool.close()
+
+
+app = FastAPI(lifespan=lifespan)
 db_conn_pool: asyncpg.Pool
 
 
@@ -29,22 +44,6 @@ class AuthenticationRequest(BaseModel):
 async def health_check() -> str:
     await db_conn_pool.fetchval("SELECT 1")
     return "OK"
-
-
-@app.on_event("startup")
-async def startup() -> None:
-    global db_conn_pool
-    db_conn_pool = await asyncpg.create_pool(
-        user=DATABASE_USER,
-        password=DATABASE_PASSWORD,
-        database=DATABASE_DB,
-        host=DATABASE_ENDPOINT,
-    )
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    await db_conn_pool.close()
 
 
 @app.post("/auth", status_code=200)
@@ -66,4 +65,13 @@ if __name__ == "__main__":
     ip = os.environ.get("NETUNICORN_AUTHENTICATION_IP", "0.0.0.0")
     port = int(os.environ.get("NETUNICORN_AUTHENTICATION_PORT", "26516"))
     logger.info(f"Starting gateway on {ip}:{port}")
+
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
+    log_config["formatters"]["default"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
+
     uvicorn.run(app, host=ip, port=port)

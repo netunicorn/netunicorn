@@ -27,7 +27,7 @@ from .tasks import cleanup_watchdog_task
 logger: Logger
 db_connection_pool: asyncpg.pool.Pool
 connectors: dict[str, NetunicornConnectorProtocol] = {}
-tasks: dict[str, asyncio.Task[NoReturn]] = {}  # type: ignore
+tasks: dict[str, asyncio.Task[NoReturn]] = {}
 
 
 async def initialize_connector(
