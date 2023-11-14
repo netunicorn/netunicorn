@@ -65,6 +65,8 @@ security = HTTPBasic()
 def result_to_response(result: Result[Any, Any]) -> Response:
     status_code = 200 if is_successful(result) else 400
     content = result.unwrap() if is_successful(result) else result.failure()
+    if status_code == 400:
+        logger.warning(f"Returning error response: {content}")
     return Response(
         content=json.dumps(content, cls=UnicornEncoder),
         media_type="application/json",
@@ -285,4 +287,12 @@ if __name__ == "__main__":
     IP = os.environ.get("NETUNICORN_MEDIATOR_IP", "0.0.0.0")
     PORT = int(os.environ.get("NETUNICORN_MEDIATOR_PORT", "26511"))
     logger.info(f"Starting mediator on {IP}:{PORT}")
+
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
+    log_config["formatters"]["default"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
     uvicorn.run(app, host=IP, port=PORT)

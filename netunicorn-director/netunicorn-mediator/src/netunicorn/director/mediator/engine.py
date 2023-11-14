@@ -118,6 +118,7 @@ async def __filter_locked_nodes(
 async def get_nodes(
     username: str, authentication_context: Optional[dict[str, dict[str, str]]] = None
 ) -> Result[Nodes, str]:
+    logger.info(f"Getting nodes for user {username}")
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/nodes/{username}"
     result = req.get(
         url,
@@ -138,6 +139,7 @@ async def get_nodes(
 async def get_experiments(
     username: str,
 ) -> Result[dict[str, ExperimentExecutionInformation], str]:
+    logger.info(f"Enumerating experiments for user {username}")
     experiment_names = await db_conn_pool.fetch(
         "SELECT experiment_name FROM experiments WHERE username = $1",
         username,
@@ -155,6 +157,7 @@ async def get_experiments(
 
 
 async def delete_experiment(experiment_name: str, username: str) -> Result[None, str]:
+    logger.info(f"Deleting experiment {experiment_name} for user {username}")
     result = await get_experiment_id_and_status(experiment_name, username)
     if is_successful(result):
         experiment_id, status = result.unwrap()
@@ -162,7 +165,9 @@ async def delete_experiment(experiment_name: str, username: str) -> Result[None,
         return Failure(result.failure())
 
     if status in {ExperimentStatus.RUNNING, ExperimentStatus.PREPARING}:
-        return Failure(f"Experiment is in status {status}, cannot delete it")
+        return Failure(
+            f"Experiment {experiment_name} for user {username} is in status {status}, cannot delete it"
+        )
 
     # actually just rename the user to save experiment in the history
     await db_conn_pool.execute(
@@ -274,6 +279,8 @@ async def prepare_experiment_task(
     username: str,
     netunicorn_authentication_context: Optional[dict[str, dict[str, str]]] = None,
 ) -> None:
+    logger.info(f"Preparing experiment {experiment_name} for user {username}")
+
     async def prepare_deployment(
         _username: str, _deployment: Deployment, _envs: dict[int, str]
     ) -> None:
@@ -555,6 +562,7 @@ async def start_experiment(
     execution_context: Optional[Dict[str, Dict[str, str]]] = None,
     netunicorn_authentication_context: Optional[Dict[str, str]] = None,
 ) -> Result[str, str]:
+    logger.info(f"Starting experiment {experiment_name} for user {username}")
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
         return Failure(result.failure())
@@ -617,6 +625,7 @@ async def cancel_experiment(
     cancellation_context: Optional[dict[str, dict[str, str]]] = None,
     netunicorn_authentication_context: Optional[Dict[str, str]] = None,
 ) -> Result[str, str]:
+    logger.info(f"Cancelling experiment {experiment_name} for user {username}")
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
         return Failure(result.failure())
@@ -640,6 +649,8 @@ async def cancel_executors(
     cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
     netunicorn_authentication_context: Optional[Dict[str, str]] = None,
 ) -> Result[str, str]:
+    logger.info(f"Cancelling executors {executors} for user {username}")
+
     # check data format
     for executor in executors:
         if not isinstance(executor, str):
@@ -723,6 +734,9 @@ async def get_experiment_flag(
 async def set_experiment_flag(
     username: str, experiment_id: str, key: str, values: FlagValues
 ) -> Result[None, str]:
+    logger.info(
+        f"Setting flag {key} for experiment {experiment_id} for user {username}"
+    )
     if values.text_value is None and values.int_value is None:
         return Failure("Flag values cannot be both None")
 
