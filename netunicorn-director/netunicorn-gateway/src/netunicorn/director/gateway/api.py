@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 from base64 import b64decode, b64encode
+from contextlib import asynccontextmanager
 from typing import Optional
 
 import asyncpg
@@ -25,18 +26,9 @@ GATEWAY_IP = os.environ.get("NETUNICORN_GATEWAY_IP", "0.0.0.0")
 GATEWAY_PORT = int(os.environ.get("NETUNICORN_GATEWAY_PORT", "26512"))
 logger.info(f"Starting gateway on {GATEWAY_IP}:{GATEWAY_PORT}")
 
-app = FastAPI()
-db_conn_pool: asyncpg.Pool
 
-
-@app.get("/health")
-async def health_check() -> str:
-    await db_conn_pool.fetchval("SELECT 1")
-    return "OK"
-
-
-@app.on_event("startup")
-async def startup() -> None:
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
     global db_conn_pool
     db_conn_pool = await asyncpg.create_pool(
         user=DATABASE_USER,
@@ -46,12 +38,19 @@ async def startup() -> None:
     )
     await db_conn_pool.fetchval("SELECT 1")
     logger.info("Gateway started, connection to DB established")
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
+    yield
     await db_conn_pool.close()
     logger.info("Gateway stopped")
+
+
+app = FastAPI(lifespan=lifespan)
+db_conn_pool: asyncpg.Pool
+
+
+@app.get("/health")
+async def health_check() -> str:
+    await db_conn_pool.fetchval("SELECT 1")
+    return "OK"
 
 
 @app.get("/api/v1/executor/pipeline", status_code=200)
