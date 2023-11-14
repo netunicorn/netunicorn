@@ -23,6 +23,7 @@ from netunicorn.director.base.resources import get_logger
 from pydantic import BaseModel
 from returns.pipeline import is_successful
 from returns.result import Result
+from contextlib import asynccontextmanager
 
 from .admin import admin_page
 from .engine import (
@@ -55,11 +56,19 @@ class CancellationRequest(BaseModel):
 logger = get_logger("netunicorn.director.mediator")
 
 proxy_path = os.environ.get("PROXY_PATH", "").removesuffix("/")
-app = FastAPI(
-    title="netunicorn API",
-    root_path=proxy_path,
-)
 security = HTTPBasic()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await open_db_connection()
+    logger.info("Mediator started, connection to DB established")
+    yield
+    await close_db_connection()
+    logger.info("Mediator stopped")
+
+
+app = FastAPI(title="netunicorn API", root_path=proxy_path, lifespan=lifespan)
 
 
 def result_to_response(result: Result[Any, Any]) -> Response:
@@ -111,18 +120,6 @@ async def unicorn_exception_handler(_: Request, exc: Exception) -> Response:
 async def health_check() -> str:
     await check_services_availability()
     return "OK"
-
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    await open_db_connection()
-    logger.info("Mediator started, connection to DB established")
-
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    await close_db_connection()
-    logger.info("Mediator stopped")
 
 
 @app.get("/api/v1/nodes", status_code=200)
