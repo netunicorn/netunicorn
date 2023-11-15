@@ -6,6 +6,23 @@ In this section we describe how to deploy netUnicorn instance. We provide two de
 You can join [netUnicorn Slack workspace](https://join.slack.com/t/netunicorn/shared_invite/zt-240tsalar-l1Wc3DERTlXJ6wE~DXmm9A) for support and discussions.
 
 
+## AWS Deployment
+
+If you want to deploy test instance of netUnicorn on AWS, you can use "netunicorn-v0.3" AMI.
+
+Deployment steps:
+1. Create AWS EC2 instance:
+   1. Choose "netunicorn-v0.3" community AMI.
+   2. Choose "Allow HTTP traffic" in the security group.
+2. Use the next credentials to access the netUnicorn instance:
+   - Username: `test`
+   - Password: `test`
+   - URL: `http://<public IP or DNS name of the instance>`
+3. You also can access the instance PostgreSQL database over the port 5432 with the next credentials:
+   - Username: `development`
+   - Password: `development`
+   - Database: `development`
+
 ## Simplified deployment
 
 This section describes the simplified deployment of netUnicorn instance for testing purposes. It could be done on your laptop

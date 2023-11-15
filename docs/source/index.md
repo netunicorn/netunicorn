@@ -28,6 +28,8 @@ To use the platform, administrators of the infrastructure should deploy it and p
 -  username: your username
 -  password: your password
 
+P.S. If you want to deploy the platform yourself, please, look at the [deployment](/administrator_docs/deployment) section.
+
 ### Installation
 To use the platform, install the next packages:
 ```bash
