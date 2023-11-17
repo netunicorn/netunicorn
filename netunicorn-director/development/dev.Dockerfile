@@ -74,7 +74,8 @@ RUN pip install --no-cache-dir \
     netunicorn-connector-ssh \
     netunicorn-connector-kubernetes \
     netunicorn-connector-aws \
-    netunicorn-connector-docker
+    netunicorn-connector-docker \
+    netunicorn-connector-containernet
 
 WORKDIR /app
 
