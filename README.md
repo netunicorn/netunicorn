@@ -17,7 +17,7 @@ This platform is close to the Apache Airflow or CI/CD platforms, but instead opt
 -  work under the conditions of unstable network
 -  reproducibility and easy sharing of tasks and pipelines
 
-Full documentation is available at [docs](docs) and in the platform whitepaper (to be published).
+Full documentation is available at [docs](docs) and on the [platform website](https://netunicorn.github.io/netunicorn).
 
 ## Platform user documentation
 Users are able to express arbitrary tasks and pipelines and run them on the already deployed platform.
@@ -41,19 +41,23 @@ These credentials would be used to work with the platform via RemoteClient.
 Please, refer to [examples](examples) to see how to use the platform.
 
 ## Platform administrator documentation
-Administrators of the platform maintain the particular netunicorn installation and underlying infrastructure.  
+Administrators of the platform maintain the particular netUnicorn installation and underlying infrastructure.  
 Infrastructure is a set of nodes (like virtual machines, dynamically created containers, or physical nodes) that will be
 used to run tasks and pipelines created by users.
+
+See the full Administrator Documentation on [our website](https://netunicorn.github.io/netunicorn/).
 
 ### Prerequisites
 The platform assumes that the infrastructure is already deployed and configured and **centrally** managed by one of
 the existing management tools (like Ansible, SaltStack, etc.). For this tool, a connector should be implemented.
-Currently, the connectors for the following infrastructures are available:
--  SaltStack-managed infrastructure
--  Azure Container Instances (in Azure Cloud)
+
+See the list of the available connectors on the [platform website](https://netunicorn.github.io/netunicorn/administrator_docs/connectors.html)
 
 Also, the next services are required for the platform:
--  PostgreSQL database for states and logs
+- PostgreSQL database for states and logs
+- Docker registry
 
 ### Deployment
-To be updated.
+
+See the Simplified and Production Deployment documentation on [our website](https://netunicorn.github.io/netunicorn/administrator_docs/deployment.html)
+

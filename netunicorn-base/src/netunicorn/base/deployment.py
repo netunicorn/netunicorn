@@ -114,7 +114,7 @@ class Deployment:
         ExecutionGraph.is_execution_graph_valid(pipeline)
 
     def __str__(self) -> str:
-        return f"Deployment: Node={self.node.name}, executor_id={self.executor_id}, prepared={self.prepared}"
+        return f"Deployment: Node={self.node.name}, executor_id={self.executor_id}, prepared={self.prepared}, error={self.error}"
 
     def __repr__(self) -> str:
         return self.__str__()

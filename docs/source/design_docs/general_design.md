@@ -23,7 +23,7 @@ The [user story](userstory.md) describes user's view on the system. From the use
 	- netunicorn does not present its own deployment system or infrastructure control, and fully relies on existing system via a specific connector
 
 ## Coarse architecture of the system
-```mermaid
+```{mermaid}
 flowchart LR
 	subgraph User
 		fr[System Frontend]
