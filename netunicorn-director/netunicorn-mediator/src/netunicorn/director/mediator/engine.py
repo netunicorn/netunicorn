@@ -150,6 +150,10 @@ async def __filter_access_tags(
     async def __filter_nodes_by_access_tags(
         _nodes: NodesType, _user_tags: set[str]
     ) -> NodesType:
+        if not _user_tags:
+            # empty _user_tags means that all nodes are available
+            return _nodes
+
         for i in reversed(range(len(_nodes))):
             if isinstance(_nodes[i], CountableNodePool) or isinstance(
                 _nodes[i], UncountableNodePool
