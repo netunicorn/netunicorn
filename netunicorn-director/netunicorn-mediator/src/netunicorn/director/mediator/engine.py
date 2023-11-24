@@ -185,11 +185,15 @@ async def verify_sudo(username: str) -> bool:
     Return if the current user is sudo user
     """
 
-    return bool(
-        await db_conn_pool.fetchval(
-            "SELECT sudo FROM authentication WHERE username = $1", username
-        )
-    )
+    url = f"{NETUNICORN_AUTH_ENDPOINT}/verify_sudo?username={username}"
+    try:
+        result = req.get(url, timeout=30)
+        if not result.status_code == 200:
+            raise Exception(result.content)
+        return result.content.decode("utf-8") == "true"
+    except Exception as e:
+        logger.exception(e)
+        return False
 
 
 async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:

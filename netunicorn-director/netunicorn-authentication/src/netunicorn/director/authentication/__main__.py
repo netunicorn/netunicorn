@@ -61,6 +61,13 @@ async def auth(data: AuthenticationRequest) -> None:
     )
 
 
+@app.get("/verify_sudo", status_code=200)
+async def verify_sudo(username: str) -> bool:
+    sql_query = "SELECT sudo FROM authentication WHERE username = $1"
+    result: Optional[bool] = bool(await db_conn_pool.fetchval(sql_query, username))
+    return result
+
+
 if __name__ == "__main__":
     ip = os.environ.get("NETUNICORN_AUTHENTICATION_IP", "0.0.0.0")
     port = int(os.environ.get("NETUNICORN_AUTHENTICATION_PORT", "26516"))
