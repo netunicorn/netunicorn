@@ -2,7 +2,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypeVar, cast
 from uuid import uuid4
 
 import asyncpg.connection
@@ -14,7 +14,7 @@ from netunicorn.base.experiment import (
     ExperimentExecutionInformation,
     ExperimentStatus,
 )
-from netunicorn.base.nodes import CountableNodePool, Node, Nodes
+from netunicorn.base.nodes import CountableNodePool, Node, Nodes, UncountableNodePool
 from netunicorn.base.types import FlagValues
 from netunicorn.director.base.resources import (
     DATABASE_DB,
@@ -35,6 +35,7 @@ from .resources import (
 )
 
 db_conn_pool: asyncpg.Pool
+NodesType = TypeVar("NodesType", CountableNodePool, UncountableNodePool)
 
 
 async def open_db_connection() -> None:
@@ -147,9 +148,43 @@ async def __filter_access_tags(
     logger.debug(f"Retrieved access tags for user {username}: {user_tags}")
 
     async def __filter_nodes_by_access_tags(
-        _nodes: Nodes, _user_tags: set[str]
-    ) -> Nodes:
-        # TODO: finish
+        _nodes: NodesType, _user_tags: set[str]
+    ) -> NodesType:
+        for i in reversed(range(len(_nodes))):
+            if isinstance(_nodes[i], CountableNodePool) or isinstance(
+                _nodes[i], UncountableNodePool
+            ):
+                # filter nodes recursively
+                new_pool = cast(NodesType, _nodes[i])
+                new_pool = await __filter_nodes_by_access_tags(new_pool, _user_tags)
+
+                # remove empty pools
+                if len(new_pool) == 0:
+                    _nodes.pop(i)
+                else:
+                    _nodes[i] = new_pool
+            elif isinstance(_nodes[i], Node):
+                try:
+                    node_tags = (
+                        _nodes[i].properties.get("netunicorn-access-tags", {}) or {}
+                    )
+                    node_tags = set(str(x) for x in node_tags)
+                except Exception as e:
+                    logger.exception(e)
+                    logger.error(
+                        f"Failed to parse access tags for node {_nodes[i].name}. Skipping this node."
+                    )
+                    _nodes.pop(i)
+                    continue
+                if not node_tags:
+                    # empty tags means that node is available for all users
+                    continue
+                if not node_tags.intersection(_user_tags):
+                    # otherwise at least one tag should intersect
+                    _nodes.pop(i)
+            else:
+                continue
+
         return _nodes
 
     return await __filter_nodes_by_access_tags(nodes, user_tags)  # type: ignore
