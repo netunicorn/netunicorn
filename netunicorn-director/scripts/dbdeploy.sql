@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS Executors (
     executor_id TEXT NOT NULL,
     node_name TEXT NOT NULL,
     connector TEXT NOT NULL,
-    execution_graphz BYTEA,
+    execution_graph BYTEA,
     result BYTEA,
     keepalive TIMESTAMP,
     error TEXT,
