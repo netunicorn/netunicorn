@@ -129,6 +129,9 @@ async def __filter_access_tags(
         result = req.get(user_tags_url, timeout=30)
         if result.status_code == 200:
             user_tags = result.json()["accesstags"]
+            if user_tags is None:
+                user_tags = []
+            user_tags = set(str(x) for x in user_tags)
         else:
             logger.error(
                 f"Failed to get access tags for user {username}: {result.content}. Returning empty list of nodes."
@@ -141,7 +144,6 @@ async def __filter_access_tags(
         )
         return CountableNodePool([])
 
-    user_tags = set(user_tags)
     logger.debug(f"Retrieved access tags for user {username}: {user_tags}")
 
     async def __filter_nodes_by_access_tags(
