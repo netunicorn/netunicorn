@@ -128,7 +128,12 @@ class NodesRepresentation(TypedDict):
 
     node_pool_data: List[Union[NodeRepresentation, NodesRepresentation]]
     """
-    Node pool data.
+    Node pool data (nodes)
+    """
+
+    node_pool_metadata: Optional[Any]
+    """
+    Optional additional information for the pool instantiation
     """
 
 
