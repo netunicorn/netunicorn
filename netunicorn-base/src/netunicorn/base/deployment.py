@@ -1,19 +1,20 @@
 """
-Single deployment of pipeline on node.
+Single deployment of an execution graph on a node.
 """
 from __future__ import annotations
 
 from base64 import b64decode
 from copy import deepcopy
-from typing import List, Optional, cast
+from typing import Optional
 
 import netunicorn.base.environment_definitions
+import networkx as nx
 
+from .execution_graph import ExecutionGraph
 from .nodes import Node
-from .pipeline import Pipeline
 from .task import Task, TaskDispatcher
 from .types import DeploymentRepresentation
-from .utils import SerializedPipelineType
+from .utils import SerializedExecutionGraphType
 
 try:
     import cloudpickle  # it's needed only on client side, but this module is also imported on engine side
@@ -26,10 +27,10 @@ except ImportError:
 
 class Deployment:
     """
-    Single deployment of pipeline on node.
+    Single deployment of an execution graph on a node.
 
-    :param node: Node to deploy pipeline on
-    :param pipeline: Pipeline to deploy
+    :param node: Node to deploy execution graph on
+    :param pipeline: pipeline (execution graph) to deploy
     :param keep_alive_timeout_minutes: time to wait for executor update before timeout
     :param cleanup: whether to remove artifacts (e.g., Docker image and containers) after execution
     """
@@ -37,13 +38,13 @@ class Deployment:
     def __init__(
         self,
         node: Node,
-        pipeline: Pipeline,
+        pipeline: ExecutionGraph,
         keep_alive_timeout_minutes: int = 10,
         cleanup: bool = True,
     ):
         self.node: Node = node
         """
-        Node to deploy pipeline on
+        Node to deploy execution graph on
         """
 
         self.prepared: bool = False
@@ -61,9 +62,9 @@ class Deployment:
         if deployment failed, this field contains error
         """
 
-        self.pipeline: SerializedPipelineType = b""
+        self.execution_graph: SerializedExecutionGraphType = b""
         """
-        Serialized Pipeline to be deployed
+        Serialized ExecutionGraph to be deployed
         """
 
         self.environment_definition: netunicorn.base.environment_definitions.EnvironmentDefinition = deepcopy(
@@ -85,25 +86,32 @@ class Deployment:
 
         self._validate_deployment(node, pipeline)
 
-        pipeline = deepcopy(pipeline)
+        execution_graph = deepcopy(pipeline)
 
-        for i, element in enumerate(pipeline.tasks):
-            pipeline.tasks[i] = [
-                x.dispatch(node) if isinstance(x, TaskDispatcher) else x
-                for x in element
-            ]
-            tasks_list: List[Task] = cast(List[Task], pipeline.tasks[i])
-            for x in tasks_list:
-                self.environment_definition.commands.extend(x.requirements)
+        # dispatch tasks if needed
+        task_dispatchers = {
+            x: x.dispatch(node)
+            for x in execution_graph.graph.nodes
+            if isinstance(x, TaskDispatcher)
+        }
+        execution_graph.graph = nx.relabel_nodes(
+            execution_graph.graph, task_dispatchers
+        )
 
-        self.pipeline = cloudpickle.dumps(pipeline)
+        # combine commands into environment definition
+        for task in (x for x in execution_graph.graph.nodes if isinstance(x, Task)):
+            self.environment_definition.commands.extend(task.requirements)
+
+        self.execution_graph = cloudpickle.dumps(execution_graph)
 
     @staticmethod
-    def _validate_deployment(node: Node, pipeline: Pipeline) -> None:
+    def _validate_deployment(node: Node, pipeline: ExecutionGraph) -> None:
         if type(pipeline.environment_definition) not in node.available_environments:
             raise ValueError(
                 f"Node {node.name} does not support environment {type(pipeline.environment_definition).__name__}"
             )
+
+        ExecutionGraph.is_execution_graph_valid(pipeline)
 
     def __str__(self) -> str:
         return f"Deployment: Node={self.node.name}, executor_id={self.executor_id}, prepared={self.prepared}, error={self.error}"
@@ -117,7 +125,7 @@ class Deployment:
             "prepared": self.prepared,
             "executor_id": self.executor_id,
             "error": str(self.error) if self.error else None,
-            "pipeline": self.pipeline,
+            "execution_graph": self.execution_graph,
             "keep_alive_timeout_minutes": self.keep_alive_timeout_minutes,
             "cleanup": self.cleanup,
             "environment_definition": self.environment_definition.__json__(),
@@ -138,7 +146,7 @@ class Deployment:
         instance.prepared = data["prepared"]
         instance.executor_id = data["executor_id"]
         instance.error = Exception(data["error"]) if data["error"] else None
-        instance.pipeline = b64decode(data["pipeline"])
+        instance.execution_graph = b64decode(data["execution_graph"])
         instance.keep_alive_timeout_minutes = data["keep_alive_timeout_minutes"]
         instance.cleanup = data.get("cleanup", True)
         instance.environment_definition = getattr(

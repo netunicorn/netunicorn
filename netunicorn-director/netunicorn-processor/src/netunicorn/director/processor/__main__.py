@@ -81,7 +81,7 @@ async def collect_executors_results(experiment_id: str, experiment: Experiment) 
         execution_results.append(
             DeploymentExecutionResult(
                 node=deployment.node,
-                serialized_pipeline=deployment.pipeline,
+                serialized_execution_graph=deployment.execution_graph,
                 result=executor_result,
                 error=error,
             )

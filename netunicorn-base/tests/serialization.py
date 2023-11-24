@@ -59,7 +59,7 @@ class TestAllJSONSerialization(unittest.TestCase):
             "prepared": False,
             "executor_id": "",
             "error": "test",
-            "pipeline": b64encode(deployment.pipeline).decode("utf-8"),
+            "execution_graph": b64encode(deployment.execution_graph).decode("utf-8"),
             "keep_alive_timeout_minutes": 10,
             "cleanup": True,
             "environment_definition": {
@@ -84,7 +84,9 @@ class TestAllJSONSerialization(unittest.TestCase):
         self.assertEqual(deployment.prepared, deserialized_deployment.prepared)
         self.assertEqual(deployment.executor_id, deserialized_deployment.executor_id)
         self.assertEqual(str(deployment.error), str(deserialized_deployment.error))
-        self.assertEqual(deployment.pipeline, deserialized_deployment.pipeline)
+        self.assertEqual(
+            deployment.execution_graph, deserialized_deployment.execution_graph
+        )
         self.assertEqual(
             deployment.environment_definition,
             deserialized_deployment.environment_definition,

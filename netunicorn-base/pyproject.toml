@@ -1,6 +1,6 @@
 [project]
 name = "netunicorn-base"
-version = "0.3.8"
+version = "0.4.0"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
@@ -20,6 +20,7 @@ dependencies = [
     "returns",
     "typing-extensions",
     "pydantic >= 2.0.0",
+    "networkx",
 ]
 
 [tool.setuptools.packages.find]
