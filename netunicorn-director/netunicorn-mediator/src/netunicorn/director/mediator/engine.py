@@ -115,6 +115,44 @@ async def __filter_locked_nodes(
     return nodes
 
 
+async def __filter_access_tags(
+    username: str, nodes: CountableNodePool
+) -> CountableNodePool:
+    """
+    Extracts "netunicorn-access-tags" from nodes and filters them by user's access tags if they are present.
+    Logic: if user has no access tags, then all nodes are available. If user has access tags, then only nodes
+    with matching tags are available.
+    """
+
+    user_tags_url = f"{NETUNICORN_AUTH_ENDPOINT}/accesstags?username={username}"
+    try:
+        result = req.get(user_tags_url, timeout=30)
+        if result.status_code == 200:
+            user_tags = result.json()["accesstags"]
+        else:
+            logger.error(
+                f"Failed to get access tags for user {username}: {result.content}. Returning empty list of nodes."
+            )
+            return CountableNodePool([])
+    except Exception as e:
+        logger.exception(e)
+        logger.error(
+            f"Failed to get access tags for user {username}. Returning empty list of nodes."
+        )
+        return CountableNodePool([])
+
+    user_tags = set(user_tags)
+    logger.debug(f"Retrieved access tags for user {username}: {user_tags}")
+
+    async def __filter_nodes_by_access_tags(
+        _nodes: Nodes, _user_tags: set[str]
+    ) -> Nodes:
+        # TODO: finish
+        return _nodes
+
+    return await __filter_nodes_by_access_tags(nodes, user_tags)  # type: ignore
+
+
 async def get_nodes(
     username: str, authentication_context: Optional[dict[str, dict[str, str]]] = None
 ) -> Result[Nodes, str]:
@@ -133,7 +171,9 @@ async def get_nodes(
     # noinspection PyTypeChecker
     # we know that top is always CountableNodePool
     nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)  # type: ignore
-    return Success(await __filter_locked_nodes(username, nodes))
+    nodes = await __filter_locked_nodes(username, nodes)
+    nodes = await __filter_access_tags(username, nodes)
+    return Success(nodes)
 
 
 async def get_experiments(
