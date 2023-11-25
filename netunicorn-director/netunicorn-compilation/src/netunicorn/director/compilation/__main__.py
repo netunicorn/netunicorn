@@ -121,8 +121,7 @@ async def docker_compilation_cycle(
             f.write(pipeline)
 
     filelines += [
-        f"RUN pip install netunicorn-base",
-        f"RUN pip install netunicorn-executor",
+        f"RUN pip install netunicorn-executor netunicorn-library",
     ]
 
     if environment_definition.build_context.cloudpickle_version is not None:
