@@ -8,17 +8,17 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain, count, cycle
 from typing import (
+    Any,
     Callable,
     Dict,
     Iterable,
     Iterator,
     List,
+    Optional,
     Sequence,
     Set,
     Union,
     cast,
-    Optional,
-    Any,
 )
 
 import netunicorn.base
