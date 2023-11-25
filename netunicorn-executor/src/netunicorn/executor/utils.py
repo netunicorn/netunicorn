@@ -1,4 +1,5 @@
 import multiprocessing.pool
+import traceback
 from functools import wraps
 from typing import Any, Callable, TypeVar, Union
 
@@ -30,17 +31,12 @@ def safe(
     def decorator(*args: Any, **kwargs: Any) -> Result[Any, Any]:
         try:
             result = function(*args, **kwargs)
-            if result is None:
-                # Well, ok. The problem is that if we create Success(None) object,
-                # cloudpickle serialization somewhere breaks and we receive this error:
-                # AttributeError: 'Success' object has no attribute '_inner_value'
-                # So, for now - we return 0 instead of None until we find and fix/report the bug.
-                result = 0
             if isinstance(result, Result):
                 return result
             return Success(result)
-        except Exception as exc:
-            return Failure(exc.__reduce__())
+        except Exception:
+            traceback.print_exc()
+            return Failure(traceback.format_exc())
 
     return decorator
 
