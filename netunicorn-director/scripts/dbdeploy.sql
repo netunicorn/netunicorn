@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS Compilations (
     status BOOLEAN,
     result TEXT,
     architecture TEXT NOT NULL,
-    pipeline bytea,
+    execution_graph bytea,
     environment_definition jsonb NOT NULL,
     PRIMARY KEY (experiment_id, compilation_id)
 );
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS Executors (
     executor_id TEXT NOT NULL,
     node_name TEXT NOT NULL,
     connector TEXT NOT NULL,
-    pipeline BYTEA,
+    execution_graph BYTEA,
     result BYTEA,
     keepalive TIMESTAMP,
     error TEXT,

@@ -12,7 +12,7 @@ from typing import Any, List, Optional, Union
 from returns.result import Failure, Success
 
 from .nodes import Node
-from .types import PipelineResult
+from .types import ExecutionGraphResult
 
 # Keep classes for export
 Success = Success
@@ -45,7 +45,7 @@ class Task(ABC):
     A list of commands to be executed to change environment to support this task.
     """
 
-    previous_steps: PipelineResult = {}
+    previous_steps: ExecutionGraphResult = {}
     r"""
     Stores results of previous steps with task name as a key and list of results as a value.
         Several results could be stored for each task if it was executed several times.
@@ -54,6 +54,9 @@ class Task(ABC):
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name or str(uuid.uuid4())
         self.requirements = copy.deepcopy(self.requirements)
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
     def __call__(self) -> Any:
         """

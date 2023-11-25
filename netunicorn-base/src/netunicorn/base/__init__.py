@@ -7,9 +7,10 @@ from returns.result import Failure, Result, Success
 
 from .architecture import Architecture
 from .environment_definitions import DockerImage, ShellExecution
+from .execution_graph import ExecutionGraph
 from .experiment import Experiment, ExperimentExecutionInformation, ExperimentStatus
 from .nodes import Node
-from .pipeline import Pipeline
+from .pipeline import CyclePipeline, Pipeline
 from .task import Task, TaskDispatcher
 from .types import FlagValues
 
@@ -18,6 +19,8 @@ __all__ = [
     "ExperimentStatus",
     "ExperimentExecutionInformation",
     "Pipeline",
+    "CyclePipeline",
+    "ExecutionGraph",
     "Task",
     "TaskDispatcher",
     "Result",

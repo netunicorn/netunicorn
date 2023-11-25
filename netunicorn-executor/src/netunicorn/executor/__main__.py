@@ -1,3 +1,3 @@
-from .executor import PipelineExecutor
+from .executor import Executor
 
-PipelineExecutor().__call__()
+Executor().__call__()

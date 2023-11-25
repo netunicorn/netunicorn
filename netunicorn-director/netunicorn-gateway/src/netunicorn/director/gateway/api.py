@@ -1,5 +1,5 @@
 """
-Small fast Executor API that goes to state holder (PostgreSQL) and returns to executors pipelines, events, or stores results
+Small fast Executor API that goes to state holder (PostgreSQL) and returns to executors execution graphs, events, or stores results
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Optional
 
 import asyncpg
 from fastapi import FastAPI, Response
-from netunicorn.base.types import FlagValues, PipelineExecutorState
+from netunicorn.base.types import FlagValues, ExecutorState
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,
@@ -19,7 +19,7 @@ from netunicorn.director.base.resources import (
     get_logger,
 )
 
-from .api_types import PipelineResult
+from .api_types import ExecutionGraphResult
 
 logger = get_logger("netunicorn.director.gateway")
 GATEWAY_IP = os.environ.get("NETUNICORN_GATEWAY_IP", "0.0.0.0")
@@ -54,6 +54,7 @@ async def health_check() -> str:
 
 
 @app.get("/api/v1/executor/pipeline", status_code=200)
+@app.get("/api/v1/executor/execution_graph", status_code=200)
 async def return_pipeline(executor_id: str, response: Response) -> Optional[bytes]:
     """
     Returns pipeline for a given executor
@@ -63,7 +64,7 @@ async def return_pipeline(executor_id: str, response: Response) -> Optional[byte
     """
 
     pipeline = await db_conn_pool.fetchval(
-        "SELECT pipeline::bytea FROM executors WHERE executor_id = $1 LIMIT 1",
+        "SELECT execution_graph::bytea FROM executors WHERE executor_id = $1 LIMIT 1",
         executor_id,
     )
     if pipeline is None:
@@ -77,19 +78,15 @@ async def return_pipeline(executor_id: str, response: Response) -> Optional[byte
 
 
 @app.post("/api/v1/executor/result")
-async def receive_result(result: PipelineResult) -> None:
+async def receive_result(result: ExecutionGraphResult) -> None:
     """
     Receives pipeline execution results from executor and stores it in database
     """
     pipeline_results = b64decode(result.results)
-    state = (
-        result.state
-        if result.state is not None
-        else PipelineExecutorState.FINISHED.value
-    )
+    state = result.state if result.state is not None else ExecutorState.FINISHED.value
     finished = state in {
-        PipelineExecutorState.FINISHED.value,
-        PipelineExecutorState.REPORTING.value,
+        ExecutorState.FINISHED.value,
+        ExecutorState.REPORTING.value,
     }
     await db_conn_pool.execute(
         "UPDATE executors SET result = $1::bytea, finished = $2, state = $3 WHERE executor_id = $4",
