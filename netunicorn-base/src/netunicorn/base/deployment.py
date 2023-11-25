@@ -161,6 +161,7 @@ class Deployment:
                     "The deployment was created with an older version of netunicorn. "
                     "Execution graph information would not be available."
                 )
+                instance.execution_graph = b""
             else:
                 raise
 
