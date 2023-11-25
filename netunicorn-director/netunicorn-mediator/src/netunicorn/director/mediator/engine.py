@@ -2,7 +2,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, TypeVar, cast
+from typing import Dict, List, Optional, Tuple, TypeVar, cast, Union
 from uuid import uuid4
 
 import asyncpg.connection
@@ -147,6 +147,15 @@ async def __filter_access_tags(
 
     logger.debug(f"Retrieved access tags for user {username}: {user_tags}")
 
+    def __pop_node(
+        _pool: Union[CountableNodePool, UncountableNodePool], _index: int
+    ) -> None:
+        if isinstance(_pool, CountableNodePool):
+            _pool.pop(_index)
+        else:
+            _pool = cast(UncountableNodePool, _pool)
+            _pool._node_template.pop(_index)
+
     async def __filter_nodes_by_access_tags(
         _nodes: NodesType, _user_tags: set[str]
     ) -> NodesType:
@@ -155,16 +164,14 @@ async def __filter_access_tags(
             return _nodes
 
         for i in reversed(range(len(_nodes))):
-            if isinstance(_nodes[i], CountableNodePool) or isinstance(
-                _nodes[i], UncountableNodePool
-            ):
+            if isinstance(_nodes[i], Nodes):
                 # filter nodes recursively
                 new_pool = cast(NodesType, _nodes[i])
                 new_pool = await __filter_nodes_by_access_tags(new_pool, _user_tags)
 
                 # remove empty pools
                 if len(new_pool) == 0:
-                    _nodes.pop(i)
+                    __pop_node(_nodes, i)
                 else:
                     _nodes[i] = new_pool
             elif isinstance(_nodes[i], Node):
@@ -178,14 +185,14 @@ async def __filter_access_tags(
                     logger.error(
                         f"Failed to parse access tags for node {_nodes[i].name}. Skipping this node."
                     )
-                    _nodes.pop(i)
+                    __pop_node(_nodes, i)
                     continue
                 if not node_tags:
                     # empty tags means that node is available for all users
                     continue
                 if not node_tags.intersection(_user_tags):
                     # otherwise at least one tag should intersect
-                    _nodes.pop(i)
+                    __pop_node(_nodes, i)
             else:
                 continue
 
