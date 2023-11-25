@@ -152,8 +152,6 @@ async def __filter_access_tags(
     def __pop_node(
         _pool: Union[CountableNodePool, UncountableNodePool], _index: int
     ) -> None:
-        nonlocal filtered_nodes_counter
-        filtered_nodes_counter += 1
         if isinstance(_pool, CountableNodePool):
             _pool.pop(_index)
         else:
@@ -163,6 +161,7 @@ async def __filter_access_tags(
     async def __filter_nodes_by_access_tags(
         _nodes: NodesType, _user_tags: set[str]
     ) -> NodesType:
+        nonlocal filtered_nodes_counter
         if not _user_tags:
             # empty _user_tags means that all nodes are available
             return _nodes
@@ -189,6 +188,7 @@ async def __filter_access_tags(
                     logger.error(
                         f"Failed to parse access tags for node {_nodes[i].name}. Skipping this node."
                     )
+                    filtered_nodes_counter += 1
                     __pop_node(_nodes, i)
                     continue
                 if not node_tags:
@@ -196,6 +196,7 @@ async def __filter_access_tags(
                     continue
                 if not node_tags.intersection(_user_tags):
                     # otherwise at least one tag should intersect
+                    filtered_nodes_counter += 1
                     __pop_node(_nodes, i)
             else:
                 continue
