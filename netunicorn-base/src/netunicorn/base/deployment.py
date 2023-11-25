@@ -3,6 +3,7 @@ Single deployment of pipeline on node.
 """
 from __future__ import annotations
 
+import warnings
 from base64 import b64decode
 from copy import deepcopy
 from typing import List, Optional, cast
@@ -138,10 +139,23 @@ class Deployment:
         instance.prepared = data["prepared"]
         instance.executor_id = data["executor_id"]
         instance.error = Exception(data["error"]) if data["error"] else None
-        instance.pipeline = b64decode(data["pipeline"])
         instance.keep_alive_timeout_minutes = data["keep_alive_timeout_minutes"]
         instance.cleanup = data.get("cleanup", True)
         instance.environment_definition = getattr(
             netunicorn.base.environment_definitions, data["environment_definition_type"]
         ).from_json(data["environment_definition"])
+
+        try:
+            instance.pipeline = b64decode(data["pipeline"])
+        except KeyError:
+            if "execution_graph" in data:
+                warnings.warn(
+                    "Deployment was created with newer version of netunicorn "
+                    "which is not compatible with current version. "
+                    "Pipeline information would be unavailable."
+                )
+                instance.pipeline = b""
+            else:
+                raise
+
         return instance
