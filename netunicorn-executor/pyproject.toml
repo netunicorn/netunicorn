@@ -17,7 +17,6 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-    "returns",
     "cloudpickle",
     "requests",
     "netunicorn-base >= 0.4.0",

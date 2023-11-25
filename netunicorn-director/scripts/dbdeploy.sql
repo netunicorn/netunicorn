@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS Authentication (
     username TEXT NOT NULL,
     hash TEXT NOT NULL,
     sudo BOOLEAN NOT NULL DEFAULT FALSE,
+    accesstags TEXT[],
     PRIMARY KEY (username)
 );
 

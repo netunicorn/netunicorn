@@ -368,7 +368,7 @@ class UncountableNodePool(Nodes):
     :param node_template: list of nodes that will be used as a template for generating new nodes
     """
 
-    def __init__(self, node_template: List[Node], soft_limit: Optional[int] = None):
+    def __init__(self, node_template: List[Node], soft_limit: Optional[float] = None):
         self._node_template = node_template
         """
         Node template used for generating new nodes.
@@ -461,7 +461,7 @@ class UncountableNodePool(Nodes):
         # now we have only NodeRepresentation in the list
         node_representation_data = cast(List[NodeRepresentation], data)
         if metadata is not None:
-            metadata = int(metadata)
+            metadata = float(metadata)
         return cls([Node.from_json(x) for x in node_representation_data], metadata)
 
     def set_property(self, name: str, value: NodeProperty) -> UncountableNodePool:

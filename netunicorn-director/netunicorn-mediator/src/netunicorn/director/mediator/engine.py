@@ -2,7 +2,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypeVar, cast, Union
 from uuid import uuid4
 
 import asyncpg.connection
@@ -14,7 +14,7 @@ from netunicorn.base.experiment import (
     ExperimentExecutionInformation,
     ExperimentStatus,
 )
-from netunicorn.base.nodes import CountableNodePool, Node, Nodes
+from netunicorn.base.nodes import CountableNodePool, Node, Nodes, UncountableNodePool
 from netunicorn.base.types import FlagValues
 from netunicorn.director.base.resources import (
     DATABASE_DB,
@@ -35,6 +35,7 @@ from .resources import (
 )
 
 db_conn_pool: asyncpg.Pool
+NodesType = TypeVar("NodesType", CountableNodePool, UncountableNodePool)
 
 
 async def open_db_connection() -> None:
@@ -115,6 +116,98 @@ async def __filter_locked_nodes(
     return nodes
 
 
+async def __filter_access_tags(
+    username: str, nodes: CountableNodePool
+) -> CountableNodePool:
+    """
+    Extracts "netunicorn-access-tags" from nodes and filters them by user's access tags if they are present.
+    Logic: if user has no access tags, then all nodes are available. If user has access tags, then only nodes
+    with matching tags are available.
+    """
+
+    user_tags_url = f"{NETUNICORN_AUTH_ENDPOINT}/accesstags?username={username}"
+    try:
+        result = req.get(user_tags_url, timeout=30)
+        if result.status_code == 200:
+            user_tags = result.json()["accesstags"]
+            if user_tags is None:
+                user_tags = []
+            user_tags = set(str(x) for x in user_tags)
+        else:
+            logger.error(
+                f"Failed to get access tags for user {username}: {result.content}. Returning empty list of nodes."
+            )
+            return CountableNodePool([])
+    except Exception as e:
+        logger.exception(e)
+        logger.error(
+            f"Failed to get access tags for user {username}. Returning empty list of nodes."
+        )
+        return CountableNodePool([])
+
+    logger.debug(f"Retrieved access tags for user {username}: {user_tags}")
+
+    filtered_nodes_counter = 0
+
+    def __pop_node(
+        _pool: Union[CountableNodePool, UncountableNodePool], _index: int
+    ) -> None:
+        if isinstance(_pool, CountableNodePool):
+            _pool.pop(_index)
+        else:
+            _pool = cast(UncountableNodePool, _pool)
+            _pool._node_template.pop(_index)
+
+    async def __filter_nodes_by_access_tags(
+        _nodes: NodesType, _user_tags: set[str]
+    ) -> NodesType:
+        nonlocal filtered_nodes_counter
+        if not _user_tags:
+            # empty _user_tags means that all nodes are available
+            return _nodes
+
+        for i in reversed(range(len(_nodes))):
+            if isinstance(_nodes[i], Nodes):
+                # filter nodes recursively
+                new_pool = cast(NodesType, _nodes[i])
+                new_pool = await __filter_nodes_by_access_tags(new_pool, _user_tags)
+
+                # remove empty pools
+                if len(new_pool) == 0:
+                    __pop_node(_nodes, i)
+                else:
+                    _nodes[i] = new_pool
+            elif isinstance(_nodes[i], Node):
+                try:
+                    node_tags = (
+                        _nodes[i].properties.get("netunicorn-access-tags", {}) or {}
+                    )
+                    node_tags = set(str(x) for x in node_tags)
+                except Exception as e:
+                    logger.exception(e)
+                    logger.error(
+                        f"Failed to parse access tags for node {_nodes[i].name}. Skipping this node."
+                    )
+                    filtered_nodes_counter += 1
+                    __pop_node(_nodes, i)
+                    continue
+                if not node_tags:
+                    # empty tags means that node is available for all users
+                    continue
+                if not node_tags.intersection(_user_tags):
+                    # otherwise at least one tag should intersect
+                    filtered_nodes_counter += 1
+                    __pop_node(_nodes, i)
+            else:
+                continue
+
+        return _nodes
+
+    filtered_nodes = await __filter_nodes_by_access_tags(nodes, user_tags)
+    logger.debug(f"Filtered out {filtered_nodes_counter} nodes for user {username}")
+    return filtered_nodes
+
+
 async def get_nodes(
     username: str, authentication_context: Optional[dict[str, dict[str, str]]] = None
 ) -> Result[Nodes, str]:
@@ -133,7 +226,9 @@ async def get_nodes(
     # noinspection PyTypeChecker
     # we know that top is always CountableNodePool
     nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)  # type: ignore
-    return Success(await __filter_locked_nodes(username, nodes))
+    nodes = await __filter_locked_nodes(username, nodes)
+    nodes = await __filter_access_tags(username, nodes)
+    return Success(nodes)
 
 
 async def get_experiments(
@@ -185,11 +280,15 @@ async def verify_sudo(username: str) -> bool:
     Return if the current user is sudo user
     """
 
-    return bool(
-        await db_conn_pool.fetchval(
-            "SELECT sudo FROM authentication WHERE username = $1", username
-        )
-    )
+    url = f"{NETUNICORN_AUTH_ENDPOINT}/verify_sudo?username={username}"
+    try:
+        result = req.get(url, timeout=30)
+        if not result.status_code == 200:
+            raise Exception(result.content)
+        return result.content.decode("utf-8") == "true"
+    except Exception as e:
+        logger.exception(e)
+        return False
 
 
 async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
