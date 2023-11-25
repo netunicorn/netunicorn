@@ -3,6 +3,7 @@ Single deployment of an execution graph on a node.
 """
 from __future__ import annotations
 
+import warnings
 from base64 import b64decode
 from copy import deepcopy
 from typing import Optional
@@ -146,10 +147,21 @@ class Deployment:
         instance.prepared = data["prepared"]
         instance.executor_id = data["executor_id"]
         instance.error = Exception(data["error"]) if data["error"] else None
-        instance.execution_graph = b64decode(data["execution_graph"])
         instance.keep_alive_timeout_minutes = data["keep_alive_timeout_minutes"]
         instance.cleanup = data.get("cleanup", True)
         instance.environment_definition = getattr(
             netunicorn.base.environment_definitions, data["environment_definition_type"]
         ).from_json(data["environment_definition"])
+
+        try:
+            instance.execution_graph = b64decode(data["execution_graph"])
+        except KeyError:
+            if "pipeline" in data:
+                warnings.warn(
+                    "The deployment was created with an older version of netunicorn. "
+                    "Execution graph information would not be available."
+                )
+            else:
+                raise
+
         return instance
