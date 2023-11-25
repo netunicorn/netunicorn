@@ -50,10 +50,27 @@ async def docker_compilation_cycle(
     experiment_id: str = compilation_request["experiment_id"]
     compilation_id: str = compilation_request["compilation_id"]
     architecture: str = compilation_request["architecture"]
-    pipeline: Optional[bytes] = compilation_request["execution_graph"]
     environment_definition = environment_definitions.DockerImage.from_json(
         compilation_request["environment_definition"]
     )
+
+    try:
+        pipeline: Optional[bytes] = compilation_request["execution_graph"]
+    except KeyError:
+        if "pipeline" in compilation_request:
+            await record_compilation_result(
+                experiment_id,
+                compilation_id,
+                False,
+                (
+                    f"Experiment was submitted using the old version of netunicorn. "
+                    f"Please, update netunicorn packages."
+                ),
+                db_pool,
+            )
+            return True
+        else:
+            raise
 
     if environment_definition.image is None:
         await record_compilation_result(

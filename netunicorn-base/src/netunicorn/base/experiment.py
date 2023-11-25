@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import warnings
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union, cast
@@ -238,6 +239,9 @@ class DeploymentExecutionResult:
         """
         import cloudpickle
 
+        if not self._execution_graph:
+            raise ValueError("Execution graph information is not available.")
+
         return cast(ExecutionGraph, cloudpickle.loads(self._execution_graph))
 
     @property
@@ -296,9 +300,21 @@ class DeploymentExecutionResult:
         :param data: a JSON representation of a deployment execution result.
         :return: an instance of DeploymentExecutionResult.
         """
+        try:
+            execution_graph = base64.b64decode(data["execution_graph"])
+        except KeyError:
+            if "pipeline" in data:
+                warnings.warn(
+                    "The deployment was created with an older version of netunicorn. "
+                    "Execution graph information would not be available."
+                )
+                execution_graph = b""
+            else:
+                raise
+
         return cls(
             Node.from_json(data["node"]),
-            base64.b64decode(data["execution_graph"]),
+            execution_graph,
             base64.b64decode(data["result"]) if data["result"] else None,
             data["error"],
         )
