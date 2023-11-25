@@ -147,9 +147,13 @@ async def __filter_access_tags(
 
     logger.debug(f"Retrieved access tags for user {username}: {user_tags}")
 
+    filtered_nodes_counter = 0
+
     def __pop_node(
         _pool: Union[CountableNodePool, UncountableNodePool], _index: int
     ) -> None:
+        nonlocal filtered_nodes_counter
+        filtered_nodes_counter += 1
         if isinstance(_pool, CountableNodePool):
             _pool.pop(_index)
         else:
@@ -198,7 +202,9 @@ async def __filter_access_tags(
 
         return _nodes
 
-    return await __filter_nodes_by_access_tags(nodes, user_tags)  # type: ignore
+    filtered_nodes = await __filter_nodes_by_access_tags(nodes, user_tags)
+    logger.debug(f"Filtered out {filtered_nodes_counter} nodes for user {username}")
+    return filtered_nodes
 
 
 async def get_nodes(
