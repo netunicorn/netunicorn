@@ -126,6 +126,7 @@ class Executor:
                 elif self.state == ExecutorState.REPORTING:
                     self.report_results()
                 elif self.state == ExecutorState.FINISHED:
+                    self.print_file.close()
                     return
             except Exception as e:
                 self.logger.exception(e)
@@ -135,6 +136,7 @@ class Executor:
 
         # if we break the cycle with an exception, we'll try to report the results
         self.report_results()
+        self.print_file.close()
 
     def request_execution_graph(self) -> None:
         """
