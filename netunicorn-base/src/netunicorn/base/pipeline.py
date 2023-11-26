@@ -124,7 +124,12 @@ class CyclePipeline(Pipeline):
     ):
         self.edge_params: Dict[str, Any] = {"type": "weak"}
         if cycles is not None:
-            self.edge_params["counter"] = cycles
+            assert isinstance(cycles, int)
+            if cycles <= 2:
+                raise ValueError(
+                    f"Number of cycles should be at least 2, current value: {cycles}"
+                )
+            self.edge_params["counter"] = cycles - 1
 
         super().__init__(
             tasks=tasks,
