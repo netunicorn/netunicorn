@@ -1,14 +1,7 @@
 import unittest
 
-from netunicorn.base import (
-    Pipeline,
-    CyclePipeline,
-    ExecutionGraph,
-    Task,
-)
-
+from netunicorn.base import CyclePipeline, ExecutionGraph, Pipeline, Task
 from netunicorn.executor.executor import Executor, ExecutorState
-
 from returns.pipeline import is_successful
 
 

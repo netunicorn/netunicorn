@@ -10,7 +10,7 @@ from typing import Optional
 
 import asyncpg
 from fastapi import FastAPI, Response
-from netunicorn.base.types import FlagValues, ExecutorState
+from netunicorn.base.types import ExecutorState, FlagValues
 from netunicorn.director.base.resources import (
     DATABASE_DB,
     DATABASE_ENDPOINT,
