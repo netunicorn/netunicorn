@@ -171,6 +171,23 @@ class TestValidAndInvalidGraphs(unittest.TestCase):
         ex_graph.graph[task2][task4]["traverse_on"] = "any"
         self.assertTrue(ExecutionGraph.is_execution_graph_valid(ex_graph))
 
+    def test_invalid_counters(self):
+        exec_graph = ExecutionGraph()
+        exec_graph.graph.add_edge("root", "a")
+        exec_graph.graph.add_edge("a", "b", counter=0)
+        with self.assertRaises(Exception):
+            ExecutionGraph.is_execution_graph_valid(exec_graph)
+
+        exec_graph.graph["a"]["b"]["counter"] = -1
+        with self.assertRaises(Exception):
+            ExecutionGraph.is_execution_graph_valid(exec_graph)
+
+    def test_valid_counters(self):
+        exec_graph = ExecutionGraph()
+        exec_graph.graph.add_edge("root", "a")
+        exec_graph.graph.add_edge("a", "root", counter=5, type="weak")
+        self.assertTrue(ExecutionGraph.is_execution_graph_valid(exec_graph))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -119,6 +119,23 @@ class ExecutionGraph:
                 f"After removing weak links, all nodes should be accessible from the root. Inaccessible nodes: {diff}"
             )
 
+        # "counter" attribute on each edge should be positive number
+        for u, v, d in graph.edges(data=True):
+            if "counter" in d:
+                try:
+                    counter = int(d["counter"])
+                except ValueError:
+                    raise ValueError(
+                        f"Edge ({u}, {v}) has attribute 'counter' with value '{d['counter']}'. "
+                        f"This value should be a valid integer."
+                    )
+
+                if counter <= 0:
+                    raise ValueError(
+                        f"Edge ({u}, {v}) has attribute 'counter' with value '{d['counter']}'. "
+                        f"This value should be a positive integer."
+                    )
+
         # all edges having "traverse_on" attribute should have value "success", "failure", or "any"
         for u, v, d in graph.edges(data=True):
             if "traverse_on" in d:
