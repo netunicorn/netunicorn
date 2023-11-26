@@ -57,7 +57,11 @@ class Executor:
 
         self.logfile_name = f"executor_{self.executor_id}.log"
         self.print_file = open(self.logfile_name, "at")
+
         self.heartbeat_flag = heartbeat
+        self.heartbeat_seconds = int(
+            os.environ.get("NETUNICORN_EXECUTOR_HEARTBEAT_SECONDS") or 30
+        )
 
         logging.basicConfig()
         self.logger = self.create_logger()
@@ -81,7 +85,7 @@ class Executor:
     async def heartbeat(self) -> None:
         while self.state == ExecutorState.EXECUTING:
             try:
-                await asyncio.sleep(30)
+                await asyncio.sleep(self.heartbeat_seconds)
                 req.post(
                     f"{self.gateway_endpoint}/api/v1/executor/heartbeat/{self.executor_id}"
                 )
@@ -175,16 +179,51 @@ class Executor:
         sys.stderr = self.print_file
 
     def add_successors_to_waiting_tasks(
-        self, waiting_tasks: List[Union[Any, Task]], current_task: Union[Any, Task]
-    ) -> None:
+        self,
+        waiting_tasks: List[Union[Any, Task]],
+        current_task: Union[Any, Task],
+        task_execution_successful: Optional[bool],
+    ) -> bool:
+        """
+        This method takes a current task and a list of waiting tasks, and adds successors of the current task to the waiting tasks
+        This method considers "traverse_on" attribute of edges, current "early_stopping" flag, and result of the current task
+
+        :returns: True if the execution should be stopped, False otherwise
+        """
+
         if not self.execution_graph:
             error = "No execution graph to execute. Incorrect function call."
             self.logger.error(error)
             raise Exception(error)
 
+        any_edges_with_traverse_on_failure_or_any = False
         edges_to_delete = []
         for successor in self.execution_graph.graph.successors(current_task):
-            waiting_tasks.append(successor)
+            edge = self.execution_graph.graph.edges[current_task, successor]
+
+            # current possible values: None, "success", "failure", "any"
+            traverse_on = edge.get("traverse_on", None)
+            if traverse_on is None:
+                traverse_on = (
+                    "success" if self.execution_graph.early_stopping else "any"
+                )
+            if traverse_on not in {"success", "failure", "any"}:
+                # we validated the graph before, so this should never happen
+                error_text = f"Invalid traverse_on attribute value {traverse_on} for edge {current_task} -> {successor}"
+                self.logger.error(error_text)
+                raise ValueError(error_text)
+
+            if (
+                task_execution_successful is None
+                or traverse_on == "any"
+                or (traverse_on == "success" and task_execution_successful)
+                or (traverse_on == "failure" and not task_execution_successful)
+            ):
+                any_edges_with_traverse_on_failure_or_any = True
+                waiting_tasks.append(successor)
+            else:
+                continue
+
             counter = self.execution_graph.graph.edges[current_task, successor].get(
                 "counter", None
             )
@@ -199,6 +238,19 @@ class Executor:
         for edge in edges_to_delete:
             self.execution_graph.graph.remove_edge(*edge)
             self.logger.info(f"Removed edge {edge[0]} -> {edge[1]}")
+
+        if (
+            task_execution_successful is False
+            and self.execution_graph.early_stopping is True
+            and not any_edges_with_traverse_on_failure_or_any
+        ):
+            # that means that task failed early_stopping is on
+            #  and there are no edges to successors with traverse_on == "any" or "failure"
+            #  to continue execution
+            #  so we should stop execution
+            return True
+
+        return False
 
     async def execute(self) -> None:
         """
@@ -233,9 +285,7 @@ class Executor:
 
         stop_execution = False
 
-        while (
-            self.execution_graph.early_stopping and not stop_execution
-        ) or not self.execution_graph.early_stopping:
+        while not stop_execution:
             tasks_to_delete = []
             tasks_to_add: List[Union[Any, Task]] = []
             tasks_processed = False
@@ -253,21 +303,24 @@ class Executor:
 
                 # sanity checks
                 if running_tasks[task]["process"].exitcode != 0:
-                    resulting_text = f"Task {task.name} failed with exit code {running_tasks[task]['process'].exitcode}"
+                    # unconditionally stop because process should always finish with exit code 0
+                    resulting_text = f"Execution process of the task {task.name} failed with the exit code {running_tasks[task]['process'].exitcode}"
                     self.logger.error(resulting_text)
                     self.step_results[task.name].append(Failure(resulting_text))
                     stop_execution = True
-                elif running_tasks[task]["queue"].empty():
-                    resulting_text = f"Task {task.name} failed with empty queue"
+                    break
+                if running_tasks[task]["queue"].empty():
+                    # unconditionally fail because process should always return results in the queue
+                    resulting_text = f"Execution process of the task {task.name} failed to return results into a queue"
                     self.logger.error(resulting_text)
                     self.step_results[task.name].append(Failure(resulting_text))
                     stop_execution = True
-                else:
-                    result = cloudpickle.loads(running_tasks[task]["queue"].get())
-                    self.step_results[task.name].append(result)
-                    if not is_successful(result):
-                        resulting_type = Failure
-                        stop_execution = True
+                    break
+
+                result = cloudpickle.loads(running_tasks[task]["queue"].get())
+                self.step_results[task.name].append(result)
+                if not is_successful(result):
+                    resulting_type = Failure
 
                 finished_tasks[task] = {
                     "process": running_tasks[task]["process"],
@@ -275,7 +328,13 @@ class Executor:
                 }
 
                 tasks_to_delete.append(task)
-                self.add_successors_to_waiting_tasks(tasks_to_add, task)
+
+                # successor "traverse_on" attributes and current early_stopping flag define whether we should stop execution
+                stop_execution = self.add_successors_to_waiting_tasks(
+                    tasks_to_add, task, is_successful(result)
+                )
+                if stop_execution:
+                    break
 
             for x in tasks_to_delete:
                 del running_tasks[x]
@@ -297,7 +356,7 @@ class Executor:
                     tasks_to_delete.append(task)
                     tasks_processed = True
 
-                    # if type - Task -> start and add to running, otherwise just synchronization
+                    # if type - Task -> start and add to running, ...
                     if isinstance(task, Task):
                         task.previous_steps = deepcopy(self.step_results)
                         serialized_task = cloudpickle.dumps(task)
@@ -311,8 +370,9 @@ class Executor:
                         }
                         running_tasks[task]["process"].start()
                     else:
+                        # ...otherwise just synchronization
                         finished_tasks[task] = {"process": None, "queue": None}
-                        self.add_successors_to_waiting_tasks(tasks_to_add, task)
+                        self.add_successors_to_waiting_tasks(tasks_to_add, task, None)
 
             for x in tasks_to_delete:
                 waiting_tasks.remove(x)
@@ -321,7 +381,9 @@ class Executor:
 
             if not running_tasks and waiting_tasks and not tasks_processed:
                 # deadlock?
-                self.logger.error("Possible deadlock detected, exiting.")
+                self.logger.error(
+                    f"Possible deadlock detected, exiting. Waiting tasks: {waiting_tasks}"
+                )
                 self.execution_graph_results = Failure(self.step_results)
                 break
 
