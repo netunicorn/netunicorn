@@ -96,15 +96,9 @@ async def receive_result(result: ExecutionGraphResult) -> None:
         result.executor_id,
     )
 
-
-@app.post("/api/v1/executor/heartbeat/{executor_id}")
-async def receive_heartbeat(executor_id: str) -> None:
-    """
-    Receives executor heartbeat and updates it in database
-    """
     await db_conn_pool.execute(
         "UPDATE executors SET keepalive = timezone('utc', now()) WHERE executor_id = $1",
-        executor_id,
+        result.executor_id,
     )
 
 

@@ -72,8 +72,8 @@ class Executor:
 
         # increasing timeout in secs to wait between network requests
         self.backoff_func = (
-            0.5 * x for x in range(75)
-        )  # limit to 1425 secs total, then StopIteration Exception
+            5 * x for x in range(10)
+        )  # limit to 225 secs total, then StopIteration Exception
 
         self.execution_graph: Optional[ExecutionGraph] = None
         self.step_results: ExecutionGraphResult = defaultdict(list)
@@ -86,8 +86,20 @@ class Executor:
         while self.state == ExecutorState.EXECUTING:
             try:
                 await asyncio.sleep(self.heartbeat_seconds)
+
+                with open(self.logfile_name, "rt") as f:
+                    current_log = f.readlines()
+                results = cloudpickle.dumps([Success(self.step_results), current_log])
+                results_data = b64encode(results).decode()
+
                 req.post(
-                    f"{self.gateway_endpoint}/api/v1/executor/heartbeat/{self.executor_id}"
+                    f"{self.gateway_endpoint}/api/v1/executor/result/",
+                    json={
+                        "executor_id": self.executor_id,
+                        "results": results_data,
+                        "state": self.state.value,
+                    },
+                    timeout=30,
                 )
             except Exception as e:
                 self.logger.exception(e)
