@@ -10,6 +10,7 @@ from typing import Optional
 import networkx as nx
 
 from .environment_definitions import DockerImage, EnvironmentDefinition
+from .task import Task, TaskDispatcher
 
 
 class ExecutionGraph:
@@ -29,7 +30,11 @@ class ExecutionGraph:
 
     | 6. Any edge can have attribute "counter" with integer value. This value would be used to determine how many times this edge should be traversed. If this attribute is not present, then edge would be traversed infinitely. You can use this attribute to implement finite loops in the graph.
 
-    :param early_stopping: If True, then the execution of the graph would be stopped if any task fails. If False, then the execution of the graph would be continued even if some tasks fail.
+    | 7. Any edge can have attribute "traverse_on" with either string value "success", "failure", or "any". This attribute controls whether executor will traverse this edge on success or failure of the task. If this attribute is not present, the executor will obey the usual rules considering the "early_stopping" parameter (trat all edges as "success" for "early_stopping=True" or "any" for "early_stopping=False"). If this attribute is present, then the executor will traverse this edge only if the task was executed successfully ("success"), failed ("failure"), or in any case ("any"). The next rules apply:
+    If "early_stopping" is True, all edges are treated as having "traverse_on" attribute set to "success". Setting the "traverse_on" attribute to "failure" would make the executor to traverse this edge in case of the task failure and will not break the execution of the graph. Also, setting the "traverse_on" attribute to "any" would make executor to traverse this edge in case of the task failure or success and will not break the execution of the graph.
+    If "early_stopping" is False, all edges are treated as having "traverse_on" attribute set to "any". Setting this attribute to "success" or "failure" would make the executor to traverse this edge only in case of the task success or failure respectively.
+
+    :param early_stopping: If True, then the execution of the graph would be stopped if any task fails. If False, then the execution of the graph would be continued even if some tasks fail. In both cases, "traverse_on" attribute of the edges could be used to control the traversal of the graph.
     :param report_results: If True, then the executor would connect core services to report execution results in the end.
     :param environment_definition: environment definition for the execution graph
     """
@@ -47,7 +52,7 @@ class ExecutionGraph:
 
         self.early_stopping: bool = early_stopping
         """
-        Whether to stop executing tasks after first failure.
+        Whether to stop executing tasks after a first failure.
         """
 
         self.report_results: bool = report_results
@@ -113,6 +118,25 @@ class ExecutionGraph:
             raise ValueError(
                 f"After removing weak links, all nodes should be accessible from the root. Inaccessible nodes: {diff}"
             )
+
+        # all edges having "traverse_on" attribute should have value "success", "failure", or "any"
+        for u, v, d in graph.edges(data=True):
+            if "traverse_on" in d:
+                traverse_on = d["traverse_on"]
+                if traverse_on not in ["success", "failure", "any"]:
+                    raise ValueError(
+                        f"Edge ({u}, {v}) has attribute 'traverse_on' with value '{traverse_on}'. This value should be either 'success', 'failure', or 'any'."
+                    )
+
+        # no edges starting at synchronization points (non-Task) points should have "traverse_on" attribute
+        for u, v, d in graph.edges(data=True):
+            if (
+                not (isinstance(u, Task) or isinstance(u, TaskDispatcher))
+                and "traverse_on" in d
+            ):
+                raise ValueError(
+                    f"Edge ({u}, {v}) has attribute 'traverse_on' with value '{d['traverse_on']}'. This attribute should not be present for edges starting at synchronization points (non-Task nodes)."
+                )
 
         return True
 
