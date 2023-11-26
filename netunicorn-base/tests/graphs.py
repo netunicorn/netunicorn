@@ -136,6 +136,41 @@ class TestValidAndInvalidGraphs(unittest.TestCase):
         graph.graph.add_edge("f", "e", type="weak")
         self.assertTrue(ExecutionGraph.is_execution_graph_valid(graph))
 
+    def test_invalid_traverse_on_values(self):
+        ex_graph = ExecutionGraph()
+        task = DummyTask()
+        task2 = DummyTask()
+        ex_graph.graph.add_edges_from([("root", task), (task, task2)])
+        ex_graph.graph[task][task2]["traverse_on"] = "invalid"
+        with self.assertRaises(Exception):
+            ExecutionGraph.is_execution_graph_valid(ex_graph)
+
+    def test_traverse_on_from_sync_node(self):
+        # traverse_on attribute is not allowed for edges from sync nodes
+        ex_graph = ExecutionGraph()
+        task = DummyTask()
+        ex_graph.graph.add_edges_from([("root", "sync"), ("sync", task)])
+        ex_graph.graph["sync"][task]["traverse_on"] = "any"
+        with self.assertRaises(Exception):
+            ExecutionGraph.is_execution_graph_valid(ex_graph)
+
+    def test_valid_traverse_on(self):
+        ex_graph = ExecutionGraph()
+        task1 = DummyTask()
+        task2 = DummyTask()
+        task3 = DummyTask()
+        task4 = DummyTask()
+        ex_graph.graph.add_edges_from(
+            [
+                ("root", task1),
+                ("root", task2),
+                (task1, task3),
+                (task2, task4),
+            ]
+        )
+        ex_graph.graph[task2][task4]["traverse_on"] = "any"
+        self.assertTrue(ExecutionGraph.is_execution_graph_valid(ex_graph))
+
 
 if __name__ == "__main__":
     unittest.main()
