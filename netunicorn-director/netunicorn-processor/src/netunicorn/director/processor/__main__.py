@@ -181,8 +181,7 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
             ExperimentStatus.RUNNING.value,
         )
         if not experiments:
-            await asyncio.sleep(timeout_sec)
-            continue
+            experiments = []
 
         nodes_to_lock: set[
             tuple[str, str, str]
