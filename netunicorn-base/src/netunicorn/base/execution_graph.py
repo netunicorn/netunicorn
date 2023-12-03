@@ -174,3 +174,38 @@ class ExecutionGraph:
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    # graph visualization
+    @staticmethod
+    def _get_edge_label_string(edge: dict) -> str:
+        values = [
+            f"'{key}': {value}" for key, value in edge.items() if value is not None
+        ]
+
+        label = ", ".join(values)
+        return f"{{{label}}}" if values else ""
+
+    def draw(self, nx_layout_function=nx.shell_layout):
+        """
+        Draw execution graph using networkx library.
+
+        :param nx_layout_function: networkx layout function to use for drawing (from networkx.drawing.layout)
+        :return: None
+        """
+
+        node_labels = {
+            task: task.name if hasattr(task, "name") else task
+            for task in self.graph.nodes
+        }
+
+        edge_labels = {
+            (u, v): self._get_edge_label_string(d)
+            for u, v, d in self.graph.edges(data=True)
+        }
+
+        layout = nx_layout_function(self.graph)
+        nx.draw(self.graph, layout)
+        nx.draw_networkx_labels(self.graph, layout, labels=node_labels)
+        nx.draw_networkx_edge_labels(self.graph, layout, edge_labels=edge_labels)
+
+        return
