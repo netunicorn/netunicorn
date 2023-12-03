@@ -458,5 +458,26 @@ class Executor:
 # for backward compatibility
 PipelineExecutor = Executor
 
+
+def get_local_executor(execution_graph: ExecutionGraph) -> Executor:
+    """
+    Returns an executor configured for the local execution.
+
+    :param execution_graph: Execution graph to execute
+    :return: configured executor
+    """
+
+    executor = Executor(
+        executor_id="local",
+        gateway_endpoint="fake",
+        experiment_id="local",
+        heartbeat=False,
+    )
+    execution_graph.report_results = False
+    executor.execution_graph = execution_graph
+    executor.state = ExecutorState.EXECUTING
+    return executor
+
+
 if __name__ == "__main__":
     Executor().__call__()
