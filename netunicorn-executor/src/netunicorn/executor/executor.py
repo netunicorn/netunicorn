@@ -16,7 +16,7 @@ import cloudpickle
 import requests as req
 import requests.exceptions
 from netunicorn.base.execution_graph import ExecutionGraph
-from netunicorn.base.task import Task
+from netunicorn.base.task import Task, TaskDispatcher
 from netunicorn.base.types import ExecutionGraphResult, ExecutorState
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
@@ -266,6 +266,16 @@ class Executor:
 
         return False
 
+    def _verify_no_task_dispatchers(self) -> None:
+        """
+        This method verifies that there are no task dispatchers in the execution graph.
+        """
+        for node in self.execution_graph.graph.nodes:
+            if isinstance(node, TaskDispatcher):
+                raise ValueError(
+                    f"Node of the type TaskDispatcher {node.name} is not supported in the execution graph."
+                )
+
     async def execute(self) -> None:
         """
         This method executes the execution graph.
@@ -285,6 +295,14 @@ class Executor:
         except Exception as e:
             self.logger.error("The provided execution graph is not valid.")
             self.logger.exception(e)
+            self.execution_graph_results = Failure(self.step_results)
+            self.state = ExecutorState.REPORTING
+            return
+
+        try:
+            self._verify_no_task_dispatchers()
+        except ValueError as e:
+            self.logger.error(e)
             self.execution_graph_results = Failure(self.step_results)
             self.state = ExecutorState.REPORTING
             return
