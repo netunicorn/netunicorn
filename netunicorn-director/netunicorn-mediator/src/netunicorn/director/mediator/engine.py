@@ -2,7 +2,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, TypeVar, cast, Union
+from typing import Dict, List, Optional, Tuple, TypeVar, Union, cast
 from uuid import uuid4
 
 import asyncpg.connection
