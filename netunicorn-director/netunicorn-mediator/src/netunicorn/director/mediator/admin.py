@@ -1,4 +1,5 @@
 from os.path import dirname, join
+from typing import Optional
 
 from fastapi import HTTPException, Request, Response
 from fastapi.templating import Jinja2Templates
@@ -131,7 +132,9 @@ async def get_active_compilations() -> list[tuple[str, str, str, str]]:
     ]
 
 
-async def admin_page(request: Request, username: str) -> Response:
+async def admin_page(
+    request: Request, username: str, days: Optional[int] = 7
+) -> Response:
     if not await verify_sudo(username):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -142,6 +145,6 @@ async def admin_page(request: Request, username: str) -> Response:
             "active_experiments": await get_active_experiments(),
             "locked_nodes": await get_locked_nodes(),
             "active_compilations": await get_active_compilations(),
-            "last_experiments": await get_last_experiments(days=7),
+            "last_experiments": await get_last_experiments(days=days),
         },
     )
