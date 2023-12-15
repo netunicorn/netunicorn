@@ -49,7 +49,7 @@ async def get_last_experiments(
         f"""
             SELECT username, experiment_name, experiment_id, status, error, creation_time, start_time, data
             FROM experiments where creation_time > now() - interval '{days} days'
-            ORDER BY start_time DESC
+            ORDER BY start_time DESC, creation_time DESC
             """
     )
 
