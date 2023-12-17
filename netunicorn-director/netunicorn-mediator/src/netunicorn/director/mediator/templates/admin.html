@@ -61,5 +61,37 @@
         </tr>
         {% endfor %}
     </table>
+
+    <h1>Last Experiments</h1>
+    <table>
+        <tr>
+            <th>Username</th>
+            <th>Experiment Name</th>
+            <th>Experiment ID</th>
+            <th>Status</th>
+            <th>Error</th>
+            <th>Creation Time</th>
+            <th>Start Time</th>
+            <th>Nodes</th>
+        </tr>
+        {% for row in last_experiments %}
+        <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+            <td>{{ row[3] }}</td>
+            <td>{{ row[4] }}</td>
+            <td>{{ row[5] }}</td>
+            <td>{{ row[6] }}</td>
+            <td>
+              <ul>
+                {% for item in row[7] %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
 </body>
 </html>

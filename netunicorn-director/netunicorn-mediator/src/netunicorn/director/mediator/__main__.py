@@ -275,9 +275,10 @@ async def set_experiment_flag_handler(
 @app.get("/admin", response_class=HTMLResponse)
 async def get_admin_page(
     request: Request,
+    days: Optional[int] = 7,
     username: str = Depends(check_credentials),
 ) -> Response:
-    return await admin_page(request, username)
+    return await admin_page(request, username, days)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 from os.path import dirname, join
+from typing import Optional
 
 from fastapi import HTTPException, Request, Response
 from fastapi.templating import Jinja2Templates
-from netunicorn.base.experiment import ExperimentStatus
+from netunicorn.base.experiment import Experiment, ExperimentStatus
 
 from .engine import get_db_connection_pool, verify_sudo
 from .resources import logger
@@ -24,6 +25,52 @@ async def get_locked_nodes() -> list[tuple[str, str, str]]:
         "SELECT node_name, username, connector FROM locks"
     )
     return [(row["node_name"], row["username"], row["connector"]) for row in result]
+
+
+def try_get_nodes(data) -> list[str]:
+    try:
+        experiment = Experiment.from_json(data)
+        return [deployment.node.name for deployment in experiment.deployment_map]
+    except Exception:
+        return []
+
+
+async def get_last_experiments(
+    days: int,
+) -> list[tuple[str, str, str, ExperimentStatus, str, str, str, list[str]]]:
+    """
+    Returns a list of experiments during last X days.
+
+    :returns: List of (username, experiment_name, experiment_id, status, error, creation_time, start_time, list[nodes])
+    """
+    db_conn_pool = await get_db_connection_pool()
+
+    rows = await db_conn_pool.fetch(
+        f"""
+            SELECT username, experiment_name, experiment_id, status, error, creation_time, start_time, data
+            FROM experiments where creation_time > now() - interval '{days} days'
+            ORDER BY start_time DESC, creation_time DESC
+            """
+    )
+
+    result = [
+        (
+            row["username"],
+            row["experiment_name"],
+            row["experiment_id"],
+            ExperimentStatus(row["status"]),
+            row["error"],
+            row["creation_time"],
+            row["start_time"],
+            [],
+        )
+        for row in rows
+    ]
+
+    for i, row in enumerate(rows):
+        result[i][7].extend(try_get_nodes(row["data"]))
+
+    return result
 
 
 async def get_active_experiments() -> list[
@@ -86,7 +133,9 @@ async def get_active_compilations() -> list[tuple[str, str, str, str]]:
     ]
 
 
-async def admin_page(request: Request, username: str) -> Response:
+async def admin_page(
+    request: Request, username: str, days: Optional[int] = 7
+) -> Response:
     if not await verify_sudo(username):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -97,5 +146,6 @@ async def admin_page(request: Request, username: str) -> Response:
             "active_experiments": await get_active_experiments(),
             "locked_nodes": await get_locked_nodes(),
             "active_compilations": await get_active_compilations(),
+            "last_experiments": await get_last_experiments(days=days),
         },
     )
