@@ -8,7 +8,6 @@ from typing import Dict, Iterable, Optional
 from urllib.parse import quote_plus
 
 import requests as req
-from requests.auth import AuthBase
 from netunicorn.base.experiment import Experiment, ExperimentExecutionInformation
 from netunicorn.base.nodes import Nodes
 from netunicorn.base.types import (
@@ -17,6 +16,7 @@ from netunicorn.base.types import (
     NodesRepresentation,
 )
 from netunicorn.base.utils import UnicornEncoder
+from requests.auth import AuthBase
 
 from .base import BaseClient
 

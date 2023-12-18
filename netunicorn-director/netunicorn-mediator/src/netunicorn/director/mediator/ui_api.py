@@ -1,9 +1,8 @@
 from os.path import dirname, join
 
 from fastapi.templating import Jinja2Templates
-from returns.result import Result, Success
-
 from netunicorn.base.experiment import Experiment, ExperimentStatus
+from returns.result import Result, Success
 
 from .engine import get_db_connection_pool, verify_sudo
 from .resources import logger

@@ -38,7 +38,7 @@ typehints_fully_qualified = False
 always_document_param_types = True
 typehints_use_rtype = False
 typehints_defaults = "comma"
-source_suffix = ['.rst', '.md']
+source_suffix = [".rst", ".md"]
 master_doc = "contents"
 
 autodoc_mock_imports = [
