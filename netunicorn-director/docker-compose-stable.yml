@@ -56,7 +56,9 @@ services:
     image: netunicorn/compilation
     restart: unless-stopped
     container_name: netunicorn-compilation
-    environment: *common-variables
+    environment:
+      <<: *common-variables
+#      NETUNICORN_EXECUTOR_VERSION: "0.4.0"  # uncomment this line to use a specific version of the executor
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:

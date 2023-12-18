@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 import subprocess
 from collections.abc import Iterable
@@ -137,8 +138,14 @@ async def docker_compilation_cycle(
         with open(f"{compilation_id}.execution_graph", "wb") as f:
             f.write(pipeline)
 
+    netunicorn_executor_version = os.getenv("NETUNICORN_EXECUTOR_VERSION", None)
+    if netunicorn_executor_version is not None:
+        package_name = f"netunicorn-executor=={netunicorn_executor_version}"
+    else:
+        package_name = "netunicorn-executor"
+
     filelines += [
-        f"RUN pip install netunicorn-executor netunicorn-library",
+        f"RUN pip install {package_name} netunicorn-library",
     ]
 
     if environment_definition.build_context.cloudpickle_version is not None:
