@@ -5,7 +5,7 @@ Abstraction for an execution graph that contains tasks and their order.
 from __future__ import annotations
 
 import uuid
-from typing import Callable, Optional
+from typing import Optional
 
 import networkx as nx
 

@@ -1,7 +1,6 @@
 import unittest
 
-import networkx as nx
-from netunicorn.base import CyclePipeline, ExecutionGraph, Pipeline, Task
+from netunicorn.base import CyclePipeline, Task
 
 
 class DummyTask(Task):
