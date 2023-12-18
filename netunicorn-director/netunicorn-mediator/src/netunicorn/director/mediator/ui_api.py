@@ -2,6 +2,7 @@ from os.path import dirname, join
 
 from fastapi.templating import Jinja2Templates
 from netunicorn.base.experiment import Experiment, ExperimentStatus
+from netunicorn.base.types import ExperimentRepresentation
 from returns.result import Result, Success
 
 from .engine import get_db_connection_pool, verify_sudo
@@ -12,7 +13,7 @@ templates = Jinja2Templates(directory=template_dir)
 logger.info(f"Templates directory: {template_dir}")
 
 
-async def get_locked_nodes(username: str) -> Result[list, str]:
+async def get_locked_nodes(username: str) -> Result[list[dict], str]:
     """Returns locked nodes."""
     db_conn_pool = await get_db_connection_pool()
 
@@ -39,7 +40,7 @@ async def get_locked_nodes(username: str) -> Result[list, str]:
     )
 
 
-def try_get_nodes(data) -> list[str]:
+def try_get_nodes(data: ExperimentRepresentation) -> list[str]:
     try:
         experiment = Experiment.from_json(data)
         return [deployment.node.name for deployment in experiment.deployment_map]
@@ -47,7 +48,7 @@ def try_get_nodes(data) -> list[str]:
         return []
 
 
-async def _get_experiments(query: str) -> Result[list, str]:
+async def _get_experiments(query: str) -> Result[list[dict], str]:
     db_conn_pool = await get_db_connection_pool()
 
     rows = await db_conn_pool.fetch(query)
@@ -72,7 +73,7 @@ async def _get_experiments(query: str) -> Result[list, str]:
     return Success(result)
 
 
-async def get_last_experiments(username: str, days: int) -> Result[list, str]:
+async def get_last_experiments(username: str, days: int) -> Result[list[dict], str]:
     query = f"""
             SELECT username, experiment_name, experiment_id, status, error, creation_time, start_time, data
             FROM experiments where creation_time > now() - interval '{days} days' 
@@ -85,7 +86,7 @@ async def get_last_experiments(username: str, days: int) -> Result[list, str]:
     return await _get_experiments(query)
 
 
-async def get_running_experiments(username: str) -> Result[list, str]:
+async def get_running_experiments(username: str) -> Result[list[dict], str]:
     query = f"""
         SELECT username, experiment_name, experiment_id, status, error, creation_time, start_time, data 
         FROM experiments where status in (
@@ -102,7 +103,7 @@ async def get_running_experiments(username: str) -> Result[list, str]:
     return await _get_experiments(query)
 
 
-async def get_active_compilations(username: str) -> Result[list, str]:
+async def get_active_compilations(username: str) -> Result[list[dict], str]:
     db_conn_pool = await get_db_connection_pool()
 
     request = """

@@ -136,7 +136,7 @@ async def __filter_access_tags(
             user_tags = set(str(x) for x in user_tags)
         else:
             logger.error(
-                f"Failed to get access tags for user {username}: {result.content}. Returning empty list of nodes."
+                f"Failed to get access tags for user {username}: {result.content.decode()}. Returning empty list of nodes."
             )
             return CountableNodePool([])
     except Exception as e:
@@ -156,7 +156,6 @@ async def __filter_access_tags(
         if isinstance(_pool, CountableNodePool):
             _pool.pop(_index)
         else:
-            _pool = cast(UncountableNodePool, _pool)
             _pool._node_template.pop(_index)
 
     async def __filter_nodes_by_access_tags(
@@ -177,10 +176,11 @@ async def __filter_access_tags(
                 if len(new_pool) == 0:
                     __pop_node(_nodes, i)
                 else:
-                    _nodes[i] = new_pool
+                    _nodes[i] = new_pool  # type: ignore[assignment]
             elif isinstance(_nodes[i], Node):
+                _nodes[i] = cast(Node, _nodes[i])
                 try:
-                    node_tags = (
+                    node_tags: set[str] = (
                         _nodes[i].properties.get("netunicorn-access-tags", {}) or {}
                     )
                     node_tags = set(str(x) for x in node_tags)

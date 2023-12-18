@@ -102,7 +102,7 @@ async def verify_token(token: Annotated[str, Depends(security)]) -> str:
 
 
 @app.post("/api/v1/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> dict:
     username = form_data.username
     password = form_data.password
 
@@ -333,7 +333,7 @@ async def running_experiments_handler(
 @app.get("/api/v1/ui/last_experiments", status_code=200)
 async def last_experiments_handler(
     username: Annotated[str, Depends(verify_token)],
-    days: Optional[int] = 14,
+    days: int = 14,
 ) -> Response:
     result = await get_last_experiments(username, days)
     return result_to_response(result)
