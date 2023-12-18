@@ -97,7 +97,7 @@ async def verify_token(token: Annotated[str, Depends(security)]) -> str:
     return username.unwrap()
 
 
-@app.post("/token")
+@app.post("/api/v1/token")
 async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     username = form_data.username
     password = form_data.password
@@ -139,14 +139,14 @@ async def unicorn_exception_handler(_: Request, exc: Exception) -> Response:
     return Response(status_code=500, content=str(exc))
 
 
-@app.get("/verify_token")
+@app.get("/api/v1/verify_token")
 async def verify_token_handler(
     _: Annotated[str, Depends(verify_token)],
 ) -> Response:
     return Response(status_code=200)
 
 
-@app.get("/health")
+@app.get("/api/v1/health")
 async def health_check(_: Annotated[str, Depends(verify_token)]) -> str:
     await check_services_availability()
     return "OK"

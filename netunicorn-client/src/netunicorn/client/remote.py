@@ -104,7 +104,7 @@ class RemoteClient(BaseClient):
 
     def _perform_authentication(self):
         result = req.post(
-            f"{self.endpoint}/token",
+            f"{self.endpoint}/api/v1/token",
             data={"username": self.login, "password": self.password},
         )
         if result.status_code == 200:
@@ -121,7 +121,7 @@ class RemoteClient(BaseClient):
             return False
 
         result = req.get(
-            f"{self.endpoint}/verify_token",
+            f"{self.endpoint}/api/v1/verify_token",
             auth=OAuth2Bearer(self._session_token),
         )
         return result.status_code == 200
@@ -129,7 +129,7 @@ class RemoteClient(BaseClient):
     @authenticated
     def healthcheck(self) -> bool:
         result = req.get(
-            f"{self.endpoint}/health", auth=OAuth2Bearer(self._session_token)
+            f"{self.endpoint}/api/v1/health", auth=OAuth2Bearer(self._session_token)
         )
         if result.status_code == 200:
             return True
