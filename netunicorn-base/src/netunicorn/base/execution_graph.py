@@ -5,7 +5,7 @@ Abstraction for an execution graph that contains tasks and their order.
 from __future__ import annotations
 
 import uuid
-from typing import Optional
+from typing import Callable, Optional
 
 import networkx as nx
 
@@ -185,7 +185,7 @@ class ExecutionGraph:
         label = ", ".join(values)
         return f"{{{label}}}" if values else ""
 
-    def draw(self, nx_layout_function=nx.shell_layout) -> None:
+    def draw(self, nx_layout_function=nx.shell_layout) -> None:  # type: ignore[no-untyped-def]
         """
         Draw execution graph using networkx library.
 
