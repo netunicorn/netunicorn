@@ -16,7 +16,6 @@ from fastapi import (
     Request,
     Response,
 )
-from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.types import FlagValues
@@ -26,7 +25,12 @@ from pydantic import BaseModel
 from returns.pipeline import is_successful
 from returns.result import Result
 
-from .admin import admin_page
+from .ui_api import (
+    get_locked_nodes,
+    get_active_compilations,
+    get_running_experiments,
+    get_last_experiments,
+)
 from .engine import (
     generate_access_token,
     verify_access_token,
@@ -302,13 +306,37 @@ async def set_experiment_flag_handler(
     return result_to_response(result)
 
 
-@app.get("/admin", response_class=HTMLResponse)
-async def get_admin_page(
-    request: Request,
+@app.get("/api/v1/ui/locks", status_code=200)
+async def locked_nodes_handler(
     username: Annotated[str, Depends(verify_token)],
-    days: Optional[int] = 7,
 ) -> Response:
-    return await admin_page(request, username, days)
+    result = await get_locked_nodes(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/compilations", status_code=200)
+async def active_compilations_handler(
+    username: Annotated[str, Depends(verify_token)],
+) -> Response:
+    result = await get_active_compilations(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/running_experiments", status_code=200)
+async def running_experiments_handler(
+    username: Annotated[str, Depends(verify_token)],
+) -> Response:
+    result = await get_running_experiments(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/last_experiments", status_code=200)
+async def last_experiments_handler(
+    username: Annotated[str, Depends(verify_token)],
+    days: Optional[int] = 14,
+) -> Response:
+    result = await get_last_experiments(username, days)
+    return result_to_response(result)
 
 
 if __name__ == "__main__":
