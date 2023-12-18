@@ -129,3 +129,16 @@ services:
       - compilation
       - postgres
       - registry
+
+  ui:
+    image: netunicorn/ui
+    restart: unless-stopped
+    container_name: netunicorn-ui
+    environment:
+      NETUNICORN_MEDIATOR_ENDPOINT: "http://localhost:26611"
+    ports:
+      - "9000:80"
+    networks:
+      - netunicorn-network
+    depends_on:
+      - mediator
