@@ -64,7 +64,7 @@ async def auth(data: AuthenticationRequest) -> None:
 @app.get("/verify_sudo", status_code=200)
 async def verify_sudo(username: str) -> bool:
     sql_query = "SELECT sudo FROM authentication WHERE username = $1"
-    result: Optional[bool] = bool(await db_conn_pool.fetchval(sql_query, username))
+    result = bool(await db_conn_pool.fetchval(sql_query, username))
     return result
 
 
