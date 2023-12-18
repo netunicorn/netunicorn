@@ -178,16 +178,16 @@ async def __filter_access_tags(
                 else:
                     _nodes[i] = new_pool  # type: ignore[assignment]
             elif isinstance(_nodes[i], Node):
-                _nodes[i] = cast(Node, _nodes[i])
                 try:
-                    node_tags: set[str] = (
-                        _nodes[i].properties.get("netunicorn-access-tags", {}) or {}
+                    node_tags = cast(
+                        set[str],
+                        _nodes[i].properties.get("netunicorn-access-tags", {}) or {},  # type: ignore[union-attr]
                     )
                     node_tags = set(str(x) for x in node_tags)
                 except Exception as e:
                     logger.exception(e)
                     logger.error(
-                        f"Failed to parse access tags for node {_nodes[i].name}. Skipping this node."
+                        f"Failed to parse access tags for node {_nodes[i].name}. Skipping this node."  # type: ignore[union-attr]
                     )
                     filtered_nodes_counter += 1
                     __pop_node(_nodes, i)

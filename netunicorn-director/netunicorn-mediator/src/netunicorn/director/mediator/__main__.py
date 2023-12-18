@@ -3,7 +3,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Annotated, Any, List, Optional, Union
+from typing import Annotated, Any, Dict, List, Optional, Union
 
 import uvicorn
 from fastapi import (
@@ -102,7 +102,9 @@ async def verify_token(token: Annotated[str, Depends(security)]) -> str:
 
 
 @app.post("/api/v1/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> dict:
+async def login(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+) -> Dict[str, str]:
     username = form_data.username
     password = form_data.password
 

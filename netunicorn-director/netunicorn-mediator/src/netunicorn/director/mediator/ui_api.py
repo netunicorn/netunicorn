@@ -1,4 +1,5 @@
 from os.path import dirname, join
+from typing import Dict
 
 from fastapi.templating import Jinja2Templates
 from netunicorn.base.experiment import Experiment, ExperimentStatus
@@ -13,7 +14,7 @@ templates = Jinja2Templates(directory=template_dir)
 logger.info(f"Templates directory: {template_dir}")
 
 
-async def get_locked_nodes(username: str) -> Result[list[dict], str]:
+async def get_locked_nodes(username: str) -> Result[list[Dict[str, str]], str]:
     """Returns locked nodes."""
     db_conn_pool = await get_db_connection_pool()
 
@@ -48,7 +49,7 @@ def try_get_nodes(data: ExperimentRepresentation) -> list[str]:
         return []
 
 
-async def _get_experiments(query: str) -> Result[list[dict], str]:
+async def _get_experiments(query: str) -> Result[list[Dict[str, str]], str]:
     db_conn_pool = await get_db_connection_pool()
 
     rows = await db_conn_pool.fetch(query)
@@ -73,7 +74,9 @@ async def _get_experiments(query: str) -> Result[list[dict], str]:
     return Success(result)
 
 
-async def get_last_experiments(username: str, days: int) -> Result[list[dict], str]:
+async def get_last_experiments(
+    username: str, days: int
+) -> Result[list[Dict[str, str]], str]:
     query = f"""
             SELECT username, experiment_name, experiment_id, status, error, creation_time, start_time, data
             FROM experiments where creation_time > now() - interval '{days} days' 
@@ -86,7 +89,7 @@ async def get_last_experiments(username: str, days: int) -> Result[list[dict], s
     return await _get_experiments(query)
 
 
-async def get_running_experiments(username: str) -> Result[list[dict], str]:
+async def get_running_experiments(username: str) -> Result[list[Dict[str, str]], str]:
     query = f"""
         SELECT username, experiment_name, experiment_id, status, error, creation_time, start_time, data 
         FROM experiments where status in (
@@ -103,7 +106,7 @@ async def get_running_experiments(username: str) -> Result[list[dict], str]:
     return await _get_experiments(query)
 
 
-async def get_active_compilations(username: str) -> Result[list[dict], str]:
+async def get_active_compilations(username: str) -> Result[list[Dict[str, str]], str]:
     db_conn_pool = await get_db_connection_pool()
 
     request = """
