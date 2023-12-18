@@ -19,7 +19,8 @@ dependencies = [
     "asyncpg",
     "returns",
     "requests",
-    "jinja2"
+    "jinja2",
+    "python-multipart",
 ]
 
 [tool.setuptools.packages.find]

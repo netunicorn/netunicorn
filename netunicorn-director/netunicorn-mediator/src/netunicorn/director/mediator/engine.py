@@ -1,7 +1,8 @@
 import asyncio
 import json
+import secrets
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, TypeVar, Union, cast
 from uuid import uuid4
 
@@ -867,3 +868,47 @@ async def set_experiment_flag(
     )
 
     return Success(None)
+
+
+async def generate_access_token(
+    username: str, expiration: timedelta
+) -> Result[str, str]:
+    # check if token already exists -> update expiration time and return
+    token = await db_conn_pool.fetchval(
+        "SELECT token FROM accesstokens WHERE username = $1 AND expiration > $2 LIMIT 1",
+        username,
+        datetime.utcnow(),
+    )
+    if token is not None:
+        await db_conn_pool.execute(
+            "UPDATE accesstokens SET expiration = $1 WHERE token = $2",
+            datetime.utcnow() + expiration,
+            token,
+        )
+        return Success(token)
+
+    # generate new secure token
+    token = secrets.token_urlsafe(16)
+    await db_conn_pool.execute(
+        "INSERT INTO accesstokens (username, token, expiration) "
+        "VALUES ($1, $2, $3) "
+        "ON CONFLICT (username)"
+        "DO UPDATE SET token = $2, expiration = $3",
+        username,
+        token,
+        datetime.utcnow() + expiration,
+    )
+
+    return Success(token)
+
+
+async def verify_access_token(token: str) -> Result[str, str]:
+    username = await db_conn_pool.fetchval(
+        "SELECT username FROM accesstokens WHERE token = $1 AND expiration > $2 LIMIT 1",
+        token,
+        datetime.utcnow(),
+    )
+    if username is None:
+        return Failure("Access token not found")
+
+    return Success(username)
