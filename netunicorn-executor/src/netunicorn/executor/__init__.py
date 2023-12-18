@@ -1,1 +1,3 @@
-from .executor import Executor, ExecutorState, get_local_executor
+from netunicorn.base.types import ExecutorState
+
+from .executor import Executor, get_local_executor

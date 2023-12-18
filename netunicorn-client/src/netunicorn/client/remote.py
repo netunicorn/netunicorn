@@ -4,7 +4,7 @@ Default remote client for netunicorn.
 import json
 import warnings
 from functools import wraps
-from typing import Dict, Iterable, Optional, Callable, Any
+from typing import Any, Callable, Dict, Iterable, Optional
 from urllib.parse import quote_plus
 
 import requests as req
