@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 from contextlib import asynccontextmanager
+from datetime import timedelta
 from typing import Annotated, Any, List, Optional, Union
 
 import uvicorn
@@ -15,8 +16,7 @@ from fastapi import (
     Request,
     Response,
 )
-from fastapi.responses import HTMLResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.types import FlagValues
 from netunicorn.base.utils import UnicornEncoder
@@ -25,7 +25,6 @@ from pydantic import BaseModel
 from returns.pipeline import is_successful
 from returns.result import Result
 
-from .admin import admin_page
 from .engine import (
     cancel_executors,
     cancel_experiment,
@@ -37,6 +36,7 @@ from .engine import (
     credentials_check,
     delete_experiment,
     experiment_precheck,
+    generate_access_token,
     get_experiment_flag,
     get_experiment_status,
     get_experiments,
@@ -45,6 +45,13 @@ from .engine import (
     prepare_experiment_task,
     set_experiment_flag,
     start_experiment,
+    verify_access_token,
+)
+from .ui_api import (
+    get_active_compilations,
+    get_last_experiments,
+    get_locked_nodes,
+    get_running_experiments,
 )
 
 
@@ -56,7 +63,7 @@ class CancellationRequest(BaseModel):
 logger = get_logger("netunicorn.director.mediator")
 
 proxy_path = os.environ.get("PROXY_PATH", "").removesuffix("/")
-security = HTTPBasic()
+security = OAuth2PasswordBearer(tokenUrl="token")
 
 
 @asynccontextmanager
@@ -83,18 +90,38 @@ def result_to_response(result: Result[Any, Any]) -> Response:
     )
 
 
-async def check_credentials(
-    credentials: HTTPBasicCredentials = Depends(security),
-) -> str:
-    current_username = credentials.username
-    current_token = credentials.password
-    if not await credentials_check(current_username, current_token):
+async def verify_token(token: Annotated[str, Depends(security)]) -> str:
+    username = await verify_access_token(token)
+    if not is_successful(username):
+        raise HTTPException(
+            status_code=401,
+            detail=username.failure(),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return username.unwrap()
+
+
+@app.post("/api/v1/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    username = form_data.username
+    password = form_data.password
+
+    if not await credentials_check(username, password):
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or token",
-            headers={"WWW-Authenticate": "Basic"},
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    return current_username
+
+    token = await generate_access_token(username, expiration=timedelta(days=1))
+    if not is_successful(token):
+        raise HTTPException(
+            status_code=401,
+            detail=token.failure(),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {"access_token": token.unwrap(), "token_type": "bearer"}
 
 
 async def parse_context(json_str: Optional[str]) -> Any:
@@ -116,15 +143,22 @@ async def unicorn_exception_handler(_: Request, exc: Exception) -> Response:
     return Response(status_code=500, content=str(exc))
 
 
-@app.get("/health")
-async def health_check() -> str:
+@app.get("/api/v1/verify_token")
+async def verify_token_handler(
+    _: Annotated[str, Depends(verify_token)],
+) -> Response:
+    return Response(status_code=200)
+
+
+@app.get("/api/v1/health")
+async def health_check(_: Annotated[str, Depends(verify_token)]) -> str:
     await check_services_availability()
     return "OK"
 
 
 @app.get("/api/v1/nodes", status_code=200)
 async def nodes_handler(
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     return result_to_response(
@@ -134,7 +168,7 @@ async def nodes_handler(
 
 @app.get("/api/v1/experiment", status_code=200)
 async def get_experiments_handler(
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
@@ -148,7 +182,7 @@ async def prepare_experiment_handler(
     experiment_name: str,
     request: Request,
     background_tasks: BackgroundTasks,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Union[Response, str]:
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
@@ -185,7 +219,7 @@ async def prepare_experiment_handler(
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
 async def start_experiment_handler(
     experiment_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     execution_context: Optional[dict[str, dict[str, str]]] = None,
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
@@ -199,7 +233,7 @@ async def start_experiment_handler(
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(
     experiment_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
@@ -210,7 +244,7 @@ async def experiment_status_handler(
 @app.delete("/api/v1/experiment/{experiment_name}", status_code=200)
 async def delete_experiment_handler(
     experiment_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
@@ -221,7 +255,7 @@ async def delete_experiment_handler(
 @app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
 async def cancel_experiment_handler(
     experiment_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     cancellation_context: Optional[dict[str, dict[str, str]]] = None,
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
@@ -238,7 +272,7 @@ async def cancel_experiment_handler(
 @app.post("/api/v1/executors/cancel", status_code=200)
 async def cancel_executors_handler(
     data: CancellationRequest,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
@@ -255,7 +289,7 @@ async def cancel_executors_handler(
 async def get_experiment_flag_handler(
     experiment_id: str,
     flag_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
 ) -> Response:
     result = await get_experiment_flag(username, experiment_id, flag_name)
     return result_to_response(result.map(lambda x: x.dict()))
@@ -265,20 +299,44 @@ async def get_experiment_flag_handler(
 async def set_experiment_flag_handler(
     experiment_id: str,
     flag_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     values: FlagValues = Body(...),
 ) -> Response:
     result = await set_experiment_flag(username, experiment_id, flag_name, values)
     return result_to_response(result)
 
 
-@app.get("/admin", response_class=HTMLResponse)
-async def get_admin_page(
-    request: Request,
-    days: Optional[int] = 7,
-    username: str = Depends(check_credentials),
+@app.get("/api/v1/ui/locks", status_code=200)
+async def locked_nodes_handler(
+    username: Annotated[str, Depends(verify_token)],
 ) -> Response:
-    return await admin_page(request, username, days)
+    result = await get_locked_nodes(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/compilations", status_code=200)
+async def active_compilations_handler(
+    username: Annotated[str, Depends(verify_token)],
+) -> Response:
+    result = await get_active_compilations(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/running_experiments", status_code=200)
+async def running_experiments_handler(
+    username: Annotated[str, Depends(verify_token)],
+) -> Response:
+    result = await get_running_experiments(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/last_experiments", status_code=200)
+async def last_experiments_handler(
+    username: Annotated[str, Depends(verify_token)],
+    days: Optional[int] = 14,
+) -> Response:
+    result = await get_last_experiments(username, days)
+    return result_to_response(result)
 
 
 if __name__ == "__main__":

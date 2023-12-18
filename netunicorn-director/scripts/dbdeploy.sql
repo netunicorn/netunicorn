@@ -59,4 +59,11 @@ CREATE TABLE IF NOT EXISTS Flags (
     text_value TEXT,
     int_value INT NOT NULL DEFAULT 0,
     PRIMARY KEY (experiment_id, key)
-)
+);
+
+CREATE TABLE IF NOT EXISTS AccessTokens (
+    username TEXT NOT NULL,
+    token TEXT NOT NULL,
+    expiration TIMESTAMP NOT NULL,
+    PRIMARY KEY (username)
+);
