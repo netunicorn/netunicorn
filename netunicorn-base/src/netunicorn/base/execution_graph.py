@@ -177,7 +177,7 @@ class ExecutionGraph:
 
     # graph visualization
     @staticmethod
-    def _get_edge_label_string(edge: dict) -> str:
+    def _get_edge_label_string(edge: dict) -> str:  # type: ignore[type-arg]
         values = [
             f"'{key}': {value}" for key, value in edge.items() if value is not None
         ]
@@ -185,7 +185,7 @@ class ExecutionGraph:
         label = ", ".join(values)
         return f"{{{label}}}" if values else ""
 
-    def draw(self, nx_layout_function=nx.shell_layout):
+    def draw(self, nx_layout_function=nx.shell_layout) -> None:
         """
         Draw execution graph using networkx library.
 
