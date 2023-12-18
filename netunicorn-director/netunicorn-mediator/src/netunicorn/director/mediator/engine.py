@@ -47,6 +47,8 @@ async def open_db_connection() -> None:
         password=DATABASE_PASSWORD,
         database=DATABASE_DB,
         init=__init_connection,
+        min_size=1,
+        max_size=5,
     )
 
 

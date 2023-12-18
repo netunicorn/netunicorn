@@ -209,6 +209,8 @@ async def main() -> NoReturn:
         database=DATABASE_DB,
         host=DATABASE_ENDPOINT,
         init=__init_connection,
+        min_size=1,
+        max_size=2,
     )
     await db_conn_pool.fetchval("SELECT 1")
     while True:

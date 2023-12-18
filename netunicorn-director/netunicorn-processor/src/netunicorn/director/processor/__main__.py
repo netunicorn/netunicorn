@@ -264,6 +264,8 @@ async def main() -> None:
         password=DATABASE_PASSWORD,
         database=DATABASE_DB,
         init=__init_connection,
+        min_size=1,
+        max_size=2,
     )
 
     locker_task_handler = asyncio.create_task(locker_task())

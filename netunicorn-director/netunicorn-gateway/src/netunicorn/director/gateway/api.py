@@ -35,6 +35,8 @@ async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
         password=DATABASE_PASSWORD,
         database=DATABASE_DB,
         host=DATABASE_ENDPOINT,
+        min_size=1,
+        max_size=10,
     )
     await db_conn_pool.fetchval("SELECT 1")
     logger.info("Gateway started, connection to DB established")
