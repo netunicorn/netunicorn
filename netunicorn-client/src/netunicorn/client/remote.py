@@ -4,7 +4,7 @@ Default remote client for netunicorn.
 import json
 import warnings
 from functools import wraps
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, Optional, Callable, Any
 from urllib.parse import quote_plus
 
 import requests as req
@@ -16,16 +16,17 @@ from netunicorn.base.types import (
     NodesRepresentation,
 )
 from netunicorn.base.utils import UnicornEncoder
+from requests import PreparedRequest
 from requests.auth import AuthBase
 
 from .base import BaseClient
 
 
 class OAuth2Bearer(AuthBase):
-    def __init__(self, token):
+    def __init__(self, token: str):
         self.token = token
 
-    def __call__(self, r):
+    def __call__(self, r: PreparedRequest) -> PreparedRequest:
         r.headers["authorization"] = "Bearer " + self.token
         return r
 
@@ -38,9 +39,9 @@ class RemoteClientException(Exception):
     pass
 
 
-def authenticated(function):
+def authenticated(function: Callable) -> Callable:
     @wraps(function)
-    def wrapper(self: "RemoteClient", *args, **kwargs):
+    def wrapper(self: "RemoteClient", *args, **kwargs) -> Any:
         if not self._verify_token():
             self._perform_authentication()
         return function(self, *args, **kwargs)
@@ -102,7 +103,7 @@ class RemoteClient(BaseClient):
 
         return result
 
-    def _perform_authentication(self):
+    def _perform_authentication(self) -> None:
         result = req.post(
             f"{self.endpoint}/api/v1/token",
             data={"username": self.login, "password": self.password},
