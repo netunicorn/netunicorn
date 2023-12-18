@@ -270,6 +270,9 @@ class Executor:
         """
         This method verifies that there are no task dispatchers in the execution graph.
         """
+        if self.execution_graph is None:
+            raise ValueError("No execution graph to execute.")
+
         for node in self.execution_graph.graph.nodes:
             if isinstance(node, TaskDispatcher):
                 raise ValueError(
