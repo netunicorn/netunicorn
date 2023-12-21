@@ -47,4 +47,4 @@ Access tags rules:
 - If node has no access tags, then all users can access the node.
 - If user has access tags, then it has access to all nodes which either have no access tags or have at least one access tag that is present in the user's access tags list.
 
-Access tags on the node level are presented as a list of strings in "netunicorn-access-tags" property of the node.
+Access tags on the node level are presented as a list of strings in `netunicorn-access-tags` property of the node.
