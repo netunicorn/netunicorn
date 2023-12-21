@@ -5,6 +5,7 @@
 
     Home<index.md>
     examples.md
+    UI.md
 
 .. autosummary::
     :caption: User Documentation
@@ -22,7 +23,6 @@
 
     administrator_docs/deployment
     administrator_docs/connectors
-    administrator_docs/monitoring
     administrator_docs/users
     administrator_docs/database
 
