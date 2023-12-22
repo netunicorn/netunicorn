@@ -15,11 +15,12 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
     "cloudpickle",
     "requests",
-    "netunicorn-base >= 0.4.0",
+    "netunicorn-base >= 0.4.0, < 0.5.0",
 ]
 
 [tool.setuptools.packages.find]

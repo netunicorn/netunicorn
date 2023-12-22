@@ -1,6 +1,6 @@
 [project]
 name = "netunicorn-director-authentication"
-version = "0.3.1"
+version = "0.4.0"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
@@ -17,7 +17,7 @@ dependencies = [
     "uvicorn",
     "asyncpg",
     "bcrypt",
-    "netunicorn-base >= 0.3.0",
+    "netunicorn-base >= 0.4.0, < 0.5.0",
 ]
 
 [tool.setuptools.packages.find]
