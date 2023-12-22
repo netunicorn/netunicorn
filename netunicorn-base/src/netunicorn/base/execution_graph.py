@@ -72,6 +72,11 @@ class ExecutionGraph:
         Graph of tasks and their order.
         """
 
+        self.override_graph_validation = False
+        """
+        Disable graph validation. Executor and other components will not validate the graph before execution.
+        """
+
         self.graph.add_node("root")
 
     @staticmethod
@@ -81,6 +86,9 @@ class ExecutionGraph:
 
         :return: True if execution graph is valid, raises an exception otherwise
         """
+
+        if obj.override_graph_validation:
+            return True
 
         if not isinstance(obj, ExecutionGraph):
             raise ValueError("The object is not an instance of ExecutionGraph")
