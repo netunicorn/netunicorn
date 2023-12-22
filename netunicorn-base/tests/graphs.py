@@ -54,46 +54,48 @@ class TestValidAndInvalidGraphs(unittest.TestCase):
         # wrong types
         graphs = [nx.Graph(), nx.MultiGraph(), nx.MultiDiGraph()]
         for x in graphs:
-            with self.assertRaises(Exception):
-                ExecutionGraph.is_execution_graph_valid(x)  # type: ignore
+            with self.assertRaises(ValueError):
+                eg = ExecutionGraph()
+                eg.graph = x
+                ExecutionGraph.is_execution_graph_valid(eg)
 
         # not connected
         graph = ExecutionGraph()
         graph.graph.add_node("a")
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(graph)
 
         # no root
         graph = ExecutionGraph()
         graph.graph.remove_node("root")
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(graph)
 
         # not all nodes are accessible from root
         graph = ExecutionGraph()
         graph.graph.add_node("a")
         graph.graph.add_edge("a", "root")
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(graph)
 
         # cycles without weak links
         graph = ExecutionGraph()
         graph.graph.add_edge("root", "root")
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(graph)
 
         graph = ExecutionGraph()
         graph.graph.add_edge("root", "a")
         graph.graph.add_edge("a", "b")
         graph.graph.add_edge("b", "a")
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(graph)
 
         graph = ExecutionGraph()
         graph.graph.add_edge("root", "a")
         graph.graph.add_edge("b", "a")
         graph.graph.add_edge("a", "b", type="weak")
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(graph)
 
     def test_valid_graphs_0(self):
@@ -142,7 +144,7 @@ class TestValidAndInvalidGraphs(unittest.TestCase):
         task2 = DummyTask()
         ex_graph.graph.add_edges_from([("root", task), (task, task2)])
         ex_graph.graph[task][task2]["traverse_on"] = "invalid"
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(ex_graph)
 
     def test_traverse_on_from_sync_node(self):
@@ -151,7 +153,7 @@ class TestValidAndInvalidGraphs(unittest.TestCase):
         task = DummyTask()
         ex_graph.graph.add_edges_from([("root", "sync"), ("sync", task)])
         ex_graph.graph["sync"][task]["traverse_on"] = "any"
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(ex_graph)
 
     def test_valid_traverse_on(self):
@@ -175,11 +177,11 @@ class TestValidAndInvalidGraphs(unittest.TestCase):
         exec_graph = ExecutionGraph()
         exec_graph.graph.add_edge("root", "a")
         exec_graph.graph.add_edge("a", "b", counter=0)
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(exec_graph)
 
         exec_graph.graph["a"]["b"]["counter"] = -1
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             ExecutionGraph.is_execution_graph_valid(exec_graph)
 
     def test_valid_counters(self):

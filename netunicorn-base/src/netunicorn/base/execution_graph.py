@@ -83,16 +83,20 @@ class ExecutionGraph:
         """
 
         if not isinstance(obj, ExecutionGraph):
-            raise TypeError("Execution graph must be a directed graph")
+            raise ValueError("The object is not an instance of ExecutionGraph")
 
         graph = obj.graph
+
+        if not isinstance(graph, nx.DiGraph) or isinstance(graph, nx.MultiDiGraph):
+            raise ValueError("Execution graph must be a directed graph (DiGraph)")
+
+        if not graph.has_node("root"):
+            raise ValueError("Execution graph must have a root node")
+
         if not nx.is_weakly_connected(graph):
             raise ValueError(
                 "Execution graph must be a weakly connected directed graph"
             )
-
-        if not graph.has_node("root"):
-            raise ValueError("Execution graph must have a root node")
 
         successors = set(nx.dfs_postorder_nodes(graph, "root"))
         if diff := set(graph.nodes).difference(successors):
