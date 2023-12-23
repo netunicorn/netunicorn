@@ -26,9 +26,6 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools.package-data]
-"*" = ["*.html"]
-
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
