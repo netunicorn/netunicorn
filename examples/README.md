@@ -26,4 +26,6 @@ Afterward, `tasks_and_dispatchers.ipynb` and `local_executor.ipynb` will provide
 
 Later, `speed_test_example.ipynb` and `video_watchers_example.ipynb` provide a real-world examples of experiments and describe how to use other Docker images for your experiment.
 
+Then, `executiongraph.ipynb` and `graph_example.ipynb` describe how to use the ExecutionGraph class to create more complex pipelines.
+
 Finally, `flags_example.ipynb` describes advanced topics of synchronization of different pipelines in the experiment.
