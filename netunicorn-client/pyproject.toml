@@ -1,6 +1,6 @@
 [project]
 name = "netunicorn-client"
-version = "0.3.1"
+version = "0.4.0"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
@@ -15,9 +15,10 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "netunicorn-base >= 0.3.3",
+    "netunicorn-base >= 0.4.0, < 0.5.0",
     "cloudpickle",
     "requests",
     "returns",
