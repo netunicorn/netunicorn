@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 import subprocess
 from collections.abc import Iterable
@@ -40,7 +41,7 @@ async def docker_compilation_cycle(
     compilation_request = await db_pool.fetchrow(
         "SELECT "
         "experiment_id, compilation_id, architecture, "
-        "pipeline::bytea, environment_definition::jsonb "
+        "execution_graph::bytea, environment_definition::jsonb "
         "FROM compilations WHERE status IS NULL LIMIT 1"
     )
     if compilation_request is None:
@@ -50,10 +51,27 @@ async def docker_compilation_cycle(
     experiment_id: str = compilation_request["experiment_id"]
     compilation_id: str = compilation_request["compilation_id"]
     architecture: str = compilation_request["architecture"]
-    pipeline: Optional[bytes] = compilation_request["pipeline"]
     environment_definition = environment_definitions.DockerImage.from_json(
         compilation_request["environment_definition"]
     )
+
+    try:
+        pipeline: Optional[bytes] = compilation_request["execution_graph"]
+    except KeyError:
+        if "pipeline" in compilation_request:
+            await record_compilation_result(
+                experiment_id,
+                compilation_id,
+                False,
+                (
+                    f"Experiment was submitted using the old version of netunicorn. "
+                    f"Please, update netunicorn packages."
+                ),
+                db_pool,
+            )
+            return True
+        else:
+            raise
 
     if environment_definition.image is None:
         await record_compilation_result(
@@ -114,13 +132,20 @@ async def docker_compilation_cycle(
     ]
 
     if pipeline is not None:
-        filelines.append(f"COPY {compilation_id}.pipeline unicorn.pipeline")
-        with open(f"{compilation_id}.pipeline", "wb") as f:
+        filelines.append(
+            f"COPY {compilation_id}.execution_graph netunicorn.execution_graph"
+        )
+        with open(f"{compilation_id}.execution_graph", "wb") as f:
             f.write(pipeline)
 
+    netunicorn_executor_version = os.getenv("NETUNICORN_EXECUTOR_VERSION", None)
+    if netunicorn_executor_version is not None:
+        package_name = f"netunicorn-executor=={netunicorn_executor_version}"
+    else:
+        package_name = "netunicorn-executor"
+
     filelines += [
-        f"RUN pip install netunicorn-base",
-        f"RUN pip install netunicorn-executor",
+        f"RUN pip install {package_name} netunicorn-library",
     ]
 
     if environment_definition.build_context.cloudpickle_version is not None:
@@ -184,6 +209,8 @@ async def main() -> NoReturn:
         database=DATABASE_DB,
         host=DATABASE_ENDPOINT,
         init=__init_connection,
+        min_size=1,
+        max_size=2,
     )
     await db_conn_pool.fetchval("SELECT 1")
     while True:

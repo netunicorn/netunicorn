@@ -81,7 +81,7 @@ async def collect_executors_results(experiment_id: str, experiment: Experiment) 
         execution_results.append(
             DeploymentExecutionResult(
                 node=deployment.node,
-                serialized_pipeline=deployment.pipeline,
+                serialized_execution_graph=deployment.execution_graph,
                 result=executor_result,
                 error=error,
             )
@@ -181,8 +181,7 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
             ExperimentStatus.RUNNING.value,
         )
         if not experiments:
-            await asyncio.sleep(timeout_sec)
-            continue
+            experiments = []
 
         nodes_to_lock: set[
             tuple[str, str, str]
@@ -265,6 +264,8 @@ async def main() -> None:
         password=DATABASE_PASSWORD,
         database=DATABASE_DB,
         init=__init_connection,
+        min_size=1,
+        max_size=2,
     )
 
     locker_task_handler = asyncio.create_task(locker_task())

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>netUnicorn UI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css">
+
+</head>
+<body>
+<script src="https://unpkg.com/localstorage-slim@2.7.0/dist/localstorage-slim.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
+<script src="js/globals.js"></script>
+<script src="js/helpers.js"></script>
+<script>check_authentication()</script>
+
+<!-- Navigation bar -->
+<div id="nav-placeholder"></div>
+<script>
+    $(function () {
+        $("#nav-placeholder").load("navbar.html");
+    });
+</script>
+
+<div class="m-3">
+    <h1>Running Experiments</h1>
+    <table id="runningExperiments" class="table" data-search="true">
+        <thead>
+        <tr>
+            <th data-field="username" data-sortable="true">Username</th>
+            <th data-field="experiment_name" data-sortable="true">Experiment Name</th>
+            <th data-field="experiment_id" data-sortable="true">Experiment ID</th>
+            <th data-field="status" data-sortable="true">Status</th>
+            <th data-field="error" data-sortable="true">Error</th>
+            <th data-field="creation_time" data-sortable="true">Created</th>
+            <th data-field="start_time" data-sortable="true">Started</th>
+            <th data-field="nodes" data-sortable="true">Nodes</th>
+        </tr>
+        </thead>
+    </table>
+</div>
+
+<script>
+    var runningExperimentsTable = $('#runningExperiments')
+
+    $(function () {
+        $(document).ready(
+            $.ajax({
+                url: NETUNICORN_MEDIATOR_URL + '/api/v1/ui/running_experiments',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + window.ls.get('netunicorn_access_token'),
+                },
+                success: function (response) {
+                    console.log(response)
+                    runningExperimentsTable.bootstrapTable({data: response})
+                    runningExperimentsTable.bootstrapTable('sortBy', {
+                        field: 'creation_time',
+                        sortOrder: 'desc'
+                    })
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    switch (xhr.status) {
+                        case 401:
+                            console.log(xhr.body);
+                            logout();
+                            break;
+                        default:
+                            console.log(xhr.body);
+                            break;
+                    }
+                }
+            })
+        );
+    })
+</script>
+
+<div class="m-3">
+    <h1>Experiments History</h1>
+    <table id="histExperiments" class="table" data-search="true">
+        <thead>
+        <tr>
+            <th data-field="username" data-sortable="true">Username</th>
+            <th data-field="experiment_name" data-sortable="true">Experiment Name</th>
+            <th data-field="experiment_id" data-sortable="true">Experiment ID</th>
+            <th data-field="status" data-sortable="true">Status</th>
+            <th data-field="error" data-sortable="true">Error</th>
+            <th data-field="creation_time" data-sortable="true">Created</th>
+            <th data-field="start_time" data-sortable="true">Started</th>
+            <th data-field="nodes" data-sortable="true">Nodes</th>
+        </tr>
+        </thead>
+    </table>
+</div>
+
+<script>
+    var $lastExperimentsTable = $('#histExperiments')
+
+    $(function () {
+        $(document).ready(
+            $.ajax({
+                url: NETUNICORN_MEDIATOR_URL + '/api/v1/ui/last_experiments',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + window.ls.get('netunicorn_access_token'),
+                },
+                success: function (response) {
+                    console.log(response)
+                    $lastExperimentsTable.bootstrapTable({data: response})
+                    $lastExperimentsTable.bootstrapTable('sortBy', {
+                        field: 'creation_time',
+                        sortOrder: 'desc'
+                    })
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    switch (xhr.status) {
+                        case 401:
+                            console.log(xhr.body);
+                            logout();
+                            break;
+                        default:
+                            console.log(xhr.body);
+                            break;
+                    }
+                }
+            })
+        );
+    })
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import warnings
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union, cast
@@ -13,13 +14,13 @@ from returns.pipeline import is_successful
 from returns.result import Result
 
 from .deployment import Deployment
+from .execution_graph import ExecutionGraph
 from .nodes import Node, Nodes
-from .pipeline import Pipeline
 from .types import (
     DeploymentExecutionResultRepresentation,
+    ExecutionGraphResult,
     ExperimentExecutionInformationRepresentation,
     ExperimentRepresentation,
-    PipelineResult,
 )
 from .utils import LogType
 
@@ -70,7 +71,7 @@ class ExperimentStatus(Enum):
 
 class Experiment:
     """
-    Represents an experiment that contains a mapping of pipelines to nodes.
+    Represents an experiment that contains a mapping of execution graphs to nodes.
 
     :param deployment_context: deployment context to be used by connectors.
     """
@@ -92,24 +93,24 @@ class Experiment:
             Format: {connector_name: {key: value}}
         """
 
-    def append(self, node: Node, pipeline: Pipeline) -> Experiment:
+    def append(self, node: Node, pipeline: ExecutionGraph) -> Experiment:
         """
-        Append a new deployment (mapping of pipeline to a node) to the experiment.
+        Append a new deployment (mapping of an execution graph to a node) to the experiment.
 
-        :param node: a node to deploy the pipeline to.
-        :param pipeline: a pipeline to deploy.
+        :param node: a node to deploy the execution graph to.
+        :param pipeline: a pipeline (execution graph) to deploy.
         :return: self.
         """
 
         self.deployment_map.append(Deployment(node, pipeline))
         return self
 
-    def map(self, pipeline: Pipeline, nodes: Sequence[Node]) -> Experiment:
+    def map(self, pipeline: ExecutionGraph, nodes: Sequence[Node]) -> Experiment:
         """
-        Map a pipeline to a sequence of nodes.
+        Map an execution graph to a sequence of nodes.
 
-        :param pipeline: a pipeline to deploy.
-        :param nodes: a sequence of nodes to deploy the pipeline to.
+        :param pipeline: a pipeline (execution graph) to deploy.
+        :param nodes: a sequence of nodes to deploy the execution graph to.
         :return: self.
         """
 
@@ -197,7 +198,7 @@ class DeploymentExecutionResult:
     Stores a result (or ongoing information) of a deployment execution.
 
     :param node: a node that was used for deployment.
-    :param serialized_pipeline: a serialized pipeline.
+    :param serialized_execution_graph: a serialized execution graph.
     :param result: a result of a deployment execution.
     :param error: an error message if deployment failed.
     """
@@ -205,18 +206,18 @@ class DeploymentExecutionResult:
     def __init__(
         self,
         node: Node,
-        serialized_pipeline: bytes,
+        serialized_execution_graph: bytes,
         result: Optional[bytes],
         error: Optional[str] = None,
     ):
         self.node: Node = node
         """
-        a node that was used for deployment
+        A node that was used for deployment
         """
 
-        self._pipeline: bytes = serialized_pipeline
+        self._execution_graph: bytes = serialized_execution_graph
         """
-        a serialized pipeline
+        A serialized exeuction graph
         """
 
         self._result: Optional[bytes] = result
@@ -230,20 +231,23 @@ class DeploymentExecutionResult:
         """
 
     @property
-    def pipeline(self) -> Pipeline:
+    def pipeline(self) -> ExecutionGraph:
         """
-        Returns a pipeline that was used for deployment.
+        Returns a pipeline (execution graph) that was used for the deployment.
 
-        :return: a pipeline that was used for deployment.
+        :return: an execution graph that was used for the deployment.
         """
         import cloudpickle
 
-        return cast(Pipeline, cloudpickle.loads(self._pipeline))
+        if not self._execution_graph:
+            raise ValueError("Execution graph information is not available.")
+
+        return cast(ExecutionGraph, cloudpickle.loads(self._execution_graph))
 
     @property
     def result(
         self,
-    ) -> Optional[Tuple[Result[PipelineResult, PipelineResult], LogType]]:
+    ) -> Optional[Tuple[Result[ExecutionGraphResult, ExecutionGraphResult], LogType]]:
         """
         Returns a result of a deployment execution and logs.
 
@@ -279,7 +283,7 @@ class DeploymentExecutionResult:
     def __json__(self) -> DeploymentExecutionResultRepresentation:
         return {
             "node": self.node.__json__(),
-            "pipeline": base64.b64encode(self._pipeline).decode("utf-8"),
+            "execution_graph": base64.b64encode(self._execution_graph).decode("utf-8"),
             "result": base64.b64encode(self._result).decode("utf-8")
             if self._result
             else None,
@@ -296,9 +300,21 @@ class DeploymentExecutionResult:
         :param data: a JSON representation of a deployment execution result.
         :return: an instance of DeploymentExecutionResult.
         """
+        try:
+            execution_graph = base64.b64decode(data["execution_graph"])
+        except KeyError:
+            if "pipeline" in data:
+                warnings.warn(
+                    "The deployment was created with an older version of netunicorn. "
+                    "Execution graph information would not be available."
+                )
+                execution_graph = b""
+            else:
+                raise
+
         return cls(
             Node.from_json(data["node"]),
-            base64.b64decode(data["pipeline"]),
+            execution_graph,
             base64.b64decode(data["result"]) if data["result"] else None,
             data["error"],
         )

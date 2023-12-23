@@ -15,3 +15,4 @@ netunicorn-library/pyproject.toml
 netunicorn-library/src/netunicorn/library/tasks
 netunicorn-library/src/netunicorn/library/pipelines
 .vscode
+**/*.log

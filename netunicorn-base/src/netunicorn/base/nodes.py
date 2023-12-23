@@ -7,7 +7,19 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from itertools import chain, count, cycle
-from typing import Callable, Dict, Iterable, Iterator, List, Sequence, Set, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Union,
+    cast,
+)
 
 import netunicorn.base
 
@@ -158,17 +170,22 @@ class Nodes(ABC):
         """
 
         cls: Nodes = getattr(netunicorn.base.nodes, data["node_pool_type"])
-        return cls.from_json(data["node_pool_data"])
+        return cls.from_json(
+            data["node_pool_data"], data.get("node_pool_metadata", None)
+        )
 
     @classmethod
     @abstractmethod
     def from_json(
-        cls, data: List[Union[NodeRepresentation, NodesRepresentation]]
+        cls,
+        data: List[Union[NodeRepresentation, NodesRepresentation]],
+        metadata: Optional[Any] = None,
     ) -> Nodes:
         """
         Class-specific implementation of deserialization from JSON.
 
         :param data: JSON representation of the object
+        :param metadata: optional additional information for the pool instantiation
         :return: instance of the object
         """
         pass
@@ -244,16 +261,20 @@ class CountableNodePool(Nodes):
         return {
             "node_pool_type": self.__class__.__name__,
             "node_pool_data": [x.__json__() for x in self.nodes],
+            "node_pool_metadata": None,
         }
 
     @classmethod
     def from_json(
-        cls, data: List[Union[NodeRepresentation, NodesRepresentation]]
+        cls,
+        data: List[Union[NodeRepresentation, NodesRepresentation]],
+        metadata: Optional[Any] = None,
     ) -> CountableNodePool:
         """
         Returns an instance of the object from a JSON representation.
 
         :param data: JSON representation of the object
+        :param metadata: optional additional information for the pool instantiation
         :return: instance of the object
         """
         nodes: List[Union[Node, Nodes]] = []
@@ -347,7 +368,7 @@ class UncountableNodePool(Nodes):
     :param node_template: list of nodes that will be used as a template for generating new nodes
     """
 
-    def __init__(self, node_template: List[Node]):
+    def __init__(self, node_template: List[Node], soft_limit: Optional[float] = None):
         self._node_template = node_template
         """
         Node template used for generating new nodes.
@@ -361,6 +382,13 @@ class UncountableNodePool(Nodes):
         self._counter = count(start=1, step=1)
         """
         Node name counter.
+        """
+
+        if soft_limit is not None and soft_limit <= 0:
+            raise ValueError("Soft limit must be greater than 0.")
+        self.soft_limit = float("inf") if soft_limit is None else soft_limit
+        """
+        Soft limit for nodes in the pool to prevent infinite loops or excessive node generation.
         """
 
     def __str__(self) -> str:
@@ -381,7 +409,10 @@ class UncountableNodePool(Nodes):
         :return: next node
         """
         node = deepcopy(next(self._nodes))
-        node.name += str(next(self._counter))
+        node_number = next(self._counter)
+        if node_number > self.soft_limit:
+            raise StopIteration
+        node.name += str(node_number)
         return node
 
     def __getitem__(self, key: int) -> Node:
@@ -394,7 +425,10 @@ class UncountableNodePool(Nodes):
         return len(self._node_template)
 
     def filter(self, function: Callable[[Node], bool]) -> UncountableNodePool:
-        return UncountableNodePool([x for x in self._node_template if function(x)])
+        new_pool = UncountableNodePool([x for x in self._node_template if function(x)])
+        new_pool._counter = self._counter  # keep the same counter
+        new_pool.soft_limit = self.soft_limit
+        return new_pool
 
     def take(self, count: int) -> Sequence[Node]:
         nodes = []
@@ -412,18 +446,23 @@ class UncountableNodePool(Nodes):
         return {
             "node_pool_type": self.__class__.__name__,
             "node_pool_data": [x.__json__() for x in self._node_template],
+            "node_pool_metadata": self.soft_limit,
         }
 
     @classmethod
     def from_json(
-        cls, data: List[Union[NodeRepresentation, NodesRepresentation]]
+        cls,
+        data: List[Union[NodeRepresentation, NodesRepresentation]],
+        metadata: Optional[Any] = None,
     ) -> UncountableNodePool:
         for x in data:
             if "node_pool_type" in x:
                 raise ValueError("UncountableNodePool cannot have Nodes as elements.")
         # now we have only NodeRepresentation in the list
         node_representation_data = cast(List[NodeRepresentation], data)
-        return cls([Node.from_json(x) for x in node_representation_data])
+        if metadata is not None:
+            metadata = float(metadata)
+        return cls([Node.from_json(x) for x in node_representation_data], metadata)
 
     def set_property(self, name: str, value: NodeProperty) -> UncountableNodePool:
         for node in self._node_template:

@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS Authentication (
     username TEXT NOT NULL,
     hash TEXT NOT NULL,
     sudo BOOLEAN NOT NULL DEFAULT FALSE,
+    accesstags TEXT[],
     PRIMARY KEY (username)
 );
 
@@ -33,7 +34,7 @@ CREATE TABLE IF NOT EXISTS Compilations (
     status BOOLEAN,
     result TEXT,
     architecture TEXT NOT NULL,
-    pipeline bytea,
+    execution_graph bytea,
     environment_definition jsonb NOT NULL,
     PRIMARY KEY (experiment_id, compilation_id)
 );
@@ -43,7 +44,7 @@ CREATE TABLE IF NOT EXISTS Executors (
     executor_id TEXT NOT NULL,
     node_name TEXT NOT NULL,
     connector TEXT NOT NULL,
-    pipeline BYTEA,
+    execution_graph BYTEA,
     result BYTEA,
     keepalive TIMESTAMP,
     error TEXT,
@@ -58,4 +59,11 @@ CREATE TABLE IF NOT EXISTS Flags (
     text_value TEXT,
     int_value INT NOT NULL DEFAULT 0,
     PRIMARY KEY (experiment_id, key)
-)
+);
+
+CREATE TABLE IF NOT EXISTS AccessTokens (
+    username TEXT NOT NULL,
+    token TEXT NOT NULL,
+    expiration TIMESTAMP NOT NULL,
+    PRIMARY KEY (username)
+);

@@ -6,17 +6,10 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath("../../.."))  # Source code dir relative to this file
-sys.path.insert(0, os.path.abspath("../../../netunicorn-base/src/netunicorn"))
-sys.path.insert(0, os.path.abspath("../../../netunicorn-client/src/netunicorn"))
-
 project = "netunicorn"
 copyright = "2023, Roman Beltiukov"
 author = "Roman Beltiukov"
-release = "0.3"
+release = ""
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -28,6 +21,7 @@ extensions = [
     "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx.ext.linkcode",
     "myst_parser",
+    "sphinxcontrib.mermaid",
 ]
 
 autodoc_default_options = {
@@ -44,7 +38,8 @@ typehints_fully_qualified = False
 always_document_param_types = True
 typehints_use_rtype = False
 typehints_defaults = "comma"
-
+source_suffix = [".rst", ".md"]
+master_doc = "contents"
 
 autodoc_mock_imports = [
     "netunicorn.library",
@@ -61,6 +56,7 @@ exclude_patterns = []
 
 html_theme = "furo"
 html_static_path = ["_static"]
+html_title = "netunicorn"
 
 
 def linkcode_resolve(domain, info):

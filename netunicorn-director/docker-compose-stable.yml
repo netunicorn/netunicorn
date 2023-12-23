@@ -1,4 +1,4 @@
-# run me with a context of main netunicorn directory!
+# run me with a context of the netunicorn-director directory!
 version: "3.9"
 
 x-common-variables: &common-variables
@@ -56,7 +56,9 @@ services:
     image: netunicorn/compilation
     restart: unless-stopped
     container_name: netunicorn-compilation
-    environment: *common-variables
+    environment:
+      <<: *common-variables
+#      NETUNICORN_EXECUTOR_VERSION: "0.4.0"  # uncomment this line to use a specific version of the executor
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -129,3 +131,16 @@ services:
       - compilation
       - postgres
       - registry
+
+  ui:
+    image: netunicorn/ui
+    restart: unless-stopped
+    container_name: netunicorn-ui
+    environment:
+      NETUNICORN_MEDIATOR_ENDPOINT: "http://localhost:26611"
+    ports:
+      - "9000:80"
+    networks:
+      - netunicorn-network
+    depends_on:
+      - mediator

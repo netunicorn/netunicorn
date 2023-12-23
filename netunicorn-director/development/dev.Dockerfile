@@ -53,13 +53,6 @@ COPY netunicorn-director/netunicorn-infrastructure/pyproject.toml ./pyproject.to
 COPY netunicorn-director/netunicorn-infrastructure/src ./src
 RUN pip install .
 
-# mediator
-RUN mkdir /app/netunicorn-mediator
-WORKDIR /app/netunicorn-mediator
-COPY netunicorn-director/netunicorn-mediator/pyproject.toml ./pyproject.toml
-COPY netunicorn-director/netunicorn-mediator/src ./src
-RUN pip install .
-
 # processor
 RUN mkdir /app/netunicorn-processor
 WORKDIR /app/netunicorn-processor
@@ -74,7 +67,15 @@ RUN pip install --no-cache-dir \
     netunicorn-connector-ssh \
     netunicorn-connector-kubernetes \
     netunicorn-connector-aws \
-    netunicorn-connector-docker
+    netunicorn-connector-docker \
+    netunicorn-connector-containernet
+
+# mediator
+RUN mkdir /app/netunicorn-mediator
+WORKDIR /app/netunicorn-mediator
+COPY netunicorn-director/netunicorn-mediator/pyproject.toml ./pyproject.toml
+COPY netunicorn-director/netunicorn-mediator/src ./src
+RUN pip install .
 
 WORKDIR /app
 

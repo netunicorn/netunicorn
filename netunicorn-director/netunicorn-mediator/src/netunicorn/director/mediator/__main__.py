@@ -1,7 +1,9 @@
 import asyncio
 import json
 import os
-from typing import Annotated, Any, List, Optional, Union
+from contextlib import asynccontextmanager
+from datetime import timedelta
+from typing import Annotated, Any, Dict, List, Optional, Union
 
 import uvicorn
 from fastapi import (
@@ -14,7 +16,7 @@ from fastapi import (
     Request,
     Response,
 )
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.types import FlagValues
 from netunicorn.base.utils import UnicornEncoder
@@ -34,6 +36,7 @@ from .engine import (
     credentials_check,
     delete_experiment,
     experiment_precheck,
+    generate_access_token,
     get_experiment_flag,
     get_experiment_status,
     get_experiments,
@@ -42,6 +45,13 @@ from .engine import (
     prepare_experiment_task,
     set_experiment_flag,
     start_experiment,
+    verify_access_token,
+)
+from .ui_api import (
+    get_active_compilations,
+    get_last_experiments,
+    get_locked_nodes,
+    get_running_experiments,
 )
 
 
@@ -53,16 +63,26 @@ class CancellationRequest(BaseModel):
 logger = get_logger("netunicorn.director.mediator")
 
 proxy_path = os.environ.get("PROXY_PATH", "").removesuffix("/")
-app = FastAPI(
-    title="netunicorn API",
-    root_path=proxy_path,
-)
-security = HTTPBasic()
+security = OAuth2PasswordBearer(tokenUrl="token")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
+    await open_db_connection()
+    logger.info("Mediator started, connection to DB established")
+    yield
+    await close_db_connection()
+    logger.info("Mediator stopped")
+
+
+app = FastAPI(title="netunicorn API", root_path=proxy_path, lifespan=lifespan)
 
 
 def result_to_response(result: Result[Any, Any]) -> Response:
     status_code = 200 if is_successful(result) else 400
     content = result.unwrap() if is_successful(result) else result.failure()
+    if status_code == 400:
+        logger.warning(f"Returning error response: {content}")
     return Response(
         content=json.dumps(content, cls=UnicornEncoder),
         media_type="application/json",
@@ -70,18 +90,40 @@ def result_to_response(result: Result[Any, Any]) -> Response:
     )
 
 
-async def check_credentials(
-    credentials: HTTPBasicCredentials = Depends(security),
-) -> str:
-    current_username = credentials.username
-    current_token = credentials.password
-    if not await credentials_check(current_username, current_token):
+async def verify_token(token: Annotated[str, Depends(security)]) -> str:
+    username = await verify_access_token(token)
+    if not is_successful(username):
+        raise HTTPException(
+            status_code=401,
+            detail=username.failure(),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return username.unwrap()
+
+
+@app.post("/api/v1/token")
+async def login(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+) -> Dict[str, str]:
+    username = form_data.username
+    password = form_data.password
+
+    if not await credentials_check(username, password):
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or token",
-            headers={"WWW-Authenticate": "Basic"},
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    return current_username
+
+    token = await generate_access_token(username, expiration=timedelta(days=1))
+    if not is_successful(token):
+        raise HTTPException(
+            status_code=401,
+            detail=token.failure(),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {"access_token": token.unwrap(), "token_type": "bearer"}
 
 
 async def parse_context(json_str: Optional[str]) -> Any:
@@ -103,27 +145,22 @@ async def unicorn_exception_handler(_: Request, exc: Exception) -> Response:
     return Response(status_code=500, content=str(exc))
 
 
-@app.get("/health")
-async def health_check() -> str:
+@app.get("/api/v1/verify_token")
+async def verify_token_handler(
+    _: Annotated[str, Depends(verify_token)],
+) -> Response:
+    return Response(status_code=200)
+
+
+@app.get("/api/v1/health")
+async def health_check(_: Annotated[str, Depends(verify_token)]) -> str:
     await check_services_availability()
     return "OK"
 
 
-@app.on_event("startup")
-async def on_startup() -> None:
-    await open_db_connection()
-    logger.info("Mediator started, connection to DB established")
-
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    await close_db_connection()
-    logger.info("Mediator stopped")
-
-
 @app.get("/api/v1/nodes", status_code=200)
 async def nodes_handler(
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     return result_to_response(
@@ -133,7 +170,7 @@ async def nodes_handler(
 
 @app.get("/api/v1/experiment", status_code=200)
 async def get_experiments_handler(
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
@@ -147,7 +184,7 @@ async def prepare_experiment_handler(
     experiment_name: str,
     request: Request,
     background_tasks: BackgroundTasks,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Union[Response, str]:
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
@@ -184,7 +221,7 @@ async def prepare_experiment_handler(
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
 async def start_experiment_handler(
     experiment_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     execution_context: Optional[dict[str, dict[str, str]]] = None,
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
@@ -198,7 +235,7 @@ async def start_experiment_handler(
 @app.get("/api/v1/experiment/{experiment_name}", status_code=200)
 async def experiment_status_handler(
     experiment_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
@@ -209,7 +246,7 @@ async def experiment_status_handler(
 @app.delete("/api/v1/experiment/{experiment_name}", status_code=200)
 async def delete_experiment_handler(
     experiment_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     _ = netunicorn_auth_context  # unused
@@ -220,7 +257,7 @@ async def delete_experiment_handler(
 @app.post("/api/v1/experiment/{experiment_name}/cancel", status_code=200)
 async def cancel_experiment_handler(
     experiment_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     cancellation_context: Optional[dict[str, dict[str, str]]] = None,
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
@@ -237,7 +274,7 @@ async def cancel_experiment_handler(
 @app.post("/api/v1/executors/cancel", status_code=200)
 async def cancel_executors_handler(
     data: CancellationRequest,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Response:
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
@@ -254,7 +291,7 @@ async def cancel_executors_handler(
 async def get_experiment_flag_handler(
     experiment_id: str,
     flag_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
 ) -> Response:
     result = await get_experiment_flag(username, experiment_id, flag_name)
     return result_to_response(result.map(lambda x: x.dict()))
@@ -264,10 +301,43 @@ async def get_experiment_flag_handler(
 async def set_experiment_flag_handler(
     experiment_id: str,
     flag_name: str,
-    username: str = Depends(check_credentials),
+    username: Annotated[str, Depends(verify_token)],
     values: FlagValues = Body(...),
 ) -> Response:
     result = await set_experiment_flag(username, experiment_id, flag_name, values)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/locks", status_code=200)
+async def locked_nodes_handler(
+    username: Annotated[str, Depends(verify_token)],
+) -> Response:
+    result = await get_locked_nodes(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/compilations", status_code=200)
+async def active_compilations_handler(
+    username: Annotated[str, Depends(verify_token)],
+) -> Response:
+    result = await get_active_compilations(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/running_experiments", status_code=200)
+async def running_experiments_handler(
+    username: Annotated[str, Depends(verify_token)],
+) -> Response:
+    result = await get_running_experiments(username)
+    return result_to_response(result)
+
+
+@app.get("/api/v1/ui/last_experiments", status_code=200)
+async def last_experiments_handler(
+    username: Annotated[str, Depends(verify_token)],
+    days: int = 14,
+) -> Response:
+    result = await get_last_experiments(username, days)
     return result_to_response(result)
 
 
@@ -275,4 +345,12 @@ if __name__ == "__main__":
     IP = os.environ.get("NETUNICORN_MEDIATOR_IP", "0.0.0.0")
     PORT = int(os.environ.get("NETUNICORN_MEDIATOR_PORT", "26511"))
     logger.info(f"Starting mediator on {IP}:{PORT}")
+
+    log_config = uvicorn.config.LOGGING_CONFIG
+    log_config["formatters"]["access"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
+    log_config["formatters"]["default"][
+        "fmt"
+    ] = "%(asctime)s - %(levelname)s - %(message)s"
     uvicorn.run(app, host=IP, port=PORT)

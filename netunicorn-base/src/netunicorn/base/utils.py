@@ -10,7 +10,7 @@ from typing import Any, List
 from netunicorn.base.environment_definitions import EnvironmentDefinition
 from returns.result import Result
 
-SerializedPipelineType = bytes
+SerializedExecutionGraphType = bytes
 LogType = List[str]
 
 

@@ -27,7 +27,7 @@ from .tasks import cleanup_watchdog_task
 logger: Logger
 db_connection_pool: asyncpg.pool.Pool
 connectors: dict[str, NetunicornConnectorProtocol] = {}
-tasks: dict[str, asyncio.Task[NoReturn]] = {}  # type: ignore
+tasks: dict[str, asyncio.Task[NoReturn]] = {}
 
 
 async def initialize_connector(
@@ -155,6 +155,8 @@ async def initialize(config: dict[str, Any]) -> None:
         password=config["netunicorn.database.password"],
         database=config["netunicorn.database.db"],
         init=__init_connection,
+        min_size=1,
+        max_size=5,
     )
     await db_connection_pool.fetchval("SELECT 1")
 

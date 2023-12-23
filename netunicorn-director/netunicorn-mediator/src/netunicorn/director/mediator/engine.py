@@ -1,8 +1,9 @@
 import asyncio
 import json
+import secrets
 import uuid
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, TypeVar, Union, cast
 from uuid import uuid4
 
 import asyncpg.connection
@@ -14,7 +15,7 @@ from netunicorn.base.experiment import (
     ExperimentExecutionInformation,
     ExperimentStatus,
 )
-from netunicorn.base.nodes import CountableNodePool, Node, Nodes
+from netunicorn.base.nodes import CountableNodePool, Node, Nodes, UncountableNodePool
 from netunicorn.base.types import FlagValues
 from netunicorn.director.base.resources import (
     DATABASE_DB,
@@ -35,6 +36,7 @@ from .resources import (
 )
 
 db_conn_pool: asyncpg.Pool
+NodesType = TypeVar("NodesType", CountableNodePool, UncountableNodePool)
 
 
 async def open_db_connection() -> None:
@@ -45,11 +47,17 @@ async def open_db_connection() -> None:
         password=DATABASE_PASSWORD,
         database=DATABASE_DB,
         init=__init_connection,
+        min_size=1,
+        max_size=5,
     )
 
 
 async def close_db_connection() -> None:
     await db_conn_pool.close()
+
+
+async def get_db_connection_pool() -> asyncpg.Pool:
+    return db_conn_pool
 
 
 async def check_services_availability() -> None:
@@ -111,9 +119,102 @@ async def __filter_locked_nodes(
     return nodes
 
 
+async def __filter_access_tags(
+    username: str, nodes: CountableNodePool
+) -> CountableNodePool:
+    """
+    Extracts "netunicorn-access-tags" from nodes and filters them by user's access tags if they are present.
+    Logic: if user has no access tags, then all nodes are available. If user has access tags, then only nodes
+    with matching tags are available.
+    """
+
+    user_tags_url = f"{NETUNICORN_AUTH_ENDPOINT}/accesstags?username={username}"
+    try:
+        result = req.get(user_tags_url, timeout=30)
+        if result.status_code == 200:
+            user_tags = result.json()["accesstags"]
+            if user_tags is None:
+                user_tags = []
+            user_tags = set(str(x) for x in user_tags)
+        else:
+            logger.error(
+                f"Failed to get access tags for user {username}: {result.content.decode()}. Returning empty list of nodes."
+            )
+            return CountableNodePool([])
+    except Exception as e:
+        logger.exception(e)
+        logger.error(
+            f"Failed to get access tags for user {username}. Returning empty list of nodes."
+        )
+        return CountableNodePool([])
+
+    logger.debug(f"Retrieved access tags for user {username}: {user_tags}")
+
+    filtered_nodes_counter = 0
+
+    def __pop_node(
+        _pool: Union[CountableNodePool, UncountableNodePool], _index: int
+    ) -> None:
+        if isinstance(_pool, CountableNodePool):
+            _pool.pop(_index)
+        else:
+            _pool._node_template.pop(_index)
+
+    async def __filter_nodes_by_access_tags(
+        _nodes: NodesType, _user_tags: set[str]
+    ) -> NodesType:
+        nonlocal filtered_nodes_counter
+        if not _user_tags:
+            # empty _user_tags means that all nodes are available
+            return _nodes
+
+        for i in reversed(range(len(_nodes))):
+            if isinstance(_nodes[i], Nodes):
+                # filter nodes recursively
+                new_pool = cast(NodesType, _nodes[i])
+                new_pool = await __filter_nodes_by_access_tags(new_pool, _user_tags)
+
+                # remove empty pools
+                if len(new_pool) == 0:
+                    __pop_node(_nodes, i)
+                else:
+                    _nodes[i] = new_pool  # type: ignore[assignment]
+            elif isinstance(_nodes[i], Node):
+                try:
+                    node_tags = cast(
+                        set[str],
+                        _nodes[i].properties.get("netunicorn-access-tags", {}) or {},  # type: ignore[union-attr]
+                    )
+                    node_tags = set(str(x) for x in node_tags)
+                except Exception as e:
+                    logger.exception(e)
+                    logger.error(
+                        f"Failed to parse access tags for node {_nodes[i].name}. Skipping this node."  # type: ignore[union-attr]
+                    )
+                    filtered_nodes_counter += 1
+                    __pop_node(_nodes, i)
+                    continue
+                if not node_tags:
+                    # empty tags means that node is available for all users
+                    continue
+                if not node_tags.intersection(_user_tags):
+                    # otherwise at least one tag should intersect
+                    filtered_nodes_counter += 1
+                    __pop_node(_nodes, i)
+            else:
+                continue
+
+        return _nodes
+
+    filtered_nodes = await __filter_nodes_by_access_tags(nodes, user_tags)
+    logger.debug(f"Filtered out {filtered_nodes_counter} nodes for user {username}")
+    return filtered_nodes
+
+
 async def get_nodes(
     username: str, authentication_context: Optional[dict[str, dict[str, str]]] = None
 ) -> Result[Nodes, str]:
+    logger.info(f"Getting nodes for user {username}")
     url = f"{NETUNICORN_INFRASTRUCTURE_ENDPOINT}/nodes/{username}"
     result = req.get(
         url,
@@ -128,12 +229,15 @@ async def get_nodes(
     # noinspection PyTypeChecker
     # we know that top is always CountableNodePool
     nodes: CountableNodePool = Nodes.dispatch_and_deserialize(serialized_nodes)  # type: ignore
-    return Success(await __filter_locked_nodes(username, nodes))
+    nodes = await __filter_locked_nodes(username, nodes)
+    nodes = await __filter_access_tags(username, nodes)
+    return Success(nodes)
 
 
 async def get_experiments(
     username: str,
 ) -> Result[dict[str, ExperimentExecutionInformation], str]:
+    logger.info(f"Enumerating experiments for user {username}")
     experiment_names = await db_conn_pool.fetch(
         "SELECT experiment_name FROM experiments WHERE username = $1",
         username,
@@ -151,6 +255,7 @@ async def get_experiments(
 
 
 async def delete_experiment(experiment_name: str, username: str) -> Result[None, str]:
+    logger.info(f"Deleting experiment {experiment_name} for user {username}")
     result = await get_experiment_id_and_status(experiment_name, username)
     if is_successful(result):
         experiment_id, status = result.unwrap()
@@ -158,7 +263,9 @@ async def delete_experiment(experiment_name: str, username: str) -> Result[None,
         return Failure(result.failure())
 
     if status in {ExperimentStatus.RUNNING, ExperimentStatus.PREPARING}:
-        return Failure(f"Experiment is in status {status}, cannot delete it")
+        return Failure(
+            f"Experiment {experiment_name} for user {username} is in status {status}, cannot delete it"
+        )
 
     # actually just rename the user to save experiment in the history
     await db_conn_pool.execute(
@@ -171,13 +278,27 @@ async def delete_experiment(experiment_name: str, username: str) -> Result[None,
     return Success(None)
 
 
+async def verify_sudo(username: str) -> bool:
+    """
+    Return if the current user is sudo user
+    """
+
+    url = f"{NETUNICORN_AUTH_ENDPOINT}/verify_sudo?username={username}"
+    try:
+        result = req.get(url, timeout=30)
+        if not result.status_code == 200:
+            raise Exception(result.content)
+        return result.content.decode("utf-8") == "true"
+    except Exception as e:
+        logger.exception(e)
+        return False
+
+
 async def check_sudo_access(experiment: Experiment, username: str) -> Result[None, str]:
     """
     checking additional_arguments in runtime_context of environment definitions and whether user us allowed to use them
     """
-    sudo_user = await db_conn_pool.fetchval(
-        "SELECT sudo FROM authentication WHERE username = $1", username
-    )
+    sudo_user = await verify_sudo(username)
     if not sudo_user:
         for executor in experiment.deployment_map:
             if isinstance(executor.environment_definition, DockerImage) or isinstance(
@@ -260,6 +381,8 @@ async def prepare_experiment_task(
     username: str,
     netunicorn_authentication_context: Optional[dict[str, dict[str, str]]] = None,
 ) -> None:
+    logger.info(f"Preparing experiment {experiment_name} for user {username}")
+
     async def prepare_deployment(
         _username: str, _deployment: Deployment, _envs: dict[int, str]
     ) -> None:
@@ -285,12 +408,12 @@ async def prepare_experiment_task(
         if isinstance(env_def, ShellExecution):
             # nothing to do with shell execution
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished, connector) "
+                "INSERT INTO executors (experiment_id, executor_id, node_name, execution_graph, finished, connector) "
                 "VALUES ($1, $2, $3, $4, FALSE, $5) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.node.name,
-                _deployment.pipeline,
+                _deployment.execution_graph,
                 _deployment.node["connector"],
             )
             _deployment.prepared = True
@@ -311,19 +434,21 @@ async def prepare_experiment_task(
             # specific case: if key is in the _envs, that means that we need to wait this deployment too
             # description: that happens when 2 deployments have the same environment definition object in memory,
             #  so update of image name for one deployment will affect another deployment
-            _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
+            _key = hash(
+                (_deployment.execution_graph, env_def, _deployment.node.architecture)
+            )
             if _key in _envs:
                 deployments_waiting_for_compilation.append(_deployment)
                 return
 
             # if docker image is provided - just provide pipeline
             await db_conn_pool.execute(
-                "INSERT INTO executors (experiment_id, executor_id, node_name, pipeline, finished, connector) "
+                "INSERT INTO executors (experiment_id, executor_id, node_name, execution_graph, finished, connector) "
                 "VALUES ($1, $2, $3, $4, FALSE, $5) ON CONFLICT DO NOTHING",
                 experiment_id,
                 _deployment.executor_id,
                 _deployment.node.name,
-                _deployment.pipeline,
+                _deployment.execution_graph,
                 _deployment.node["connector"],
             )
             _deployment.prepared = True
@@ -336,7 +461,9 @@ async def prepare_experiment_task(
             deployments_waiting_for_compilation.append(_deployment)
 
             # unique compilation is combination of pipeline, docker commands, and node architecture
-            _key = hash((_deployment.pipeline, env_def, _deployment.node.architecture))
+            _key = hash(
+                (_deployment.execution_graph, env_def, _deployment.node.architecture)
+            )
             if _key in _envs:
                 # we already started this compilation
                 env_def.image = f"{DOCKER_REGISTRY_URL}/{_envs[_key]}:latest"
@@ -353,22 +480,28 @@ async def prepare_experiment_task(
             #  - key with image name (so we can find it later)
             _envs[_key] = compilation_uid
             _envs[
-                hash((_deployment.pipeline, env_def, _deployment.node.architecture))
+                hash(
+                    (
+                        _deployment.execution_graph,
+                        env_def,
+                        _deployment.node.architecture,
+                    )
+                )
             ] = compilation_uid
 
             # put compilation request to the database
             await db_conn_pool.execute(
                 "INSERT INTO compilations "
-                "(experiment_id, compilation_id, status, result, architecture, pipeline, environment_definition) "
+                "(experiment_id, compilation_id, status, result, architecture, execution_graph, environment_definition) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7) "
                 "ON CONFLICT (experiment_id, compilation_id) DO UPDATE SET "
-                "status = $3, result = $4, architecture = $5, pipeline = $6::bytea, environment_definition = $7::jsonb",
+                "status = $3, result = $4, architecture = $5, execution_graph = $6::bytea, environment_definition = $7::jsonb",
                 experiment_id,
                 compilation_uid,
                 None,
                 None,
                 _deployment.node.architecture.value,
-                _deployment.pipeline,
+                _deployment.execution_graph,
                 _deployment.environment_definition.__json__(),
             )
 
@@ -464,7 +597,7 @@ async def prepare_experiment_task(
     for deployment in deployments_waiting_for_compilation:
         key = hash(
             (
-                deployment.pipeline,
+                deployment.execution_graph,
                 deployment.environment_definition,
                 deployment.node.architecture,
             )
@@ -541,6 +674,7 @@ async def start_experiment(
     execution_context: Optional[Dict[str, Dict[str, str]]] = None,
     netunicorn_authentication_context: Optional[Dict[str, str]] = None,
 ) -> Result[str, str]:
+    logger.info(f"Starting experiment {experiment_name} for user {username}")
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
         return Failure(result.failure())
@@ -603,6 +737,7 @@ async def cancel_experiment(
     cancellation_context: Optional[dict[str, dict[str, str]]] = None,
     netunicorn_authentication_context: Optional[Dict[str, str]] = None,
 ) -> Result[str, str]:
+    logger.info(f"Cancelling experiment {experiment_name} for user {username}")
     result = await get_experiment_id_and_status(experiment_name, username)
     if not is_successful(result):
         return Failure(result.failure())
@@ -626,6 +761,8 @@ async def cancel_executors(
     cancellation_context: Optional[Dict[str, Dict[str, str]]] = None,
     netunicorn_authentication_context: Optional[Dict[str, str]] = None,
 ) -> Result[str, str]:
+    logger.info(f"Cancelling executors {executors} for user {username}")
+
     # check data format
     for executor in executors:
         if not isinstance(executor, str):
@@ -709,6 +846,9 @@ async def get_experiment_flag(
 async def set_experiment_flag(
     username: str, experiment_id: str, key: str, values: FlagValues
 ) -> Result[None, str]:
+    logger.info(
+        f"Setting flag {key} for experiment {experiment_id} for user {username}"
+    )
     if values.text_value is None and values.int_value is None:
         return Failure("Flag values cannot be both None")
 
@@ -730,3 +870,47 @@ async def set_experiment_flag(
     )
 
     return Success(None)
+
+
+async def generate_access_token(
+    username: str, expiration: timedelta
+) -> Result[str, str]:
+    # check if token already exists -> update expiration time and return
+    token = await db_conn_pool.fetchval(
+        "SELECT token FROM accesstokens WHERE username = $1 AND expiration > $2 LIMIT 1",
+        username,
+        datetime.utcnow(),
+    )
+    if token is not None:
+        await db_conn_pool.execute(
+            "UPDATE accesstokens SET expiration = $1 WHERE token = $2",
+            datetime.utcnow() + expiration,
+            token,
+        )
+        return Success(token)
+
+    # generate new secure token
+    token = secrets.token_urlsafe(16)
+    await db_conn_pool.execute(
+        "INSERT INTO accesstokens (username, token, expiration) "
+        "VALUES ($1, $2, $3) "
+        "ON CONFLICT (username)"
+        "DO UPDATE SET token = $2, expiration = $3",
+        username,
+        token,
+        datetime.utcnow() + expiration,
+    )
+
+    return Success(token)
+
+
+async def verify_access_token(token: str) -> Result[str, str]:
+    username = await db_conn_pool.fetchval(
+        "SELECT username FROM accesstokens WHERE token = $1 AND expiration > $2 LIMIT 1",
+        token,
+        datetime.utcnow(),
+    )
+    if username is None:
+        return Failure("Access token not found")
+
+    return Success(username)
