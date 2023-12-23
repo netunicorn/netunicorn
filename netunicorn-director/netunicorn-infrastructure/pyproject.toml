@@ -1,6 +1,6 @@
 [project]
 name = "netunicorn-director-infrastructure"
-version = "0.4.0"
+version = "0.3.1"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
@@ -14,7 +14,7 @@ classifiers = [
 ]
 dependencies = [
     "fastapi",
-    "netunicorn-base >= 0.4.0, < 0.5.0",
+    "netunicorn-base >= 0.3.0",
     "uvicorn",
     "asyncpg",
     "pyyaml",

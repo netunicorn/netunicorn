@@ -1,10 +1,10 @@
 [project]
 name = "netunicorn-director-mediator"
-version = "0.4.0"
+version = "0.3.2"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
-description = "netUnicorn mediator module"
+description = "netunicorn gateway module"
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["netunicorn"]
@@ -13,21 +13,16 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "netunicorn-base >= 0.4.0, < 0.5.0",
+    "netunicorn-base >= 0.3.7",
     "fastapi",
     "uvicorn",
     "asyncpg",
     "returns",
     "requests",
-    "jinja2",
-    "python-multipart",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-"*" = ["*.html"]
 
 [tool.mypy]
 python_version = "3.10"
