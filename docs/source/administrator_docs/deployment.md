@@ -12,16 +12,19 @@ If you want to deploy test instance of netUnicorn on AWS, you can use "netunicor
 
 Deployment steps:
 1. Create AWS EC2 instance:
-   1. Choose "netunicorn-v0.3" community AMI.
+   1. Choose "netunicorn-v0.4" community AMI.
    2. Choose "Allow HTTP traffic" in the security group.
+   3. [Optional] Allow TCP ports 5000 (docker registry), 5432 (PostgreSQL database), 9000 (netUnicorn UI), 26512 (netUnicorn gateway) for access to corresponding services 
 2. Use the next credentials to access the netUnicorn instance:
    - Username: `test`
    - Password: `test`
    - URL: `http://<public IP or DNS name of the instance>`
-3. You also can access the instance PostgreSQL database over the port 5432 with the next credentials:
+3. You also can access the instance PostgreSQL database over the port 5432 (if allowed in security group) with the next credentials:
    - Username: `development`
    - Password: `development`
    - Database: `development`
+4. [Optional] You can login into the machine and change the information in ~/netunicorn/docker-compose.yml.
+   - [Optional] Change IP of the NETUNICORN_MEDIATOR_ENDPOINT environment variable in netunicorn-ui service to your VM IP address to enable netunicorn-ui at the http:/<your_ip>:9000  (use the same credentials as for netUnicorn API instance)
 
 ## Simplified deployment
 
