@@ -8,7 +8,7 @@ You can join [netUnicorn Slack workspace](https://join.slack.com/t/netunicorn/sh
 
 ## AWS Deployment
 
-If you want to deploy test instance of netUnicorn on AWS, you can use "netunicorn-v0.3" AMI.
+If you want to deploy test instance of netUnicorn on AWS, you can use "netunicorn-v0.4" AMI.
 
 Deployment steps:
 1. Create AWS EC2 instance:
