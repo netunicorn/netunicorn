@@ -330,22 +330,24 @@ class Executor:
             # check running tasks: if any of them finished, then we should remove them from the running tasks,
             #  process their results, add it to finished for requirements check, and add descendants to the waiting tasks
             for task in running_tasks:
-                if running_tasks[task]["process"].is_alive():
+                if (
+                    running_tasks[task]["queue"].empty()
+                    and running_tasks[task]["process"].is_alive()
+                ):
                     continue
 
-                running_tasks[task]["process"].join()
                 tasks_processed = True
 
                 # sanity checks
-                if running_tasks[task]["process"].exitcode != 0:
-                    # unconditionally stop because process should always finish with exit code 0
+                if running_tasks[task]["process"].exitcode:
+                    # process stopped with an error
                     resulting_text = f"Execution process of the task {task.name} failed with the exit code {running_tasks[task]['process'].exitcode}"
                     self.logger.error(resulting_text)
                     self.step_results[task.name].append(Failure(resulting_text))
                     stop_execution = True
                     break
                 if running_tasks[task]["queue"].empty():
-                    # unconditionally fail because process should always return results in the queue
+                    # process somehow stopped with 0 but didn't return results
                     resulting_text = f"Execution process of the task {task.name} failed to return results into a queue"
                     self.logger.error(resulting_text)
                     self.step_results[task.name].append(Failure(resulting_text))
@@ -353,6 +355,7 @@ class Executor:
                     break
 
                 result = cloudpickle.loads(running_tasks[task]["queue"].get())
+                running_tasks[task]["process"].join()
                 self.step_results[task.name].append(result)
                 if not is_successful(result):
                     resulting_type = Failure
