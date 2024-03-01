@@ -31,10 +31,9 @@ To use the platform, administrators of the infrastructure should deploy it and p
 P.S. If you want to deploy the platform yourself, please, look at the [deployment](/administrator_docs/deployment) section.
 
 ### Installation
-To use the platform, install the next packages:
+To use the platform, install the next package:
 ```bash
-pip install netunicorn-client    # required, client to connect to the platform
-pip install netunicorn-library   # optional but recommended, library with tasks and pipelines implementations
+pip install netunicorn    # installs client and library
 ```
 
 ### Start of work
