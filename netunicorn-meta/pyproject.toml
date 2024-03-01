@@ -1,10 +1,10 @@
 [project]
-name = "netunicorn-executor"
-version = "0.4.1"
+name = "netunicorn"
+version = "1.0.0"
 authors = [
     {name = "Roman Beltiukov", email = "rbeltiukov@ucsb.edu"},
 ]
-description = "netunicorn executor module"
+description = "netunicorn meta package for simplified client installation"
 readme = "README.md"
 requires-python = ">=3.8"
 keywords = ["netunicorn"]
@@ -18,18 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "cloudpickle",
-    "requests",
-    "netunicorn-base >= 0.4.0, < 0.5.0",
+    "netunicorn-base",
+    "netunicorn-client",
+    "netunicorn-library",
 ]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.mypy]
-python_version = "3.8"
-ignore_missing_imports = true
-explicit_package_bases = true
-strict = true
-exclude = "tests"
-mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
