@@ -1,0 +1,14 @@
+# Vocabulary
+- Task - a single atomic collection of instructions to achieve some particular result (start PCAP capture, watch youtube, ping 8.8.8.8. etc)
+- DAG - Directed Acyclic Graph
+	- Pipeline - a simplified version of DAG, consisting only of ordered stages with parallel tasks in each stage. Implemented in current version instead of DAG for simplicity. We use terms Pipeline and DAG interchangeably.
+- Executor - an engine that is capable of executing DAGs. Usually is to be deployed on the Node to run a DAG/Pipeline.
+- Environment - something capable of running an executor (docker container, bare metal, virtual machine, anything else). The environment provides connectivity and announce capabilities to the system.
+    - e.g., typical and most often example is a Docker container - it has needed libraries installed and configured inside for the pipeline
+- Node - device that has some characteristics (unique name, location, specific hardware, CPU cores, operating system, architecture (arm vs amd), etc.), capable of running environment with executor
+    - node and its capabilities are presented by Deployment System and could be mutable or immutable
+- Deployment - a mapping of a pipeline to a node with given environment. 
+- Experiment - a list of Deployments needed to be executed as a single experiment. This defines the whole user's intent and is used for deployment.
+- Core services (also director services, director infrastructure, core infrastructure) -  infrastructure and resources for hosting the netunicorn system itself (services like experiment processor, watchdog, authentication endpoints, databases, etc.)
+	- Director infrastrcture could be (and possibly often will be) distributed with public endpoint and private services being on different VMs, servers, etc.
+- Target infrastructure - network devices working as data collection endpoints. Controlled and operated by Deployment System (like Ansible, SaltStack, Kubernetes, etc.)

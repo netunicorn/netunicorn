@@ -1,0 +1,33 @@
+netunicorn.base.task
+====================
+
+.. automodule:: netunicorn.base.task
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+      :nosignatures:
+   
+      Task
+      TaskDispatcher
+   
+   
+
+   
+   
+   
+
+
+

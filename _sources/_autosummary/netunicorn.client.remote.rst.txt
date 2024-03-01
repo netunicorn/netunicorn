@@ -1,0 +1,48 @@
+netunicorn.client.remote
+========================
+
+.. automodule:: netunicorn.client.remote
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      authenticated
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+      :nosignatures:
+   
+      OAuth2Bearer
+      RemoteClient
+   
+   
+
+   
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+   
+      RemoteClientException
+   
+   
+
+
+

@@ -1,0 +1,33 @@
+netunicorn.base.types.ExperimentRepresentation
+==============================================
+
+.. currentmodule:: netunicorn.base.types
+
+.. autoclass:: ExperimentRepresentation
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ExperimentRepresentation.deployment_map
+      ~ExperimentRepresentation.deployment_context
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~ExperimentRepresentation.fromkeys
+   
+   

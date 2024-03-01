@@ -1,0 +1,40 @@
+netunicorn.base.types.DeploymentRepresentation
+==============================================
+
+.. currentmodule:: netunicorn.base.types
+
+.. autoclass:: DeploymentRepresentation
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DeploymentRepresentation.node
+      ~DeploymentRepresentation.prepared
+      ~DeploymentRepresentation.executor_id
+      ~DeploymentRepresentation.error
+      ~DeploymentRepresentation.execution_graph
+      ~DeploymentRepresentation.keep_alive_timeout_minutes
+      ~DeploymentRepresentation.cleanup
+      ~DeploymentRepresentation.environment_definition
+      ~DeploymentRepresentation.environment_definition_type
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~DeploymentRepresentation.fromkeys
+   
+   

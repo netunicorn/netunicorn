@@ -1,0 +1,36 @@
+netunicorn.client.base.BaseClient
+=================================
+
+.. currentmodule:: netunicorn.client.base
+
+.. autoclass:: BaseClient
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~BaseClient.cancel_executors
+      ~BaseClient.cancel_experiment
+      ~BaseClient.delete_experiment
+      ~BaseClient.get_experiment_status
+      ~BaseClient.get_experiments
+      ~BaseClient.get_flag_values
+      ~BaseClient.get_nodes
+      ~BaseClient.healthcheck
+      ~BaseClient.prepare_experiment
+      ~BaseClient.set_flag_values
+      ~BaseClient.start_execution
+   
+   

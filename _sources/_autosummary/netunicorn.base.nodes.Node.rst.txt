@@ -1,0 +1,36 @@
+netunicorn.base.nodes.Node
+==========================
+
+.. currentmodule:: netunicorn.base.nodes
+
+.. autoclass:: Node
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Node.name
+      ~Node.properties
+      ~Node.additional_properties
+      ~Node.architecture
+      ~Node.available_environments
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~Node.from_json
+   
+   

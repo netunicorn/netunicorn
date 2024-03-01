@@ -1,0 +1,35 @@
+netunicorn.base.types.DeploymentExecutionResultRepresentation
+=============================================================
+
+.. currentmodule:: netunicorn.base.types
+
+.. autoclass:: DeploymentExecutionResultRepresentation
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DeploymentExecutionResultRepresentation.node
+      ~DeploymentExecutionResultRepresentation.execution_graph
+      ~DeploymentExecutionResultRepresentation.result
+      ~DeploymentExecutionResultRepresentation.error
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~DeploymentExecutionResultRepresentation.fromkeys
+   
+   
