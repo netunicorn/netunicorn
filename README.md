@@ -25,8 +25,7 @@ Users are able to express arbitrary tasks and pipelines and run them on the alre
 ### Installation
 To use the platform, a user should install the next packages:
 ```bash
-pip install netunicorn-client    # required, client to connect to the platform
-pip install netunicorn-library   # optional, library with tasks and pipelines
+pip install netunicorn    # automatically installs client and library packages
 ```
 
 ### Prerequisites
