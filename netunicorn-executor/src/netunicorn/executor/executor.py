@@ -7,7 +7,7 @@ import time
 from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from collections import defaultdict
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
 from multiprocessing import Process, Queue
 from typing import Any, Dict, List, Optional, Set, Type, Union
