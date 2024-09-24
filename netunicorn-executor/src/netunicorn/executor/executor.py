@@ -3,11 +3,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import sys
 import time
 from asyncio import CancelledError
 from base64 import b64decode, b64encode
 from collections import defaultdict
+from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
 from multiprocessing import Process, Queue
 from typing import Any, Dict, List, Optional, Set, Type, Union
@@ -33,6 +33,16 @@ FinishedTasksItem = TypedDict(
 )
 
 
+def _execute_task(
+    serialized_task: bytes, result_queue: "Queue[bytes]", logfile_name: str
+) -> None:
+    with open(logfile_name, "at") as f:
+        with redirect_stdout(f), redirect_stderr(f):
+            task = cloudpickle.loads(serialized_task)
+            result: Result[Any, Any] = safe(task.run)()
+            result_queue.put(cloudpickle.dumps(result))
+
+
 class Executor:
     def __init__(
         self,
@@ -56,7 +66,6 @@ class Executor:
         )
 
         self.logfile_name = f"executor_{self.executor_id}.log"
-        self.print_file = open(self.logfile_name, "at")
 
         self.heartbeat_flag = heartbeat
         self.heartbeat_seconds = int(
@@ -126,7 +135,6 @@ class Executor:
                 elif self.state == ExecutorState.REPORTING:
                     self.report_results()
                 elif self.state == ExecutorState.FINISHED:
-                    self.print_file.close()
                     return
             except Exception as e:
                 self.logger.exception(e)
@@ -136,7 +144,6 @@ class Executor:
 
         # if we break the cycle with an exception, we'll try to report the results
         self.report_results()
-        self.print_file.close()
 
     def request_execution_graph(self) -> None:
         """
@@ -178,19 +185,6 @@ class Executor:
             self.logger.info(
                 f"Failed to receive the execution graph. Status code: {result.status_code}, content: {result.content.decode('utf-8')}"
             )
-
-    def execute_task(
-        self, serialized_task: bytes, result_queue: "Queue[bytes]"
-    ) -> None:
-        self.std_redirection()
-        task = cloudpickle.loads(serialized_task)
-        result: Result[Any, Any] = safe(task.run)()
-        result_queue.put(cloudpickle.dumps(result))
-
-    def std_redirection(self, *args: Any) -> None:
-        _ = args
-        sys.stdout = self.print_file
-        sys.stderr = self.print_file
 
     def add_successors_to_waiting_tasks(
         self,
@@ -310,9 +304,9 @@ class Executor:
             self.state = ExecutorState.REPORTING
             return
 
-        resulting_type: Type[
-            Result[ExecutionGraphResult, ExecutionGraphResult]
-        ] = Success
+        resulting_type: Type[Result[ExecutionGraphResult, ExecutionGraphResult]] = (
+            Success
+        )
 
         waiting_tasks: Set[Union[Any, Task]] = {"root"}
         running_tasks: Dict[Task, RunningTasksItem] = {}
@@ -403,7 +397,8 @@ class Executor:
                         running_tasks[task] = {
                             "queue": queue,
                             "process": Process(
-                                target=self.execute_task, args=(serialized_task, queue)
+                                target=_execute_task,
+                                args=(serialized_task, queue, self.logfile_name),
                             ),
                         }
                         running_tasks[task]["process"].start()
