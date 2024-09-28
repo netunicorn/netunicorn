@@ -1,6 +1,7 @@
 """
 Architecture information about nodes.
 """
+
 from enum import Enum
 
 
