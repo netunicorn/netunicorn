@@ -39,6 +39,11 @@ class RuntimeContext:
     Desired values of environment variables
     """
 
+    network: Optional[str] = None
+    """
+    Desired network or interface name
+    """
+
     additional_arguments: List[str] = field(default_factory=list)
     """
     Additional arguments (could be interpreted by runtimes)
@@ -49,6 +54,7 @@ class RuntimeContext:
             "ports_mapping": self.ports_mapping,
             "environment_variables": self.environment_variables,
             "additional_arguments": self.additional_arguments,
+            "network": self.network,
         }
 
     @classmethod
@@ -60,13 +66,15 @@ class RuntimeContext:
         :return: Deserialized RuntimeContext
         """
 
-        ports_mapping = data["ports_mapping"]
+        ports_mapping = {int(k): v for k, v in data["ports_mapping"].items()}
         environment_variables = data["environment_variables"]
         additional_arguments = data["additional_arguments"]
+        network = data.get("network")
         return cls(
             ports_mapping=ports_mapping,
             environment_variables=environment_variables,
             additional_arguments=additional_arguments,
+            network=network,
         )
 
 
