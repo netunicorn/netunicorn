@@ -340,6 +340,11 @@ async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
                 return Failure(
                     f"Environment variables in runtime context must not contain spaces"
                 )
+            network = executor.environment_definition.runtime_context.network
+            if network and " " in network:
+                return Failure(
+                    f"Network name in runtime context must not contain spaces"
+                )
         elif isinstance(executor.environment_definition, ShellExecution):
             if not check_env_values(
                 executor.environment_definition.runtime_context.environment_variables
@@ -539,9 +544,9 @@ async def prepare_experiment_task(
         return
 
     # get all distinct combinations of environment_definitions and pipelines, and add compilation_request info to experiment items
-    envs: dict[
-        int, str
-    ] = {}  # key: unique compilation request, result: compilation_uid
+    envs: dict[int, str] = (
+        {}
+    )  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation: List[Deployment] = []
     for deployment in experiment:
         deployment.environment_definition.runtime_context.environment_variables[

@@ -1,6 +1,7 @@
 """
 Experiment-related entities and classes.
 """
+
 from __future__ import annotations
 
 import base64
@@ -84,9 +85,9 @@ class Experiment:
         a list of deployments
         """
 
-        self.deployment_context: Optional[
-            Dict[str, Dict[str, str]]
-        ] = deployment_context
+        self.deployment_context: Optional[Dict[str, Dict[str, str]]] = (
+            deployment_context
+        )
         """
         A dictionary that contains a context for deployments.
             Context is to be provided by connectors. 
@@ -284,9 +285,9 @@ class DeploymentExecutionResult:
         return {
             "node": self.node.__json__(),
             "execution_graph": base64.b64encode(self._execution_graph).decode("utf-8"),
-            "result": base64.b64encode(self._result).decode("utf-8")
-            if self._result
-            else None,
+            "result": (
+                base64.b64encode(self._result).decode("utf-8") if self._result else None
+            ),
             "error": self.error,
         }
 

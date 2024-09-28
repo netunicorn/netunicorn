@@ -169,6 +169,11 @@ class RuntimeContextRepresentation(TypedDict):
     Environment variables dictionary.
     """
 
+    network: Optional[str]
+    """
+    Network interface name.
+    """
+
     additional_arguments: List[str]
     """
     Additional arguments list.

@@ -31,7 +31,7 @@ class UnicornEncoder(JSONEncoder):
         if isinstance(obj, set):
             return list(obj)
         if dataclasses.is_dataclass(obj):
-            return dataclasses.asdict(obj)
+            return dataclasses.asdict(obj)  # type: ignore  # https://github.com/python/mypy/issues/17550
         if hasattr(obj, "__json__"):
             return obj.__json__()
         if isinstance(obj, bytes):

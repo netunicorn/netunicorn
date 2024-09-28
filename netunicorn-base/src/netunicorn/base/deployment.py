@@ -1,6 +1,7 @@
 """
 Single deployment of an execution graph on a node.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -68,9 +69,9 @@ class Deployment:
         Serialized ExecutionGraph to be deployed
         """
 
-        self.environment_definition: netunicorn.base.environment_definitions.EnvironmentDefinition = deepcopy(
-            pipeline.environment_definition
-        )
+        self.environment_definition: (
+            netunicorn.base.environment_definitions.EnvironmentDefinition
+        ) = deepcopy(pipeline.environment_definition)
         """
         Environment definition to use for deployment
         """

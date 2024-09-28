@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 from netunicorn.base.experiment import Experiment
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 10):
     from typing import TypeAlias
 
     from typing_extensions import TypedDict
