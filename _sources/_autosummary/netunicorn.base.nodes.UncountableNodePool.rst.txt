@@ -1,0 +1,37 @@
+netunicorn.base.nodes.UncountableNodePool
+=========================================
+
+.. currentmodule:: netunicorn.base.nodes
+
+.. autoclass:: UncountableNodePool
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~UncountableNodePool.soft_limit
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~UncountableNodePool.dispatch_and_deserialize
+      ~UncountableNodePool.filter
+      ~UncountableNodePool.from_json
+      ~UncountableNodePool.set_property
+      ~UncountableNodePool.skip
+      ~UncountableNodePool.take
+   
+   

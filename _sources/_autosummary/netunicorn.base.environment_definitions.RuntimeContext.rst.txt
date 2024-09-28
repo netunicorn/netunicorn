@@ -1,0 +1,35 @@
+netunicorn.base.environment\_definitions.RuntimeContext
+=======================================================
+
+.. currentmodule:: netunicorn.base.environment_definitions
+
+.. autoclass:: RuntimeContext
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RuntimeContext.network
+      ~RuntimeContext.ports_mapping
+      ~RuntimeContext.environment_variables
+      ~RuntimeContext.additional_arguments
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~RuntimeContext.from_json
+   
+   

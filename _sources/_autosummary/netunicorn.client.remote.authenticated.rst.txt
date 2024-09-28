@@ -1,0 +1,6 @@
+netunicorn.client.remote.authenticated
+======================================
+
+.. currentmodule:: netunicorn.client.remote
+
+.. autofunction:: authenticated

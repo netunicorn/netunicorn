@@ -1,0 +1,33 @@
+netunicorn.base.types.BuildContextRepresentation
+================================================
+
+.. currentmodule:: netunicorn.base.types
+
+.. autoclass:: BuildContextRepresentation
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BuildContextRepresentation.python_version
+      ~BuildContextRepresentation.cloudpickle_version
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~BuildContextRepresentation.fromkeys
+   
+   

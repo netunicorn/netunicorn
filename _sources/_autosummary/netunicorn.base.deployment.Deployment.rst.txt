@@ -1,0 +1,39 @@
+netunicorn.base.deployment.Deployment
+=====================================
+
+.. currentmodule:: netunicorn.base.deployment
+
+.. autoclass:: Deployment
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Deployment.node
+      ~Deployment.prepared
+      ~Deployment.executor_id
+      ~Deployment.error
+      ~Deployment.execution_graph
+      ~Deployment.environment_definition
+      ~Deployment.keep_alive_timeout_minutes
+      ~Deployment.cleanup
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~Deployment.from_json
+   
+   

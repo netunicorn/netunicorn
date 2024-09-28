@@ -1,0 +1,41 @@
+netunicorn.base.pipeline.Pipeline
+=================================
+
+.. currentmodule:: netunicorn.base.pipeline
+
+.. autoclass:: Pipeline
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Pipeline.last_stage
+      ~Pipeline.name
+      ~Pipeline.early_stopping
+      ~Pipeline.report_results
+      ~Pipeline.environment_definition
+      ~Pipeline.graph
+      ~Pipeline.override_graph_validation
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~Pipeline.copy
+      ~Pipeline.draw
+      ~Pipeline.is_execution_graph_valid
+      ~Pipeline.then
+   
+   

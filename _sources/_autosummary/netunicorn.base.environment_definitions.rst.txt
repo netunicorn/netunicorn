@@ -1,0 +1,36 @@
+netunicorn.base.environment\_definitions
+========================================
+
+.. automodule:: netunicorn.base.environment_definitions
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+      :nosignatures:
+   
+      BuildContext
+      DockerImage
+      EnvironmentDefinition
+      RuntimeContext
+      ShellExecution
+   
+   
+
+   
+   
+   
+
+
+

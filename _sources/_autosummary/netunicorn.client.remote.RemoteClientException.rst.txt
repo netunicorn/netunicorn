@@ -1,0 +1,6 @@
+netunicorn.client.remote.RemoteClientException
+==============================================
+
+.. currentmodule:: netunicorn.client.remote
+
+.. autoexception:: RemoteClientException

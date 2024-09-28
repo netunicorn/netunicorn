@@ -1,0 +1,33 @@
+netunicorn.base.environment\_definitions.ShellExecution
+=======================================================
+
+.. currentmodule:: netunicorn.base.environment_definitions
+
+.. autoclass:: ShellExecution
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ShellExecution.commands
+      ~ShellExecution.runtime_context
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~ShellExecution.from_json
+   
+   

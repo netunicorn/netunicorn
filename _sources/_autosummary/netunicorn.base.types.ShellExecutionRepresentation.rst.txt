@@ -1,0 +1,33 @@
+netunicorn.base.types.ShellExecutionRepresentation
+==================================================
+
+.. currentmodule:: netunicorn.base.types
+
+.. autoclass:: ShellExecutionRepresentation
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ShellExecutionRepresentation.commands
+      ~ShellExecutionRepresentation.runtime_context
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~ShellExecutionRepresentation.fromkeys
+   
+   

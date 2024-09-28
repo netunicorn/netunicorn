@@ -1,0 +1,35 @@
+netunicorn.base.experiment.Experiment
+=====================================
+
+.. currentmodule:: netunicorn.base.experiment
+
+.. autoclass:: Experiment
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Experiment.deployment_map
+      ~Experiment.deployment_context
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~Experiment.append
+      ~Experiment.from_json
+      ~Experiment.map
+   
+   

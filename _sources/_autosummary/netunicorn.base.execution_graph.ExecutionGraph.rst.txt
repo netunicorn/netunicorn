@@ -1,0 +1,38 @@
+netunicorn.base.execution\_graph.ExecutionGraph
+===============================================
+
+.. currentmodule:: netunicorn.base.execution_graph
+
+.. autoclass:: ExecutionGraph
+   :members:
+   :show-inheritance:
+   :inherited-members: dict
+   :special-members: __add__,__len__,__getitem__,__iter__,__call__,__setitem__,__next__
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ExecutionGraph.name
+      ~ExecutionGraph.early_stopping
+      ~ExecutionGraph.report_results
+      ~ExecutionGraph.environment_definition
+      ~ExecutionGraph.graph
+      ~ExecutionGraph.override_graph_validation
+   
+   
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+
+   
+      ~ExecutionGraph.draw
+      ~ExecutionGraph.is_execution_graph_valid
+   
+   
