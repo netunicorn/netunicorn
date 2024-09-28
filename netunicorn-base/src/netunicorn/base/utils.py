@@ -7,9 +7,8 @@ from base64 import b64encode
 from json import JSONEncoder
 from typing import Any, List
 
-from returns.result import Result
-
 from netunicorn.base.environment_definitions import EnvironmentDefinition
+from returns.result import Result
 
 SerializedExecutionGraphType = bytes
 LogType = List[str]

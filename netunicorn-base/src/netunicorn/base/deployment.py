@@ -9,9 +9,8 @@ from base64 import b64decode
 from copy import deepcopy
 from typing import Optional
 
-import networkx as nx
-
 import netunicorn.base.environment_definitions
+import networkx as nx
 
 from .execution_graph import ExecutionGraph
 from .nodes import Node
