@@ -340,7 +340,8 @@ async def check_runtime_context(experiment: Experiment) -> Result[None, str]:
                 return Failure(
                     f"Environment variables in runtime context must not contain spaces"
                 )
-            if " " in executor.environment_definition.runtime_context.network:
+            network = executor.environment_definition.runtime_context.network
+            if network and " " in network:
                 return Failure(
                     f"Network name in runtime context must not contain spaces"
                 )
