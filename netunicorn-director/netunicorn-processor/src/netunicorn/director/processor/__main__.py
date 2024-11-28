@@ -86,11 +86,29 @@ async def collect_executors_results(experiment_id: str, experiment: Experiment) 
                 error=error,
             )
         )
-    await db_conn_pool.execute(
-        "UPDATE experiments SET execution_results = $1::jsonb[] WHERE experiment_id = $2",
-        execution_results,
-        experiment_id,
-    )
+    try:
+        await db_conn_pool.execute(
+            "UPDATE experiments SET execution_results = $1::jsonb[] WHERE experiment_id = $2",
+            execution_results,
+            experiment_id,
+        )
+    except asyncpg.exceptions.ProgramLimitExceededError as e:
+        logger.exception(e)
+        logger.error(
+            f"Execution results for experiment {experiment_id} are too large to store in the database."
+        )
+        await db_conn_pool.execute(
+            "UPDATE experiments SET error = $1 WHERE experiment_id = $2",
+            "Execution results are too large to store in the database. Please, avoid returning excessive data directly from executors and instead upload the results to a storage service and return a link to the data.",
+            experiment_id,
+        )
+    except Exception as e:
+        logger.exception(e)
+        await db_conn_pool.execute(
+            "UPDATE experiments SET error = $1 WHERE experiment_id = $2",
+            f"Error occurred during saving execution results: {e}",
+            experiment_id,
+        )
 
 
 async def update_experiment_status(
