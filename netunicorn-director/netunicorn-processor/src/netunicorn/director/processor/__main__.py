@@ -201,9 +201,9 @@ async def locker_task(timeout_sec: int = 10) -> NoReturn:
         if not experiments:
             experiments = []
 
-        nodes_to_lock: set[
-            tuple[str, str, str]
-        ] = set()  # username, node_name, connector
+        nodes_to_lock: set[tuple[str, str, str]] = (
+            set()
+        )  # username, node_name, connector
         # get all nodes that are in use by these experiments
         for experiment in experiments:
             experiment_data = experiment["data"]
