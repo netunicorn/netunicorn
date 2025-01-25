@@ -41,6 +41,7 @@ from .engine import (
     get_experiment_status,
     get_experiments,
     get_nodes,
+    get_pipelines,
     open_db_connection,
     prepare_experiment_task,
     set_experiment_flag,
@@ -166,6 +167,14 @@ async def nodes_handler(
     return result_to_response(
         await get_nodes(username, await parse_context(netunicorn_auth_context))
     )
+
+@app.get("/api/v1/pipelines", status_code=200)
+async def pipelines_handler() -> List[Dict[str, str]]:
+    try:
+        pipelines = get_pipelines()
+        return pipelines
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/v1/experiment", status_code=200)

@@ -108,7 +108,7 @@ services:
       - netunicorn-network
 
   mediator:
-    image: netunicorn/mediator # mediator only
+    image: netunicorn/mediator:test # mediator only
     restart: unless-stopped
     container_name: netunicorn-mediator
     environment:

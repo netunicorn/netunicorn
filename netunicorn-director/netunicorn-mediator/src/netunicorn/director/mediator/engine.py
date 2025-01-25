@@ -3,37 +3,33 @@ import json
 import secrets
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Dict, List, Set, Optional, Tuple, TypeVar, Union, cast
 from uuid import uuid4
+import pkgutil
+import importlib
+from types import ModuleType
+import inspect
 
 import asyncpg.connection
 import requests as req
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.experiment import (
-    Experiment,
-    ExperimentExecutionInformation,
-    ExperimentStatus,
-)
-from netunicorn.base.nodes import CountableNodePool, Node, Nodes, UncountableNodePool
+from netunicorn.base.experiment import (Experiment,
+                                        ExperimentExecutionInformation,
+                                        ExperimentStatus)
+from netunicorn.base.nodes import (CountableNodePool, Node, Nodes,
+                                   UncountableNodePool)
 from netunicorn.base.types import FlagValues
-from netunicorn.director.base.resources import (
-    DATABASE_DB,
-    DATABASE_ENDPOINT,
-    DATABASE_PASSWORD,
-    DATABASE_USER,
-)
+from netunicorn.director.base.resources import (DATABASE_DB, DATABASE_ENDPOINT,
+                                                DATABASE_PASSWORD,
+                                                DATABASE_USER)
 from netunicorn.director.base.utils import __init_connection
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
 
 from .preprocessors import experiment_preprocessors
-from .resources import (
-    DOCKER_REGISTRY_URL,
-    NETUNICORN_AUTH_ENDPOINT,
-    NETUNICORN_INFRASTRUCTURE_ENDPOINT,
-    logger,
-)
+from .resources import (DOCKER_REGISTRY_URL, NETUNICORN_AUTH_ENDPOINT,
+                        NETUNICORN_INFRASTRUCTURE_ENDPOINT, logger)
 
 db_conn_pool: asyncpg.Pool
 NodesType = TypeVar("NodesType", CountableNodePool, UncountableNodePool)
@@ -232,6 +228,41 @@ async def get_nodes(
     nodes = await __filter_locked_nodes(username, nodes)
     nodes = await __filter_access_tags(username, nodes)
     return Success(nodes)
+
+
+def get_pipelines_helper(pkg: str = "netunicorn.library.pipelines", seen: Set[str] = None) -> List[ModuleType]:
+    # Recursively finds and imports all Python files within the specified package
+    if seen is None:
+        seen = set()
+        
+    modules = []
+    package_obj = importlib.import_module(pkg)
+
+    for module_info in pkgutil.walk_packages(package_obj.__path__, f"{pkg}."):
+        if module_info.name in seen:
+            continue
+        seen.add(module_info.name)
+
+        if module_info.ispkg:
+            modules.extend(get_pipelines_helper(module_info.name, seen))
+        else:
+            try:
+                module = importlib.import_module(module_info.name)
+                modules.append(module)
+            except ImportError as e:
+                print(f"Failed to import {module_info.name}: {e}")
+
+    return modules
+
+def get_pipelines() -> List[Dict[str, str]]:
+    pipelines = []
+
+    for module in get_pipelines_helper():
+        for name, obj in inspect.getmembers(module, inspect.isfunction):
+            if name.endswith("pipeline"):
+                pipelines.append({name: obj.__doc__})
+                
+    return pipelines
 
 
 async def get_experiments(
