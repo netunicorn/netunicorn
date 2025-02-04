@@ -41,3 +41,7 @@
 .custom-navbar-item a:hover {
     color: rgb(225, 225, 225);
 }
+
+.custom-navbar-item #create-tab {
+    color:rgb(170, 230, 170)
+}

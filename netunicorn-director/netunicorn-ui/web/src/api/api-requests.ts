@@ -32,6 +32,11 @@ export interface LockedNode {
   connector: string;
 }
 
+export interface Pipeline {
+  name: string;
+  description: string;
+}
+
 export interface ExecutionContext {
   [key: string]: { [key: string]: string };
 }
@@ -39,6 +44,28 @@ export interface ExecutionContext {
 export interface CancellationContext {
   [key: string]: { [key: string]: string };
 }
+
+export interface ExperimentMapping {
+  pipelines: Pipeline; // Pipeline
+  nodes: Node[]; // List of nodes
+}
+
+export interface NodeMetadata {
+  [key: string]: string | number | boolean | null;
+}
+
+export interface Node {
+  name: string;
+  connector: string;
+  metadata?: NodeMetadata;
+}
+
+export interface CountableNodePool {
+  node_pool_type: "CountableNodePool";
+  node_pool_data: (Node | CountableNodePool)[];
+  node_pool_metadata: Record<string, any> | null;
+}
+
 
 // Axios Instance with the base URL
 const netUnicornAPI: AxiosInstance = axios.create({
@@ -118,6 +145,26 @@ export async function getActiveCompilations(): Promise<Compilation[]> {
   }
 }
 
+// Get Pipelines
+export async function getPipelines(): Promise<Pipeline[]> {
+  try {
+    const response = await axios.get<{ [key: string]: string }[]>(
+      `${NETUNICORN_MEDIATOR_URL}/api/v1/pipelines`
+    );
+
+    return response.data.map((item) => {
+      const name = Object.keys(item)[0];
+      return {
+        name: name,
+        description: item[name].trim() || "No description available",
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching pipelines:", error);
+    throw new Error("Failed to fetch pipelines");
+  }
+}
+  
 // Get Running Experiments
 export async function getRunningExperiments(): Promise<Experiment[]> {
   try {
@@ -161,6 +208,30 @@ export async function getExperiments(): Promise<Experiment[]> {
     throw error;
   }
 }
+// Get Nodes
+export async function getNodes(): Promise<Node[]> {
+  const response = await netUnicornAPI.get<CountableNodePool>(
+    `${NETUNICORN_MEDIATOR_URL}/api/v1/nodes`
+  );
+
+  // Flattens CountableNodePool -> Node[]
+  function flattenNodes(pool: CountableNodePool): Node[] {
+    let nodes: Node[] = [];
+
+    for (const item of pool.node_pool_data) {
+      if ("node_pool_data" in item) {
+        nodes = nodes.concat(flattenNodes(item as CountableNodePool));
+      } else {
+        nodes.push(item as Node);
+      }
+    }
+
+    return nodes;
+  }
+
+  return flattenNodes(response.data);
+}
+
 
 // Start Experiment
 export async function startExperiment(
@@ -193,5 +264,24 @@ export async function cancelExperiment(
   } catch (error) {
     handleError(error as AxiosError);
     throw error;
+  }
+}
+
+export async function sendExperimentMapping(mapping: ExperimentMapping): Promise<void> {
+  try {
+    const response = await axios.post(
+      `${NETUNICORN_MEDIATOR_URL}/api/v1/web/experiment`, // Change as needed 
+      mapping,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log("Experiment mapping sent successfully:", response.data);
+  } catch (error: any) {
+    console.error("Failed to send experiment mapping:", error.response?.data || error.message);
+    throw new Error("Failed to send experiment mapping");
   }
 }

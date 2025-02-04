@@ -38,6 +38,9 @@ const Navbar: React.FC<NavbarProps> = ({ setIsAuthenticated }) => {
         <li className="custom-navbar-item">
           <Link to="/compilations">Compilations</Link>
         </li>
+        <li className="custom-navbar-item">
+          <Link id="create-tab" to="/run">Run</Link>
+        </li>
       </ul>
 
       <ul className="custom-navbar-list">

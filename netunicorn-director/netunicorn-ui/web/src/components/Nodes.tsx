@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import SearchableTable from './SearchableTable.tsx';
-import { LockedNode, getLockedNodes } from '../api/api-requests.ts';
+import { LockedNode, getLockedNodes, Pipeline, getPipelines } from '../api/api-requests.ts';
 import Alert from '@mui/material/Alert';
 
 function Nodes() {
@@ -24,6 +24,8 @@ function Nodes() {
     const fetchNodes = async () => {
       try {
         const nodesData = await getLockedNodes();
+        const pipelinesData = await getPipelines();
+        console.log(pipelinesData);
         setLockedNodes(nodesData);
       } catch (err: any) {
         setError(err?.message || 'Failed to load locked nodes');
