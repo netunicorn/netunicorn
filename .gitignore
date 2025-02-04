@@ -16,3 +16,4 @@ netunicorn-library/src/netunicorn/library/tasks
 netunicorn-library/src/netunicorn/library/pipelines
 .vscode
 **/*.log
+netunicorn-director/node_modules
