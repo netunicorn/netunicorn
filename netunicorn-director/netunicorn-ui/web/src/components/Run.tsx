@@ -10,7 +10,8 @@ import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import Box from "@mui/material/Box";
-import { Pipeline, getPipelines, getNodes, Node } from "../api/api-requests.ts";
+import { Pipeline, getPipelines, getNodes, Node, ExperimentMapping, sendExperimentMapping } from "../api/api-requests.ts";
+import { Typography } from "@mui/material";
 
 interface RowData {
   pipeline: string;
@@ -44,6 +45,54 @@ const RunExperimentsTable: React.FC = () => {
     fetchData();
   }, []);
 
+  const handleRunExperiments = async () => {
+    let isValid = true;
+    const updatedRows = [...rows];
+  
+    rows.forEach((row, i) => {
+      if (row.pipeline === "") {
+        updatedRows[i].pipelineError = "Select a Pipeline";
+        isValid = false;
+      }
+      if (row.nodes.length === 0) {
+        updatedRows[i].nodesError = "Select at least one Node";
+        isValid = false;
+      }
+    });
+  
+    if (!isValid) {
+      setRows(updatedRows);
+      return;
+    }
+  
+    console.log("Pipeline Options:", pipelineOptions);
+    console.log("Node Options:", nodeOptions);
+
+    const experimentMappings = rows.map(row => {
+      const pipeline = pipelineOptions.find(p => p.name === row.pipeline);
+      if (!pipeline) {
+        throw new Error(`Pipeline ${row.pipeline} not found in pipelineOptions`);
+      }
+  
+      const selectedNodes = nodeOptions.filter(n => row.nodes.includes(n.name));
+      return {
+        pipelines: pipeline,
+        nodes: selectedNodes,
+      };
+    });
+  
+    console.log("Experiment Mapping(s):", experimentMappings);
+  
+    try {
+      for (const mapping of experimentMappings) {
+        await sendExperimentMapping(mapping);
+      }
+      console.log("All experiment mappings sent successfully.");
+    } catch (error) {
+      console.error("Error sending experiment mapping:", error);
+    }
+  };  
+
   const handleAddRow = (index: number) => {
     const updatedRows = [...rows];
     updatedRows.splice(index + 1, 0, {
@@ -66,7 +115,7 @@ const RunExperimentsTable: React.FC = () => {
     setRows(updatedRows);
   };
 
-  const handleRunExperiments = () => {
+  const experiments = () => {
     let changed = true;
     const updatedRows = [...rows];
     rows.forEach((row, i) => {
@@ -114,86 +163,125 @@ const RunExperimentsTable: React.FC = () => {
         {rows.map((row, index) => {
           const error = row.pipelineError !== "" || row.nodesError !== "";
           return (
-            <div
-              key={index}
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: "10px",
-              }}
-            >
-              <IconButton
-                onClick={() => handleAddRow(index)}
+            <div key={index}>
+              <div
                 style={{
-                  backgroundColor: "lightblue",
-                  color: "white",
-                  marginRight: "10px",
-                  marginBottom: error ? "23px" : 0,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
                 }}
               >
-                <AddIcon />
-              </IconButton>
-              <FormControl fullWidth>
-                <InputLabel>Pipeline</InputLabel>
-                <Select
-                  label="Pipeline"
-                  error={row.pipelineError !== ""}
-                  value={row.pipeline}
-                  onChange={(e) =>
-                    handleDropdownChange(index, "pipeline", e.target.value)
-                  }
-                  style={{ marginRight: "10px" }}
+                <IconButton
+                  onClick={() => handleAddRow(index)}
+                  style={{
+                    backgroundColor: "lightblue",
+                    color: "white",
+                    marginRight: "10px",
+                    marginBottom: error ? "23px" : 0,
+                  }}
                 >
-                  {pipelineOptions.map((option, idx) => (
-                    <MenuItem key={idx} value={option.name}>
-                      {option.name}
-                      {option.description}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {row.pipelineError && (
-                  <FormHelperText sx={{ color: "red" }}>
-                    {row.pipelineError}
-                  </FormHelperText>
-                )}
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel>Nodes</InputLabel>
-                <Select
-                  label="Nodes"
-                  error={row.nodesError !== ""}
-                  multiple
-                  value={row.nodes}
-                  onChange={(e) =>
-                    handleDropdownChange(index, "nodes", e.target.value)
-                  }
-                  style={{ marginRight: "10px" }}
+                  <AddIcon />
+                </IconButton>
+                <FormControl fullWidth>
+                  <InputLabel>Pipeline</InputLabel>
+                  <Select
+                    label="Pipeline"
+                    error={row.pipelineError !== ""}
+                    value={row.pipeline}
+                    onChange={(e) =>
+                      handleDropdownChange(index, "pipeline", e.target.value)
+                    }
+                    renderValue={(selected) => {
+                      return row.pipeline;
+                    }}
+                    style={{ marginRight: "10px" }}
+                  >
+                    {pipelineOptions.map((option, idx) => (
+                      <MenuItem key={idx} value={option.name} sx={{ width: "350px"}}>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+
+                        <Typography 
+                          variant="body1" 
+                          sx={{ whiteSpace: "normal", wordWrap: "break-word" }}>
+                            {option.name}
+                        </Typography>
+                        <Typography 
+                          variant="body2" 
+                          color="gray" 
+                          sx={{ whiteSpace: "normal", wordWrap: "break-word" }}>
+                            {option.description}
+                        </Typography>
+                        </div>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {row.pipelineError && (
+                    <FormHelperText sx={{ color: "red" }}>
+                      {row.pipelineError}
+                    </FormHelperText>
+                  )}
+                </FormControl>
+                <FormControl fullWidth>
+                  <InputLabel>Nodes</InputLabel>
+                  <Select
+                    label="Nodes"
+                    error={row.nodesError !== ""}
+                    multiple
+                    value={row.nodes}
+                    onChange={(e) =>
+                      handleDropdownChange(index, "nodes", e.target.value)
+                    }
+                    style={{ marginRight: "10px" }}
+                  >
+                    {nodeOptions.map((node, idx) => (
+                      <MenuItem key={idx} value={node.name} sx={{ width: "350px"}}>
+                        {node.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {row.nodesError && (
+                    <FormHelperText sx={{ color: "red" }}>
+                      {row.nodesError}
+                    </FormHelperText>
+                  )}
+                </FormControl>
+                <IconButton
+                  disabled={rows.length <= 1}
+                  onClick={() => handleDeleteRow(index)}
+                  style={{
+                    backgroundColor: rows.length <= 1 ? "gray" : "red",
+                    color: "white",
+                    marginRight: "10px",
+                    marginBottom: error ? "23px" : 0,
+                  }}
                 >
-                  {nodeOptions.map((node, idx) => (
-                    <MenuItem key={idx} value={node.name}>
-                      {node.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {row.nodesError && (
-                  <FormHelperText sx={{ color: "red" }}>
-                    {row.nodesError}
-                  </FormHelperText>
-                )}
-              </FormControl>
-              <IconButton
-                disabled={rows.length <= 1}
-                onClick={() => handleDeleteRow(index)}
-                style={{
-                  backgroundColor: rows.length <= 1 ? "gray" : "red",
-                  color: "white",
-                  marginRight: "10px",
-                  marginBottom: error ? "23px" : 0,
-                }}
-              >
-                <DeleteIcon />
-              </IconButton>
+                  <DeleteIcon />
+                </IconButton>
+              </div>
+
+              {pipelineOptions.find(pipeline => pipeline.name === row.pipeline) && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: "space-between",
+                    alignItems: 'center',
+                    marginTop: '20px',
+                    marginBottom: '20px',
+                    marginLeft: '60px',
+                    paddingRight: '60px'
+                  }}
+                >
+                  <div style={{ textAlign: "left", flex: 1 }}>
+                    <Typography variant="body2" component="span" fontWeight="bold">
+                      Pipeline Description:{" "}
+                    </Typography>
+                    <Typography variant="body2">
+                      {pipelineOptions.find(pipeline => pipeline.name === row.pipeline)?.description}
+                    </Typography>
+                  </div>
+                </div>
+              )}
+
             </div>
           );
         })}
