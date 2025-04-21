@@ -1,32 +1,45 @@
-import React, { useState, useEffect } from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
-import InputLabel from "@mui/material/InputLabel";
-import MenuItem from "@mui/material/MenuItem";
-import FormControl from "@mui/material/FormControl";
-import FormHelperText from "@mui/material/FormHelperText";
-import Select from "@mui/material/Select";
-import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
-import Box from "@mui/material/Box";
-import { Pipeline, getPipelines, getNodes, Node, ExperimentMapping, sendExperimentMapping } from "../api/api-requests.ts";
-import { Typography } from "@mui/material";
+import React, { useState, useEffect } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  FormHelperText,
+  Typography,
+  Alert,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+} from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import {
+  Pipeline,
+  Node,
+  ExperimentMapping,
+  getPipelines,
+  getNodes,
+  sendExperimentMapping,
+} from '../api/api-requests.ts';
+import { useExperimentState } from '../contexts/ExperimentStateContext.tsx';
 
-interface RowData {
-  pipeline: string;
-  nodes: string[];
-  pipelineError: string;
-  nodesError: string;
-}
+const RunExperiments: React.FC = () => {
+  // State for user inputs remains local.
+  const [selectedPipeline, setSelectedPipeline] = useState<string>("");
+  const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [pipelineError, setPipelineError] = useState<string>("");
+  const [nodesError, setNodesError] = useState<string>("");
 
-const RunExperimentsTable: React.FC = () => {
-  const [rows, setRows] = useState<RowData[]>([
-    { pipeline: "", nodes: [], pipelineError: "", nodesError: "" },
-  ]);
   const [pipelineOptions, setPipelineOptions] = useState<Pipeline[]>([]);
   const [nodeOptions, setNodeOptions] = useState<Node[]>([]);
-  
+
+  // Retrieve global states
+  const { experimentResult, setExperimentResult, loading, setLoading } = useExperimentState();
+  const [notification, setNotification] = useState<{ message: string; severity: 'success' | 'error' } | null>(null);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -39,283 +52,134 @@ const RunExperimentsTable: React.FC = () => {
         const nodes = await getNodes();
         setNodeOptions(nodes);
       } catch (error) {
-        console.error("Failed to fetch locked nodes:", error);
+        console.error("Failed to fetch nodes:", error);
       }
     };
     fetchData();
   }, []);
 
   const handleRunExperiments = async () => {
-    let isValid = true;
-    const updatedRows = [...rows];
-  
-    rows.forEach((row, i) => {
-      if (row.pipeline === "") {
-        updatedRows[i].pipelineError = "Select a Pipeline";
-        isValid = false;
-      }
-      if (row.nodes.length === 0) {
-        updatedRows[i].nodesError = "Select at least one Node";
-        isValid = false;
-      }
-    });
-  
-    if (!isValid) {
-      setRows(updatedRows);
+    let valid = true;
+    if (selectedPipeline === "") {
+      setPipelineError("Select a Pipeline");
+      valid = false;
+    }
+    if (selectedNodes.length === 0) {
+      setNodesError("Select at least one Node");
+      valid = false;
+    }
+    if (!valid) return;
+
+    const pipelineObj = pipelineOptions.find((p) => p.short_name === selectedPipeline);
+    if (!pipelineObj) {
+      console.error(`Pipeline ${selectedPipeline} not found.`);
       return;
     }
-  
-    console.log("Pipeline Options:", pipelineOptions);
-    console.log("Node Options:", nodeOptions);
 
-    const experimentMappings = rows.map(row => {
-      const pipeline = pipelineOptions.find(p => p.name === row.pipeline);
-      if (!pipeline) {
-        throw new Error(`Pipeline ${row.pipeline} not found in pipelineOptions`);
-      }
-  
-      const selectedNodes = nodeOptions.filter(n => row.nodes.includes(n.name));
-      return {
-        pipelines: pipeline,
-        nodes: selectedNodes,
-      };
-    });
-  
-    console.log("Experiment Mapping(s):", experimentMappings);
-  
+    const nodesList = nodeOptions.filter((n) => selectedNodes.includes(n.name));
+    const experimentMapping: ExperimentMapping = {
+      pipeline: pipelineObj,
+      nodes: nodesList,
+    };
+
+    console.log("Experiment Mapping:", experimentMapping);
+
+    setLoading(true);
+    setNotification(null);
     try {
-      for (const mapping of experimentMappings) {
-        await sendExperimentMapping(mapping);
-      }
-      console.log("All experiment mappings sent successfully.");
-    } catch (error) {
+      const result = await sendExperimentMapping(experimentMapping);
+      setExperimentResult(result); // Set in global context
+      setNotification({ message: "Experiment mapping ran successfully.", severity: "success" });
+      console.log("Experiment mapping sent successfully.");
+    } catch (error: any) {
       console.error("Error sending experiment mapping:", error);
+      setNotification({ message: "Error running experiment mapping.", severity: "error" });
+    } finally {
+      setLoading(false);
     }
-  };  
-
-  const handleAddRow = (index: number) => {
-    const updatedRows = [...rows];
-    updatedRows.splice(index + 1, 0, {
-      pipeline: "",
-      nodes: [],
-      pipelineError: "",
-      nodesError: "",
-    });
-    setRows(updatedRows);
-  };
-
-  const handleDeleteRow = (index: number) => {
-    setRows(rows.filter((_, i) => i !== index));
-  };
-
-  const handleDropdownChange = (index: number, col: string, value: any) => {
-    const updatedRows = rows.map((row, i) =>
-      i === index ? { ...row, [col]: value, [`${col}Error`]: "" } : row
-    );
-    setRows(updatedRows);
-  };
-
-  const experiments = () => {
-    let changed = true;
-    const updatedRows = [...rows];
-    rows.forEach((row, i) => {
-      if (row.pipeline === "") {
-        updatedRows[i].pipelineError = "Select a Pipeline";
-        changed = false;
-      }
-      if (row.nodes.length === 0) {
-        updatedRows[i].nodesError = "Select at least one Node";
-        changed = false;
-      }
-    });
-    if (!changed) {
-      setRows(updatedRows);
-      return;
-    }
-
-    console.log(rows);
   };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        paddingTop: 2,
-      }}
-    >
-      <h1 style={{ paddingBottom: 10 }}>Run Experiments</h1>
-      <Box
-        sx={{
-          width: "100%",
-          maxWidth: 800,
-          minWidth: 400,
-          padding: 4,
-          backgroundColor: "white",
-          display: "flex",
-          flexDirection: "column",
-          borderRadius: 2,
-          boxShadow: 3,
-        }}
-      >
-        {rows.map((row, index) => {
-          const error = row.pipelineError !== "" || row.nodesError !== "";
-          return (
-            <div key={index}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <IconButton
-                  onClick={() => handleAddRow(index)}
-                  style={{
-                    backgroundColor: "lightblue",
-                    color: "white",
-                    marginRight: "10px",
-                    marginBottom: error ? "23px" : 0,
-                  }}
-                >
-                  <AddIcon />
-                </IconButton>
-                <FormControl fullWidth>
-                  <InputLabel>Pipeline</InputLabel>
-                  <Select
-                    label="Pipeline"
-                    error={row.pipelineError !== ""}
-                    value={row.pipeline}
-                    onChange={(e) =>
-                      handleDropdownChange(index, "pipeline", e.target.value)
-                    }
-                    renderValue={(selected) => {
-                      return row.pipeline;
-                    }}
-                    style={{ marginRight: "10px" }}
-                  >
-                    {pipelineOptions.map((option, idx) => (
-                      <MenuItem key={idx} value={option.name} sx={{ width: "350px"}}>
-                        <div style={{ display: "flex", flexDirection: "column" }}>
+    <Box sx={{ width: "100%", maxWidth: 800, minWidth: 400, padding: 4, backgroundColor: "white", borderRadius: 2, boxShadow: 3, margin: "auto", mt: 4 }}>
+      <Typography variant="h4" sx={{ mb: 2 }}>
+        Run Experiments
+      </Typography>
 
-                        <Typography 
-                          variant="body1" 
-                          sx={{ whiteSpace: "normal", wordWrap: "break-word" }}>
-                            {option.name}
-                        </Typography>
-                        <Typography 
-                          variant="body2" 
-                          color="gray" 
-                          sx={{ whiteSpace: "normal", wordWrap: "break-word" }}>
-                            {option.description}
-                        </Typography>
-                        </div>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {row.pipelineError && (
-                    <FormHelperText sx={{ color: "red" }}>
-                      {row.pipelineError}
-                    </FormHelperText>
-                  )}
-                </FormControl>
-                <FormControl fullWidth>
-                  <InputLabel>Nodes</InputLabel>
-                  <Select
-                    label="Nodes"
-                    error={row.nodesError !== ""}
-                    multiple
-                    value={row.nodes}
-                    onChange={(e) =>
-                      handleDropdownChange(index, "nodes", e.target.value)
-                    }
-                    style={{ marginRight: "10px" }}
-                  >
-                    {nodeOptions.map((node, idx) => (
-                      <MenuItem key={idx} value={node.name} sx={{ width: "350px"}}>
-                        {node.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {row.nodesError && (
-                    <FormHelperText sx={{ color: "red" }}>
-                      {row.nodesError}
-                    </FormHelperText>
-                  )}
-                </FormControl>
-                <IconButton
-                  disabled={rows.length <= 1}
-                  onClick={() => handleDeleteRow(index)}
-                  style={{
-                    backgroundColor: rows.length <= 1 ? "gray" : "red",
-                    color: "white",
-                    marginRight: "10px",
-                    marginBottom: error ? "23px" : 0,
-                  }}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </div>
+      {notification && (
+        <Alert severity={notification.severity} sx={{ mb: 2 }}>
+          {notification.message}
+        </Alert>
+      )}
 
-              {pipelineOptions.find(pipeline => pipeline.name === row.pipeline) && (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: "space-between",
-                    alignItems: 'center',
-                    marginTop: '20px',
-                    marginBottom: '20px',
-                    marginLeft: '60px',
-                    paddingRight: '60px'
-                  }}
-                >
-                  <div style={{ textAlign: "left", flex: 1 }}>
-                    <Typography variant="body2" component="span" fontWeight="bold">
-                      Pipeline Description:{" "}
-                    </Typography>
-                    <Typography variant="body2">
-                      {pipelineOptions.find(pipeline => pipeline.name === row.pipeline)?.description}
-                    </Typography>
-                  </div>
-                </div>
-              )}
-
-            </div>
-          );
-        })}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
+      <FormControl fullWidth error={Boolean(pipelineError)} sx={{ mb: 2 }}>
+        <InputLabel>Pipeline</InputLabel>
+        <Select
+          label="Pipeline"
+          value={selectedPipeline}
+          onChange={(e) => {
+            setSelectedPipeline(e.target.value as string);
+            setPipelineError("");
           }}
         >
-          <Button
-            variant="contained"
-            color="primary"
-            size="large"
-            onClick={handleRunExperiments}
-            style={{
-              marginTop: "10px",
-              border: "none",
-            }}
-          >
-            Run Experiments
-          </Button>
+          {pipelineOptions.map((option) => (
+            <MenuItem key={option.short_name} value={option.short_name}>
+              {option.short_name}
+            </MenuItem>
+          ))}
+        </Select>
+        {pipelineError && <FormHelperText>{pipelineError}</FormHelperText>}
+      </FormControl>
+
+      <FormControl fullWidth error={Boolean(nodesError)} sx={{ mb: 2 }}>
+        <InputLabel>Nodes</InputLabel>
+        <Select
+          label="Nodes"
+          multiple
+          value={selectedNodes}
+          onChange={(e) => {
+            setSelectedNodes(e.target.value as string[]);
+            setNodesError("");
+          }}
+        >
+          {nodeOptions.map((node) => (
+            <MenuItem key={node.name} value={node.name}>
+              {node.name}
+            </MenuItem>
+          ))}
+        </Select>
+        {nodesError && <FormHelperText>{nodesError}</FormHelperText>}
+      </FormControl>
+
+      <Button variant="contained" onClick={handleRunExperiments}>
+        Run Experiment
+      </Button>
+
+      {loading && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+          <CircularProgress />
         </Box>
-      </Box>
+      )}
+
+      {experimentResult && !loading && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6">Output:</Typography>
+          <pre style={{ backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "4px" }}>
+            {JSON.stringify(experimentResult[0], null, 2)}
+          </pre>
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography>Full Output</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <pre style={{ backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "4px" }}>
+                {JSON.stringify(experimentResult[1], null, 2)}
+              </pre>
+            </AccordionDetails>
+          </Accordion>
+        </Box>
+      )}
     </Box>
   );
 };
 
-const Run: React.FC = () => {
-  return (
-    <div>
-      <RunExperimentsTable />
-    </div>
-  );
-};
-
-export default Run;
+export default RunExperiments;

@@ -22,6 +22,7 @@ dependencies = [
     "requests",
     "jinja2",
     "python-multipart",
+    "cloudpickle"
 ]
 
 [tool.setuptools.packages.find]

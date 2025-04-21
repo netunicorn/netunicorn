@@ -259,8 +259,15 @@ def get_pipelines() -> List[Dict[str, str]]:
 
     for module in get_pipelines_helper():
         for name, obj in inspect.getmembers(module, inspect.isfunction):
+            full_name = module.__name__ + "." + name
             if name.endswith("pipeline"):
-                pipelines.append({name: obj.__doc__})
+                pipelines.append(
+                        {
+                            "short_name": name,
+                            "full_name": full_name,
+                            "doc": obj.__doc__
+                        }
+                )
                 
     return pipelines
 

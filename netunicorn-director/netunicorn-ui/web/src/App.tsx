@@ -9,6 +9,7 @@ import Login from './components/Login.tsx';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import Run from './components/Run.tsx'
 import { useState } from 'react';
+import { ExperimentStateProvider } from './contexts/ExperimentStateContext.tsx';
 
 
 
@@ -36,7 +37,9 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Router/>
+      <ExperimentStateProvider>
+        <Router/>
+      </ExperimentStateProvider>
     </BrowserRouter>
   );
 

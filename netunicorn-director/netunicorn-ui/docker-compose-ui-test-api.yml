@@ -108,7 +108,7 @@ services:
       - netunicorn-network
 
   mediator:
-    image: netunicorn/mediator:test # mediator only
+    image: netunicorn/mediator:test #netunicorn/mediator
     restart: unless-stopped
     container_name: netunicorn-mediator
     environment:
@@ -118,6 +118,7 @@ services:
       NETUNICORN_INFRASTRUCTURE_ENDPOINT: "http://infrastructure:26514"
       NETUNICORN_AUTH_ENDPOINT: "http://authentication:26516"
       NETUNICORN_DOCKER_REGISTRY_URL: "localhost:5000"
+      RAG_ENDPOINT: "http://127.0.0.1:7050/ookla-speedtest"
     ports:
       - "0.0.0.0:26611:26511"
     networks:

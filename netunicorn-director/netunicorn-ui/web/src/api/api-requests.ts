@@ -33,7 +33,8 @@ export interface LockedNode {
 }
 
 export interface Pipeline {
-  name: string;
+  short_name: string;
+  full_name: string;
   description: string;
 }
 
@@ -46,7 +47,7 @@ export interface CancellationContext {
 }
 
 export interface ExperimentMapping {
-  pipelines: Pipeline; // Pipeline
+  pipeline: Pipeline; // Pipeline
   nodes: Node[]; // List of nodes
 }
 
@@ -153,12 +154,18 @@ export async function getPipelines(): Promise<Pipeline[]> {
     );
 
     return response.data.map((item) => {
-      const name = Object.keys(item)[0];
+      // const name = Object.keys(item)[0];
+      // return {
+      //   name: name,
+      //   description: item[name].trim() || "No description available",
+      // };
       return {
-        name: name,
-        description: item[name].trim() || "No description available",
-      };
+        short_name: item['short_name'],
+        full_name: item['full_name'],
+        description: item['doc']?.trim() || "No description available",
+      }
     });
+    
   } catch (error) {
     console.error("Error fetching pipelines:", error);
     throw new Error("Failed to fetch pipelines");
@@ -269,8 +276,8 @@ export async function cancelExperiment(
 
 export async function sendExperimentMapping(mapping: ExperimentMapping): Promise<void> {
   try {
-    const response = await axios.post(
-      `${NETUNICORN_MEDIATOR_URL}/api/v1/web/experiment`, // Change as needed 
+    const response = await netUnicornAPI.post(
+      `${NETUNICORN_MEDIATOR_URL}/api/v1/web/experiment/prepare`, // Change as needed 
       mapping,
       {
         headers: {
@@ -279,7 +286,8 @@ export async function sendExperimentMapping(mapping: ExperimentMapping): Promise
       }
     );
 
-    console.log("Experiment mapping sent successfully:", response.data);
+    console.log("Experiment mapping sent successfully:", JSON.stringify(response.data, null, 2));
+    return response.data;
   } catch (error: any) {
     console.error("Failed to send experiment mapping:", error.response?.data || error.message);
     throw new Error("Failed to send experiment mapping");
