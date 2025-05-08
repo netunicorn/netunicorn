@@ -268,7 +268,7 @@ async def web_experiment_handler(
         selected_node = Node.from_json(dict_node)
         selected_nodes.append(selected_node)
 
-    experiment_name = f"sample_web_experiment"
+    experiment_name = f"{pipeline_name}_experiment"
     web_experiment = Experiment().map(selected_pipeline, selected_nodes)
 
     prechecks = await asyncio.gather(
@@ -306,6 +306,7 @@ async def web_experiment_handler(
                 status = status_result.unwrap().status
                 logger.info("Preparing Poll: Experiment %s status: %s", experiment_name, status)
                 if status == ExperimentStatus.READY: 
+                    logger.info(f"Experiment '{experiment_name}' is ready.")
                     break
             else:
                 logger.warning("Failed to fetch status for experiment %s during polling.", experiment_name)
@@ -346,16 +347,20 @@ async def web_experiment_handler(
     unwrapped_execution_graph_results = []
     for result, log in execution_graph_results:
         if isinstance(result, Result):
-            unwrapped_result = result.unwrap()
             if is_successful(result):
+                unwrapped_result = result.unwrap()
                 for task_id in unwrapped_result:
                     unwrapped_result[task_id] = list(map(lambda task_element_result: task_element_result.unwrap(), unwrapped_result[task_id]))
                 last_task_id = list(unwrapped_result.keys())[-1]
                 last_task_results = {last_task_id: unwrapped_result[last_task_id]}
                 logger.info("Last Task Results: %s", last_task_results)
-            unwrapped_execution_graph_results.append(unwrapped_result)
+                unwrapped_execution_graph_results.append(unwrapped_result)
+            else:
+                logger.info("Failure: %s", result.failure())
+                raise HTTPException(status_code=500, detail=str(result.failure()))
 
-    logger.info("Exec Graph Results: %s", unwrapped_execution_graph_results)
+
+    logger.info("Execution graph results: %s", unwrapped_execution_graph_results)
     return last_task_results, unwrapped_execution_graph_results
 
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)

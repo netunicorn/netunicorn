@@ -19,7 +19,7 @@ services:
     image: registry:2
     restart: unless-stopped
     ports:
-      - "0.0.0.0:5000:5000"
+      - "0.0.0.0:5001:5000"
     networks:
       - netunicorn-network
 
@@ -108,9 +108,11 @@ services:
       - netunicorn-network
 
   mediator:
-    image: netunicorn/mediator # mediator only
+    image: netunicorn/mediator
     restart: unless-stopped
     container_name: netunicorn-mediator
+    extra_hosts:
+    - "host.docker.internal:host-gateway"    
     environment:
       <<: *common-variables
       NETUNICORN_MEDIATOR_IP: "0.0.0.0"
@@ -118,6 +120,7 @@ services:
       NETUNICORN_INFRASTRUCTURE_ENDPOINT: "http://infrastructure:26514"
       NETUNICORN_AUTH_ENDPOINT: "http://authentication:26516"
       NETUNICORN_DOCKER_REGISTRY_URL: "localhost:5000"
+      RAG_ENDPOINT: "http://127.0.0.1:7050/"
     ports:
       - "0.0.0.0:26611:26511"
     networks:
@@ -131,14 +134,12 @@ services:
       - postgres
       - registry
 
-  ui-new:
-    image: netunicorn/ui-new
+  ui:
+    image: netunicorn/ui
     restart: unless-stopped
-    container_name: netunicorn-ui-new
+    container_name: netunicorn-ui
     environment:
-      NETUNICORN_MEDIATOR_ENDPOINT: "http://localhost:8080/api" #http://localhost:26611
-    # ports:
-    #   - "9000:80"
+      NETUNICORN_MEDIATOR_ENDPOINT: "http://localhost:8080/api"
     depends_on:
       - mediator
     networks:
@@ -151,7 +152,7 @@ services:
       - "8080:80"
     depends_on:
       - mediator
-      - ui-new
+      - ui
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     networks:

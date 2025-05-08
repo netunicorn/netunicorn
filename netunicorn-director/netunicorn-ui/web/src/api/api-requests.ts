@@ -286,7 +286,7 @@ export async function sendExperimentMapping(mapping: ExperimentMapping): Promise
       }
     );
 
-    console.log("Experiment mapping sent successfully:", JSON.stringify(response.data, null, 2));
+    console.log("Experiment mapping sent successfully:", JSON.stringify(response.data, null, 2).replace(/\r?\n/g, ''));
     return response.data;
   } catch (error: any) {
     console.error("Failed to send experiment mapping:", error.response?.data || error.message);

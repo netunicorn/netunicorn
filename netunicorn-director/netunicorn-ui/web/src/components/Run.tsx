@@ -160,24 +160,27 @@ const RunExperiments: React.FC = () => {
         </Box>
       )}
 
-      {experimentResult && !loading && (
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6">Output:</Typography>
-          <pre style={{ backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "4px" }}>
-            {JSON.stringify(experimentResult[0], null, 2)}
-          </pre>
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Full Output</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <pre style={{ backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "4px" }}>
-                {JSON.stringify(experimentResult[1], null, 2)}
-              </pre>
-            </AccordionDetails>
-          </Accordion>
-        </Box>
-      )}
+    {experimentResult && !loading && (
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6">Output:</Typography>
+        <pre style={{ backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "4px", whiteSpace: "pre-wrap" }}>
+          {JSON.stringify(experimentResult[0], null, 2).replace(/\\n/g, '\n')}
+        </pre>
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Full Output</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <pre style={{ backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "4px", whiteSpace: "pre-wrap" }}>
+              {JSON.stringify(experimentResult[1], null, 2)
+                .replace(/\\n/g, '\n')
+              }
+            </pre>
+          </AccordionDetails>
+        </Accordion>
+      </Box>
+    )}
+
     </Box>
   );
 };
