@@ -1,10 +1,10 @@
 import asyncio
+import importlib
 import json
 import os
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated, Any, Dict, List, Optional, Union
-import importlib
 
 import uvicorn
 from fastapi import (
@@ -19,13 +19,13 @@ from fastapi import (
 )
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from netunicorn.base.experiment import (
+    DeploymentExecutionResult,
     Experiment,
     ExperimentStatus,
-    DeploymentExecutionResult,
 )
+from netunicorn.base.nodes import Architecture, Node
 from netunicorn.base.types import FlagValues
 from netunicorn.base.utils import UnicornEncoder
-from netunicorn.base.nodes import Node, Architecture
 from netunicorn.director.base.resources import get_logger
 from pydantic import BaseModel
 from returns.pipeline import is_successful
