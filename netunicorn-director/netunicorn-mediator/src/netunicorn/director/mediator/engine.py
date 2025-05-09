@@ -14,22 +14,30 @@ import asyncpg.connection
 import requests as req
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
-from netunicorn.base.experiment import (Experiment,
-                                        ExperimentExecutionInformation,
-                                        ExperimentStatus)
-from netunicorn.base.nodes import (CountableNodePool, Node, Nodes,
-                                   UncountableNodePool)
+from netunicorn.base.experiment import (
+    Experiment,
+    ExperimentExecutionInformation,
+    ExperimentStatus,
+)
+from netunicorn.base.nodes import CountableNodePool, Node, Nodes, UncountableNodePool
 from netunicorn.base.types import FlagValues
-from netunicorn.director.base.resources import (DATABASE_DB, DATABASE_ENDPOINT,
-                                                DATABASE_PASSWORD,
-                                                DATABASE_USER)
+from netunicorn.director.base.resources import (
+    DATABASE_DB,
+    DATABASE_ENDPOINT,
+    DATABASE_PASSWORD,
+    DATABASE_USER,
+)
 from netunicorn.director.base.utils import __init_connection
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
 
 from .preprocessors import experiment_preprocessors
-from .resources import (DOCKER_REGISTRY_URL, NETUNICORN_AUTH_ENDPOINT,
-                        NETUNICORN_INFRASTRUCTURE_ENDPOINT, logger)
+from .resources import (
+    DOCKER_REGISTRY_URL,
+    NETUNICORN_AUTH_ENDPOINT,
+    NETUNICORN_INFRASTRUCTURE_ENDPOINT,
+    logger,
+)
 
 db_conn_pool: asyncpg.Pool
 NodesType = TypeVar("NodesType", CountableNodePool, UncountableNodePool)
@@ -230,11 +238,13 @@ async def get_nodes(
     return Success(nodes)
 
 
-def get_pipelines_helper(pkg: str = "netunicorn.library.pipelines", seen: Set[str] = None) -> List[ModuleType]:
+def get_pipelines_helper(
+    pkg: str = "netunicorn.library.pipelines", seen: Set[str] = None
+) -> List[ModuleType]:
     # Recursively finds and imports all Python files within the specified package
     if seen is None:
         seen = set()
-        
+
     modules = []
     package_obj = importlib.import_module(pkg)
 
@@ -254,6 +264,7 @@ def get_pipelines_helper(pkg: str = "netunicorn.library.pipelines", seen: Set[st
 
     return modules
 
+
 def get_pipelines() -> List[Dict[str, str]]:
     pipelines = []
 
@@ -262,13 +273,9 @@ def get_pipelines() -> List[Dict[str, str]]:
             full_name = module.__name__ + "." + name
             if name.endswith("pipeline"):
                 pipelines.append(
-                        {
-                            "short_name": name,
-                            "full_name": full_name,
-                            "doc": obj.__doc__
-                        }
+                    {"short_name": name, "full_name": full_name, "doc": obj.__doc__}
                 )
-                
+
     return pipelines
 
 
@@ -582,9 +589,9 @@ async def prepare_experiment_task(
         return
 
     # get all distinct combinations of environment_definitions and pipelines, and add compilation_request info to experiment items
-    envs: dict[int, str] = (
-        {}
-    )  # key: unique compilation request, result: compilation_uid
+    envs: dict[
+        int, str
+    ] = {}  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation: List[Deployment] = []
     for deployment in experiment:
         deployment.environment_definition.runtime_context.environment_variables[
