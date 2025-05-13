@@ -24,7 +24,7 @@ from netunicorn.base.experiment import (
     ExperimentStatus,
 )
 from netunicorn.base.nodes import Node
-from netunicorn.base.types import DeploymentExecutionResultRepresentation, FlagValues
+from netunicorn.base.types import FlagValues
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
 from pydantic import BaseModel
@@ -369,25 +369,26 @@ async def web_experiment_handler(
         logger.exception(e)
         raise HTTPException(status_code=500, detail=f"Polling failed: {e}")
 
-    final_execution_result = status_result.unwrap().execution_result
+    raw_execution_result = status_result.unwrap().execution_result
 
     # execution_result checks
-    if isinstance(final_execution_result, Exception):
+    if isinstance(raw_execution_result, Exception):
         raise HTTPException(
-            status_code=500, detail=f"Execution failed: {str(final_execution_result)}"
+            status_code=500, detail=f"Execution failed: {str(raw_execution_result)}"
         )
-    elif final_execution_result is None:
+    elif raw_execution_result is None:
         raise HTTPException(status_code=500, detail=f"Execution result was None")
 
-    final_execution_result = cast(
-        List[DeploymentExecutionResultRepresentation], final_execution_result
-    )
+    final_execution_result: List[Any] = raw_execution_result
 
-    execution_graph_results: List[Tuple[Result[Any, Any], Any]] = [
-        DeploymentExecutionResult.from_json(exec_result).result
-        for exec_result in final_execution_result
-        if exec_result is not None
-    ]
+    execution_graph_results: List[Tuple[Result[Any, Any], Any]] = []
+    for exec_result in final_execution_result:
+        deployment_execution_result = DeploymentExecutionResult.from_json(
+            exec_result
+        ).result
+        if deployment_execution_result is None:
+            continue
+        execution_graph_results.append(deployment_execution_result)
 
     if not execution_graph_results:
         raise HTTPException(
