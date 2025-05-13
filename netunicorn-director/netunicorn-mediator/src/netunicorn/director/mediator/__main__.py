@@ -402,6 +402,11 @@ async def web_experiment_handler(
         if isinstance(result, Result):
             if is_successful(result):
                 unwrapped_result = result.unwrap()
+                if unwrapped_result is None:
+                    raise HTTPException(
+                        status_code=500, detail="Empty execution graph (no tasks)"
+                    )
+
                 for task_id in unwrapped_result:
                     unwrapped_result[task_id] = list(
                         map(
