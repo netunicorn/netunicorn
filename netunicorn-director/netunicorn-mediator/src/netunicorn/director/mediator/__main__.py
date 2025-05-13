@@ -4,7 +4,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Annotated, Any, cast, Dict, List, Optional, Tuple, Union
+from typing import Annotated, Any, Dict, List, Optional, Tuple, Union, cast
 
 import uvicorn
 from fastapi import (
@@ -24,7 +24,7 @@ from netunicorn.base.experiment import (
     ExperimentStatus,
 )
 from netunicorn.base.nodes import Node, NodeRepresentation
-from netunicorn.base.types import FlagValues, DeploymentExecutionResultRepresentation
+from netunicorn.base.types import DeploymentExecutionResultRepresentation, FlagValues
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
 from pydantic import BaseModel
