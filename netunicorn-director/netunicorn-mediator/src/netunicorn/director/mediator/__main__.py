@@ -23,7 +23,7 @@ from netunicorn.base.experiment import (
     Experiment,
     ExperimentStatus,
 )
-from netunicorn.base.nodes import Node, NodeRepresentation
+from netunicorn.base.nodes import Node
 from netunicorn.base.types import DeploymentExecutionResultRepresentation, FlagValues
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
@@ -253,12 +253,12 @@ async def prepare_experiment_handler(
     return experiment_name
 
 
-@app.post("/api/v1/web/experiment/prepare")
+@app.post("/api/v1/web/experiment/prepare", response_model=None)
 async def web_experiment_handler(
     web_experiment: WebExperimentMapping,
     username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
-) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+) -> Union[Tuple[Dict[str, Any], List[Dict[str, Any]]], Response]:
 
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
 
@@ -273,7 +273,7 @@ async def web_experiment_handler(
 
     selected_nodes: List[Node] = []
     for node in web_experiment.nodes:
-        dict_node = cast(NodeRepresentation, node.model_dump(mode="json"))
+        dict_node = cast(Any, node.model_dump(mode="json"))
         selected_node = Node.from_json(dict_node)
         selected_nodes.append(selected_node)
 
@@ -293,12 +293,14 @@ async def web_experiment_handler(
         if not is_successful(result):
             return result_to_response(result)
 
+    # Delete prev experiment
     try:
         await delete_experiment(experiment_name, username)
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=500, detail=f"Deletion failed: {e}")
 
+    # Prepare experiment
     try:
         await prepare_experiment_task(
             experiment_name,
@@ -310,6 +312,7 @@ async def web_experiment_handler(
         logger.exception(e)
         raise HTTPException(status_code=500, detail=f"Preparation failed: {e}")
 
+    # Poll until ready
     try:
         while True:
             status_result = await get_experiment_status(experiment_name, username)
@@ -332,6 +335,7 @@ async def web_experiment_handler(
         logger.exception(e)
         raise HTTPException(status_code=500, detail=f"Polling failed: {e}")
 
+    # Start execution
     try:
         start_result = await start_experiment(
             experiment_name,
@@ -343,6 +347,7 @@ async def web_experiment_handler(
         logger.exception(e)
         raise HTTPException(status_code=500, detail=f"Execution failed: {e}")
 
+    # Poll until no longer running
     try:
         while True:
             status_result = await get_experiment_status(experiment_name, username)
@@ -364,25 +369,33 @@ async def web_experiment_handler(
         logger.exception(e)
         raise HTTPException(status_code=500, detail=f"Polling failed: {e}")
 
-    try:
-        final_execution_status = status_result.unwrap()
-    except Exception as e:
-        logger.exception("Failed to unwrap status result")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to unwrap status result: {e}"
-        )
+    final_execution_result = status_result.unwrap().execution_result or []
 
-    final_execution_result = cast(
-        List[DeploymentExecutionResultRepresentation],
-        final_execution_status.execution_result or [],
-    )
+    # try:
+    #     final_execution_status = status_result.unwrap()
+    # except Exception as e:
+    #     logger.exception("Failed to unwrap status result")
+    #     raise HTTPException(
+    #         status_code=500, detail=f"Failed to unwrap status result: {e}"
+    #     )
 
-    execution_graph_results: List[Tuple[Result[Any, Any], Any]] = list(
-        map(
-            lambda exec_result: DeploymentExecutionResult.from_json(exec_result).result,
-            final_execution_result,
-        )
-    )
+    # final_execution_result = cast(
+    #     List[DeploymentExecutionResultRepresentation],
+    #     final_execution_status.execution_result or [],
+    # )
+
+    # execution_graph_results: List[Tuple[Result[Any, Any], Any]] = list(
+    #     map(
+    #         lambda exec_result: DeploymentExecutionResult.from_json(exec_result).result,
+    #         final_execution_result,
+    #     )
+    # )
+
+    execution_graph_results: List[Tuple[Result[Any, Any], Any]] = [
+        DeploymentExecutionResult.from_json(exec_result).result
+        for exec_result in final_execution_result
+        if exec_result is not None
+    ]
 
     if not execution_graph_results:
         raise HTTPException(
