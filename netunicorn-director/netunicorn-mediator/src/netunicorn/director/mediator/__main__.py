@@ -4,7 +4,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Annotated, Any, Dict, List, Optional, Union
+from typing import Annotated, Any, cast, Dict, List, Optional, Tuple, Union
 
 import uvicorn
 from fastapi import (
@@ -23,8 +23,8 @@ from netunicorn.base.experiment import (
     Experiment,
     ExperimentStatus,
 )
-from netunicorn.base.nodes import Architecture, Node
-from netunicorn.base.types import FlagValues
+from netunicorn.base.nodes import Node, NodeRepresentation
+from netunicorn.base.types import FlagValues, DeploymentExecutionResultRepresentation
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
 from pydantic import BaseModel
@@ -258,35 +258,35 @@ async def web_experiment_handler(
     web_experiment: WebExperimentMapping,
     username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
-) -> Any:
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
 
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
-    pipeline_path = web_experiment.pipeline.full_name
 
+    pipeline_path = web_experiment.pipeline.full_name
     try:
         pipeline_module_name, pipeline_name = pipeline_path.rsplit(".", 1)
         pipeline_module = importlib.import_module(pipeline_module_name)
         get_selected_pipeline = getattr(pipeline_module, pipeline_name)
         selected_pipeline = get_selected_pipeline()
     except (ImportError, AttributeError) as e:
-        raise HTTPException(
-            status_code=400, detail=f"Error importing pipeline: {e}"
-        )  # BAD EXPERIMENT
+        raise HTTPException(status_code=400, detail=f"Error importing pipeline: {e}")
 
-    selected_nodes = []
+    selected_nodes: List[Node] = []
     for node in web_experiment.nodes:
-        dict_node = node.model_dump(mode="json")
+        dict_node = cast(NodeRepresentation, node.model_dump(mode="json"))
         selected_node = Node.from_json(dict_node)
         selected_nodes.append(selected_node)
 
     experiment_name = f"{pipeline_name}_experiment"
-    web_experiment = Experiment().map(selected_pipeline, selected_nodes)
+    logger.info("Selected Nodes: %s", selected_nodes)
+
+    defined_experiment: Experiment = Experiment().map(selected_pipeline, selected_nodes)
 
     prechecks = await asyncio.gather(
-        experiment_precheck(web_experiment),
-        check_sudo_access(web_experiment, username),
-        check_runtime_context(web_experiment),
-        check_environments(web_experiment),
+        experiment_precheck(defined_experiment),
+        check_sudo_access(defined_experiment, username),
+        check_runtime_context(defined_experiment),
+        check_environments(defined_experiment),
     )
 
     for result in prechecks:
@@ -302,7 +302,7 @@ async def web_experiment_handler(
     try:
         await prepare_experiment_task(
             experiment_name,
-            web_experiment,
+            defined_experiment,
             username,
             netunicorn_auth_context_parsed,
         )
@@ -333,7 +333,7 @@ async def web_experiment_handler(
         raise HTTPException(status_code=500, detail=f"Polling failed: {e}")
 
     try:
-        exec_result = await start_experiment(
+        start_result = await start_experiment(
             experiment_name,
             username,
             execution_context=None,
@@ -364,14 +364,35 @@ async def web_experiment_handler(
         logger.exception(e)
         raise HTTPException(status_code=500, detail=f"Polling failed: {e}")
 
-    execution_graph_results = list(
+    try:
+        final_execution_status = status_result.unwrap()
+    except Exception as e:
+        logger.exception("Failed to unwrap status result")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to unwrap status result: {e}"
+        )
+
+    final_execution_result = cast(
+        List[DeploymentExecutionResultRepresentation],
+        final_execution_status.execution_result or [],
+    )
+
+    execution_graph_results: List[Tuple[Result[Any, Any], Any]] = list(
         map(
             lambda exec_result: DeploymentExecutionResult.from_json(exec_result).result,
-            status_result.unwrap().execution_result,
+            final_execution_result,
         )
     )
-    unwrapped_execution_graph_results = []
-    for result, log in execution_graph_results:
+
+    if not execution_graph_results:
+        raise HTTPException(
+            status_code=500,
+            detail="Execution graph has no results (executor likely never prepared)",
+        )
+
+    unwrapped_execution_graph_results: List[Dict[str, Any]] = []
+    last_task_results: Dict[Any, Any] = {}
+    for result, _ in execution_graph_results:
         if isinstance(result, Result):
             if is_successful(result):
                 unwrapped_result = result.unwrap()
@@ -383,7 +404,8 @@ async def web_experiment_handler(
                         )
                     )
                 last_task_id = list(unwrapped_result.keys())[-1]
-                last_task_results = {last_task_id: unwrapped_result[last_task_id]}
+                last_task_results[last_task_id] = unwrapped_result[last_task_id]
+
                 logger.info("Last Task Results: %s", last_task_results)
                 unwrapped_execution_graph_results.append(unwrapped_result)
             else:

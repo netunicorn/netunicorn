@@ -239,16 +239,16 @@ async def get_nodes(
 
 
 def get_pipelines_helper(
-    pkg: str = "netunicorn.library.pipelines", seen: Set[str] = None
+    pkg: str = "netunicorn.library.pipelines", seen: Optional[Set[str]] = None
 ) -> List[ModuleType]:
     # Recursively finds and imports all Python files within the specified package
     if seen is None:
         seen = set()
 
-    modules = []
+    modules: List[ModuleType] = []
     package_obj = importlib.import_module(pkg)
 
-    for module_info in pkgutil.walk_packages(package_obj.__path__, f"{pkg}."):
+    for module_info in pkgutil.walk_packages(package_obj.__path__, prefix=f"{pkg}."):
         if module_info.name in seen:
             continue
         seen.add(module_info.name)
@@ -266,14 +266,17 @@ def get_pipelines_helper(
 
 
 def get_pipelines() -> List[Dict[str, str]]:
-    pipelines = []
+    pipelines: List[Dict[str, str]] = []
 
     for module in get_pipelines_helper():
         for name, obj in inspect.getmembers(module, inspect.isfunction):
-            full_name = module.__name__ + "." + name
             if name.endswith("pipeline"):
                 pipelines.append(
-                    {"short_name": name, "full_name": full_name, "doc": obj.__doc__}
+                    {
+                        "short_name": name,
+                        "full_name": f"{module.__name__}.{name}",
+                        "doc": obj.__doc__ or "",
+                    }
                 )
 
     return pipelines
