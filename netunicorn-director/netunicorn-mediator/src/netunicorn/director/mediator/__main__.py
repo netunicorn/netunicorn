@@ -369,27 +369,19 @@ async def web_experiment_handler(
         logger.exception(e)
         raise HTTPException(status_code=500, detail=f"Polling failed: {e}")
 
-    final_execution_result = status_result.unwrap().execution_result or []
+    final_execution_result = status_result.unwrap().execution_result
 
-    # try:
-    #     final_execution_status = status_result.unwrap()
-    # except Exception as e:
-    #     logger.exception("Failed to unwrap status result")
-    #     raise HTTPException(
-    #         status_code=500, detail=f"Failed to unwrap status result: {e}"
-    #     )
+    # execution_result checks
+    if isinstance(final_execution_result, Exception):
+        raise HTTPException(
+            status_code=500, detail=f"Execution failed: {str(final_execution_result)}"
+        )
+    elif final_execution_result is None:
+        raise HTTPException(status_code=500, detail=f"Execution result was None")
 
-    # final_execution_result = cast(
-    #     List[DeploymentExecutionResultRepresentation],
-    #     final_execution_status.execution_result or [],
-    # )
-
-    # execution_graph_results: List[Tuple[Result[Any, Any], Any]] = list(
-    #     map(
-    #         lambda exec_result: DeploymentExecutionResult.from_json(exec_result).result,
-    #         final_execution_result,
-    #     )
-    # )
+    final_execution_result = cast(
+        List[DeploymentExecutionResultRepresentation], final_execution_result
+    )
 
     execution_graph_results: List[Tuple[Result[Any, Any], Any]] = [
         DeploymentExecutionResult.from_json(exec_result).result
