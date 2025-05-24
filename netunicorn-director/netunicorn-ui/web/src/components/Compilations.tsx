@@ -4,14 +4,6 @@ import SearchableTable from './SearchableTable.tsx';
 import { Compilation, getActiveCompilations } from '../api/api-requests.ts';
 import Alert from '@mui/material/Alert';
 
-// interface Compilation {
-//     username: string;
-//     experiment_name: string;
-//     experiment_id: string;
-//     compilation_id: string;
-//     architecture: string;
-// }
-
 function Compilations() {
     const [compilations, setCompilations] = useState<Compilation[]>([]);
     const [error, setError] = useState('');

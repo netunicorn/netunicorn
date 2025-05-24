@@ -18,16 +18,11 @@ from fastapi import (
     Response,
 )
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from netunicorn.base.experiment import (
-    DeploymentExecutionResult,
-    Experiment,
-    ExperimentStatus,
-)
+from netunicorn.base.experiment import Experiment
 from netunicorn.base.nodes import Node
 from netunicorn.base.types import FlagValues
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
-from pydantic import BaseModel
 from returns.pipeline import is_successful
 from returns.result import Result
 
@@ -48,8 +43,10 @@ from .engine import (
     get_experiments,
     get_nodes,
     get_pipelines,
+    load_web_experiment,
     open_db_connection,
     prepare_experiment_task,
+    run_web_experiment,
     set_experiment_flag,
     start_experiment,
     verify_access_token,
@@ -61,30 +58,10 @@ from .ui_api import (
     get_running_experiments,
 )
 
-
-class CancellationRequest(BaseModel):
-    executors: List[str]
-    cancellation_context: Optional[dict[str, dict[str, str]]] = None
-
-
-# Pydantic Web Models
-class WebPipeline(BaseModel):
-    short_name: str
-    full_name: str
-    description: str
-
-
-class WebNode(BaseModel):
-    name: str
-    properties: Dict[str, Any] = {}
-    additional_properties: Dict[str, Any] = {}
-    architecture: str
-
-
-class WebExperimentMapping(BaseModel):
-    pipeline: WebPipeline
-    nodes: List[WebNode]
-
+from .models import (
+    CancellationRequest,
+    WebExperimentMapping,
+)
 
 logger = get_logger("netunicorn.director.mediator")
 
@@ -259,28 +236,12 @@ async def web_experiment_handler(
     username: Annotated[str, Depends(verify_token)],
     netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
 ) -> Union[Tuple[Dict[str, Any], List[Dict[str, Any]]], Response]:
-
     netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
 
-    pipeline_path = web_experiment.pipeline.full_name
     try:
-        pipeline_module_name, pipeline_name = pipeline_path.rsplit(".", 1)
-        pipeline_module = importlib.import_module(pipeline_module_name)
-        get_selected_pipeline = getattr(pipeline_module, pipeline_name)
-        selected_pipeline = get_selected_pipeline()
-    except (ImportError, AttributeError) as e:
-        raise HTTPException(status_code=400, detail=f"Error importing pipeline: {e}")
-
-    selected_nodes: List[Node] = []
-    for node in web_experiment.nodes:
-        dict_node = cast(Any, node.model_dump(mode="json"))
-        selected_node = Node.from_json(dict_node)
-        selected_nodes.append(selected_node)
-
-    experiment_name = f"{pipeline_name}_experiment"
-    logger.info("Selected Nodes: %s", selected_nodes)
-
-    defined_experiment: Experiment = Experiment().map(selected_pipeline, selected_nodes)
+        experiment_name, defined_experiment = await load_web_experiment(web_experiment)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     prechecks = await asyncio.gather(
         experiment_precheck(defined_experiment),
@@ -293,138 +254,15 @@ async def web_experiment_handler(
         if not is_successful(result):
             return result_to_response(result)
 
-    # Delete prev experiment
     try:
-        await delete_experiment(experiment_name, username)
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=500, detail=f"Deletion failed: {e}")
-
-    # Prepare experiment
-    try:
-        await prepare_experiment_task(
+        return await run_web_experiment(
             experiment_name,
             defined_experiment,
             username,
             netunicorn_auth_context_parsed,
         )
     except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=500, detail=f"Preparation failed: {e}")
-
-    # Poll until ready
-    try:
-        while True:
-            status_result = await get_experiment_status(experiment_name, username)
-            if is_successful(status_result):
-                status = status_result.unwrap().status
-                logger.info(
-                    "Preparing Poll: Experiment %s status: %s", experiment_name, status
-                )
-                if status == ExperimentStatus.READY:
-                    logger.info(f"Experiment '{experiment_name}' is ready.")
-                    break
-            else:
-                logger.warning(
-                    "Failed to fetch status for experiment %s during polling.",
-                    experiment_name,
-                )
-            await asyncio.sleep(5)
-
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=500, detail=f"Polling failed: {e}")
-
-    # Start execution
-    try:
-        start_result = await start_experiment(
-            experiment_name,
-            username,
-            execution_context=None,
-            netunicorn_authentication_context=netunicorn_auth_context_parsed,
-        )
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=500, detail=f"Execution failed: {e}")
-
-    # Poll until no longer running
-    try:
-        while True:
-            status_result = await get_experiment_status(experiment_name, username)
-            if is_successful(status_result):
-                status = status_result.unwrap().status
-                logger.info(
-                    "Running Poll: Experiment %s status: %s", experiment_name, status
-                )
-                if status != ExperimentStatus.RUNNING:
-                    break
-            else:
-                logger.warning(
-                    "Failed to fetch status for experiment %s during polling.",
-                    experiment_name,
-                )
-            await asyncio.sleep(5)
-
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=500, detail=f"Polling failed: {e}")
-
-    raw_execution_result = status_result.unwrap().execution_result
-
-    # execution_result checks
-    if isinstance(raw_execution_result, Exception):
-        raise HTTPException(
-            status_code=500, detail=f"Execution failed: {str(raw_execution_result)}"
-        )
-    elif raw_execution_result is None:
-        raise HTTPException(status_code=500, detail=f"Execution result was None")
-
-    final_execution_result: List[Any] = raw_execution_result
-
-    execution_graph_results: List[Tuple[Result[Any, Any], Any]] = []
-    for exec_result in final_execution_result:
-        deployment_execution_result = DeploymentExecutionResult.from_json(
-            exec_result
-        ).result
-        if deployment_execution_result is None:
-            continue
-        execution_graph_results.append(deployment_execution_result)
-
-    if not execution_graph_results:
-        raise HTTPException(
-            status_code=500,
-            detail="Execution graph has no results (executor likely never prepared)",
-        )
-
-    unwrapped_execution_graph_results: List[Dict[str, Any]] = []
-    last_task_results: Dict[Any, Any] = {}
-    for result, _ in execution_graph_results:
-        if isinstance(result, Result):
-            if is_successful(result):
-                unwrapped_result = result.unwrap()
-                if unwrapped_result is None:
-                    raise HTTPException(
-                        status_code=500, detail="Empty execution graph (no tasks)"
-                    )
-
-                for task_id in unwrapped_result:
-                    unwrapped_result[task_id] = list(
-                        map(
-                            lambda task_element_result: task_element_result.unwrap(),
-                            unwrapped_result[task_id],
-                        )
-                    )
-                last_task_id = list(unwrapped_result.keys())[-1]
-                last_task_results[last_task_id] = unwrapped_result[last_task_id]
-
-                logger.info("Last Task Results: %s", last_task_results)
-                unwrapped_execution_graph_results.append(unwrapped_result)
-            else:
-                logger.info("Failure: %s", result.failure())
-                raise HTTPException(status_code=500, detail=str(result.failure()))
-
-    logger.info("Execution graph results: %s", unwrapped_execution_graph_results)
-    return last_task_results, unwrapped_execution_graph_results
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)

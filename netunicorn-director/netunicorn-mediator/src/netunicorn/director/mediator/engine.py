@@ -7,7 +7,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta
 from types import ModuleType
-from typing import Dict, List, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, TypeVar, Union, cast
 from uuid import uuid4
 
 import asyncpg.connection
@@ -15,6 +15,7 @@ import requests as req
 from netunicorn.base.deployment import Deployment
 from netunicorn.base.environment_definitions import DockerImage, ShellExecution
 from netunicorn.base.experiment import (
+    DeploymentExecutionResult,
     Experiment,
     ExperimentExecutionInformation,
     ExperimentStatus,
@@ -31,6 +32,7 @@ from netunicorn.director.base.utils import __init_connection
 from returns.pipeline import is_successful
 from returns.result import Failure, Result, Success
 
+from .models import WebExperimentMapping
 from .preprocessors import experiment_preprocessors
 from .resources import (
     DOCKER_REGISTRY_URL,
@@ -594,7 +596,7 @@ async def prepare_experiment_task(
     # get all distinct combinations of environment_definitions and pipelines, and add compilation_request info to experiment items
     envs: dict[int, str] = (
         {}
-    )  # key: uniqufe compilation request, result: compilation_uid
+    )  # key: unique compilation request, result: compilation_uid
     deployments_waiting_for_compilation: List[Deployment] = []
     for deployment in experiment:
         deployment.environment_definition.runtime_context.environment_variables[
@@ -967,3 +969,167 @@ async def verify_access_token(token: str) -> Result[str, str]:
         return Failure("Access token not found")
 
     return Success(username)
+
+
+async def load_web_experiment(
+    web_experiment: WebExperimentMapping,
+) -> Tuple[str, Experiment]:
+    pipeline_path = web_experiment.pipeline.full_name
+    try:
+        pipeline_module_name, pipeline_name = pipeline_path.rsplit(".", 1)
+        pipeline_module = importlib.import_module(pipeline_module_name)
+        get_selected_pipeline = getattr(pipeline_module, pipeline_name)
+        selected_pipeline = get_selected_pipeline()
+    except (ImportError, AttributeError) as e:
+        raise Exception(f"Error importing pipeline: {e}")
+
+    selected_nodes: List[Node] = []
+    for node in web_experiment.nodes:
+        dict_node = cast(Any, node.model_dump(mode="json"))
+        selected_node = Node.from_json(dict_node)
+        selected_nodes.append(selected_node)
+
+    experiment_name = f"{pipeline_name}_experiment"
+    logger.info("Selected Nodes: %s", selected_nodes)
+
+    defined_experiment: Experiment = Experiment().map(selected_pipeline, selected_nodes)
+    return experiment_name, defined_experiment
+
+
+async def delete_previous_web_experiment(experiment_name: str, username: str) -> None:
+    try:
+        await delete_experiment(experiment_name, username)
+    except Exception as e:
+        logger.exception(e)
+        raise Exception(f"Deletion failed: {e}")
+
+
+async def prepare_web_experiment(
+    experiment_name: str, defined_experiment: Any, username: str, auth_context: Any
+) -> None:
+    try:
+        await prepare_experiment_task(
+            experiment_name,
+            defined_experiment,
+            username,
+            auth_context,
+        )
+    except Exception as e:
+        logger.exception(e)
+        raise Exception(f"Preparation failed: {e}")
+
+
+async def poll_until_web_experiment_status(
+    experiment_name: str,
+    username: str,
+    final_status: ExperimentStatus,
+    check_running: bool = False,
+    interval: int = 5,
+) -> Any:
+    try:
+        while True:
+            status_result = await get_experiment_status(experiment_name, username)
+            if is_successful(status_result):
+                status = status_result.unwrap().status
+                logger.info("Polling status for %s: %s", experiment_name, status)
+                if (not check_running and status == final_status) or (
+                    check_running and status != ExperimentStatus.RUNNING
+                ):
+                    break
+            else:
+                logger.warning(
+                    "Failed to fetch status for experiment %s during polling.",
+                    experiment_name,
+                )
+            await asyncio.sleep(interval)
+        return status_result
+    except Exception as e:
+        logger.exception(e)
+        raise Exception(f"Polling failed: {e}")
+
+
+async def start_web_experiment_and_wait(
+    experiment_name: str, username: str, auth_context: Any
+) -> Any:
+    try:
+        _ = await start_experiment(
+            experiment_name,
+            username,
+            execution_context=None,
+            netunicorn_authentication_context=auth_context,
+        )
+    except Exception as e:
+        logger.exception(e)
+        raise Exception(f"Execution failed: {e}")
+
+    return await poll_until_web_experiment_status(
+        experiment_name,
+        username,
+        final_status=ExperimentStatus.RUNNING,
+        check_running=True,
+    )
+
+
+async def run_web_experiment(
+    experiment_name: str, defined_experiment: Any, username: str, auth_context: Any
+) -> Tuple[Dict[Any, Any], List[Dict[str, Any]]]:
+
+    await delete_previous_web_experiment(experiment_name, username)
+
+    await prepare_web_experiment(
+        experiment_name,
+        defined_experiment,
+        username,
+        auth_context,
+    )
+
+    await poll_until_web_experiment_status(
+        experiment_name, username, final_status=ExperimentStatus.READY
+    )
+
+    final_status = await start_web_experiment_and_wait(
+        experiment_name, username, auth_context
+    )
+
+    raw_execution_result = final_status.unwrap().execution_result
+
+    execution_graph_results: List[Tuple[Result[Any, Any], Any]] = []
+    for exec_result in raw_execution_result or []:
+        deployment_exec = DeploymentExecutionResult.from_json(exec_result).result
+        if deployment_exec is not None:
+            execution_graph_results.append(deployment_exec)
+
+    if not execution_graph_results:
+        raise Exception(
+            "Execution graph has no results (executor likely never prepared)"
+        )
+
+    unwrapped_execution_graph_results: List[Dict[str, Any]] = []
+    last_task_results: Dict[Any, Any] = {}
+
+    for result, _ in execution_graph_results:
+        if isinstance(result, Result):
+            if is_successful(result):
+                unwrapped_result = result.unwrap()
+
+                if unwrapped_result is None:
+                    raise Exception("Empty execution graph (no tasks)")
+
+                for task_id in unwrapped_result:
+                    unwrapped_result[task_id] = list(
+                        map(
+                            lambda task_element_result: task_element_result.unwrap(),
+                            unwrapped_result[task_id],
+                        )
+                    )
+                last_task_id = list(unwrapped_result.keys())[-1]
+                last_task_results[last_task_id] = unwrapped_result[last_task_id]
+
+                logger.info("Last Task Results: %s", last_task_results)
+                unwrapped_execution_graph_results.append(unwrapped_result)
+            else:
+                logger.info("Failure: %s", result.failure())
+                raise Exception(str(result.failure()))
+
+    logger.info("Execution graph results: %s", unwrapped_execution_graph_results)
+    return last_task_results, unwrapped_execution_graph_results

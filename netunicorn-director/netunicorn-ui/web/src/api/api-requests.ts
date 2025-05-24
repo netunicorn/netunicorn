@@ -154,11 +154,6 @@ export async function getPipelines(): Promise<Pipeline[]> {
     );
 
     return response.data.map((item) => {
-      // const name = Object.keys(item)[0];
-      // return {
-      //   name: name,
-      //   description: item[name].trim() || "No description available",
-      // };
       return {
         short_name: item['short_name'],
         full_name: item['full_name'],
