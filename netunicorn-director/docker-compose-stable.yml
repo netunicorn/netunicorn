@@ -112,6 +112,8 @@ services:
     image: netunicorn/mediator
     restart: unless-stopped
     container_name: netunicorn-mediator
+    extra_hosts:
+      - "host.docker.internal:host-gateway"    
     environment:
       <<: *common-variables
       NETUNICORN_MEDIATOR_IP: "0.0.0.0"
@@ -119,7 +121,7 @@ services:
       NETUNICORN_INFRASTRUCTURE_ENDPOINT: "http://infrastructure:26514"
       NETUNICORN_AUTH_ENDPOINT: "http://authentication:26516"
       NETUNICORN_DOCKER_REGISTRY_URL: "localhost:5000"
-      RAG_ENDPOINT: "localhost:7050"
+      RAG_ENDPOINT: "http://172.17.0.1:7050"
     ports:
       - "0.0.0.0:26611:26511"
     networks:
