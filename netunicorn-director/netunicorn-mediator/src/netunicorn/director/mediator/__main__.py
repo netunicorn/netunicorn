@@ -17,6 +17,7 @@ from fastapi import (
     Request,
     Response,
 )
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.nodes import Node
@@ -78,6 +79,16 @@ async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
 
 
 app = FastAPI(title="netunicorn API", root_path=proxy_path, lifespan=lifespan)
+
+origins = ["http://localhost:9000"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def result_to_response(result: Result[Any, Any]) -> Response:
