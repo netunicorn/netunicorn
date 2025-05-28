@@ -5,7 +5,7 @@ name: Release netunicorn-director-ui
 on:
   push:
     paths:
-      - "netunicorn-director/netunicorn-ui/*"
+      - "netunicorn-director/netunicorn-ui/**"
     branches: ["main"]
   workflow_dispatch:
 
@@ -29,6 +29,6 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
-        context: netunicorn-director/netunicorn-ui
+        context: netunicorn-director/netunicorn-ui/web
         push: true
         tags: netunicorn/ui:latest
