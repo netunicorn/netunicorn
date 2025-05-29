@@ -9,7 +9,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
 interface LoginProps {
-    setIsAuthenticated: (value: boolean) => void;
+    setIsAuthenticated: (boolean) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ setIsAuthenticated }) => {

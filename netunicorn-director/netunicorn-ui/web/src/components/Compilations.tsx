@@ -8,7 +8,7 @@ function Compilations() {
     const [compilations, setCompilations] = useState<Compilation[]>([]);
     const [error, setError] = useState('');
 
-    const compilation_fields = ["username", "experiment_name", "experiment_id", "compilation_id", "architecture"] as unknown as (keyof Compilation)[];;
+    const compilation_fields = ["username", "experiment_name", "experiment_id", "compilation_id", "architecture"] as unknown as (keyof Compilation)[];
 
     useEffect(() => {
         const getCompilations = async () => {
