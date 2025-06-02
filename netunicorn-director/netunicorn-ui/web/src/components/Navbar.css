@@ -1,0 +1,47 @@
+.custom-navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.custom-navbar-logo {
+    color: #fff;
+    text-decoration: none;
+}
+
+.custom-navbar-logo:hover {
+    color: #ddd;
+}
+
+.custom-navbar {
+    background-color: #333;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.custom-navbar-list {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.custom-navbar-item {
+    margin-right: 1rem;
+}
+
+.custom-navbar-item a {
+    color: rgb(170, 170, 170);
+    text-decoration: none;
+    font-size: 1.2rem;
+}
+
+.custom-navbar-item a:hover {
+    color: rgb(225, 225, 225);
+}
+
+.custom-navbar-item #create-tab {
+    color:rgb(170, 230, 170)
+}

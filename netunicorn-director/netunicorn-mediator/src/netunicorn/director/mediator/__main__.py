@@ -3,7 +3,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Annotated, Any, Dict, List, Optional, Union
+from typing import Annotated, Any, Dict, List, Optional, Tuple, Union
 
 import uvicorn
 from fastapi import (
@@ -16,12 +16,12 @@ from fastapi import (
     Request,
     Response,
 )
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from netunicorn.base.experiment import Experiment
 from netunicorn.base.types import FlagValues
 from netunicorn.base.utils import UnicornEncoder
 from netunicorn.director.base.resources import get_logger
-from pydantic import BaseModel
 from returns.pipeline import is_successful
 from returns.result import Result
 
@@ -41,11 +41,18 @@ from .engine import (
     get_experiment_status,
     get_experiments,
     get_nodes,
+    get_pipelines,
+    load_web_experiment,
     open_db_connection,
     prepare_experiment_task,
+    run_web_experiment,
     set_experiment_flag,
     start_experiment,
     verify_access_token,
+)
+from .models import (
+    CancellationRequest,
+    WebExperimentMapping,
 )
 from .ui_api import (
     get_active_compilations,
@@ -53,12 +60,6 @@ from .ui_api import (
     get_locked_nodes,
     get_running_experiments,
 )
-
-
-class CancellationRequest(BaseModel):
-    executors: List[str]
-    cancellation_context: Optional[dict[str, dict[str, str]]] = None
-
 
 logger = get_logger("netunicorn.director.mediator")
 
@@ -76,6 +77,16 @@ async def lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
 
 
 app = FastAPI(title="netunicorn API", root_path=proxy_path, lifespan=lifespan)
+
+origins = ["http://localhost:9000"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def result_to_response(result: Result[Any, Any]) -> Response:
@@ -103,7 +114,7 @@ async def verify_token(token: Annotated[str, Depends(security)]) -> str:
 
 @app.post("/api/v1/token")
 async def login(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Dict[str, str]:
     username = form_data.username
     password = form_data.password
@@ -168,6 +179,15 @@ async def nodes_handler(
     )
 
 
+@app.get("/api/v1/pipelines", status_code=200)
+async def pipelines_handler() -> List[Dict[str, str]]:
+    try:
+        pipelines = get_pipelines()
+        return pipelines
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/v1/experiment", status_code=200)
 async def get_experiments_handler(
     username: Annotated[str, Depends(verify_token)],
@@ -216,6 +236,41 @@ async def prepare_experiment_handler(
         netunicorn_auth_context_parsed,
     )
     return experiment_name
+
+
+@app.post("/api/v1/web/experiment/prepare", response_model=None)
+async def web_experiment_handler(
+    web_experiment: WebExperimentMapping,
+    username: Annotated[str, Depends(verify_token)],
+    netunicorn_auth_context: Annotated[Optional[str], Header()] = None,
+) -> Union[Tuple[Dict[str, Any], List[Dict[str, Any]]], Response]:
+    netunicorn_auth_context_parsed = await parse_context(netunicorn_auth_context)
+
+    try:
+        experiment_name, defined_experiment = await load_web_experiment(web_experiment)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    prechecks = await asyncio.gather(
+        experiment_precheck(defined_experiment),
+        check_sudo_access(defined_experiment, username),
+        check_runtime_context(defined_experiment),
+        check_environments(defined_experiment),
+    )
+
+    for result in prechecks:
+        if not is_successful(result):
+            return result_to_response(result)
+
+    try:
+        return await run_web_experiment(
+            experiment_name,
+            defined_experiment,
+            username,
+            netunicorn_auth_context_parsed,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/v1/experiment/{experiment_name}/start", status_code=200)
